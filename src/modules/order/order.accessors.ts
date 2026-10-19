@@ -1,4 +1,4 @@
-import { type SQL, and, count, desc, eq, inArray, ne, not, notInArray, or, sql } from "drizzle-orm"
+import { type SQL, and, asc, count, desc, eq, inArray, ne, not, notInArray, or, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
@@ -9,6 +9,7 @@ import { buildAdminDateTimeFilterSql } from "~/src/modules/_core/utils/datetime-
 import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
 import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
+import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 import { checkout } from "~/src/modules/checkout/checkout.schema"
 import { orderAddress } from "~/src/modules/order-address/order-address.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
@@ -22,6 +23,9 @@ import {
   ADMIN_ORDER_TIMELINE_ACTIONS,
   type AdminOrderStatFilter,
   type AdminOrderTab,
+  CUSTOMER_ACCOUNT_ORDERS_LIMIT,
+  CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT,
+  type CustomerAccountOrderFilter,
   ORDER_SALE_STATUSES,
 } from "~/src/modules/order/order.constants"
 import { order } from "~/src/modules/order/order.schema"
@@ -604,3 +608,136 @@ export interface AdminOrdersListParams extends ListPaginationParams {
   readonly timeZone: string
   readonly userId?: string | undefined
 }
+
+const NO_OFFSET = 0
+
+interface CustomerOrderRowsOptions {
+  readonly filter?: CustomerAccountOrderFilter
+  readonly limit?: number
+  readonly offset?: number
+}
+
+const customerOrderFilterWhere = (userId: string, filter: CustomerAccountOrderFilter) => {
+  const owned = eq(order.userId, userId)
+
+  if (filter === "all") {
+    return owned
+  }
+
+  if (filter === "cancelled") {
+    return and(owned, or(eq(order.status, "cancelled"), eq(order.fulfillmentStatus, "cancelled")))
+  }
+
+  if (filter === "refunded") {
+    return and(owned, eq(order.status, "refunded"))
+  }
+
+  return and(
+    owned,
+    notInArray(order.status, ["pending", "cancelled", "refunded"]),
+    inArray(order.fulfillmentStatus, [...ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP[filter]]),
+  )
+}
+
+export const getCustomerOrderRows = (
+  userId: string,
+  { filter = "all", limit = CUSTOMER_ACCOUNT_ORDERS_LIMIT, offset = NO_OFFSET }: CustomerOrderRowsOptions = {},
+) =>
+  db
+    .select({
+      createdAt: order.createdAt,
+      currencyCode: order.currencyCode,
+      fulfillmentStatus: order.fulfillmentStatus,
+      id: order.id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      total: order.total,
+    })
+    .from(order)
+    .where(customerOrderFilterWhere(userId, filter))
+    .orderBy(desc(order.createdAt))
+    .limit(limit)
+    .offset(offset)
+
+export const countCustomerOrders = async (userId: string, filter: CustomerAccountOrderFilter = "all"): Promise<number> => {
+  const [row] = await db.select({ total: count() }).from(order).where(customerOrderFilterWhere(userId, filter))
+
+  return row?.total ?? NO_OFFSET
+}
+
+export const getCustomerSpendStats = async (userId: string): Promise<{ orderCount: number; totalSpent: number }> => {
+  const [row] = await db
+    .select({
+      orderCount: count(),
+      totalSpent: netSalesSum,
+    })
+    .from(order)
+    .leftJoin(payment, eq(order.paymentId, payment.id))
+    .where(and(eq(order.userId, userId), orderCountsAsSale))
+
+  return { orderCount: row?.orderCount ?? NO_OFFSET, totalSpent: row?.totalSpent ?? NO_OFFSET }
+}
+
+export const getCustomerPurchasedCategoryIds = async (userId: string): Promise<string[]> => {
+  const rows = await db
+    .select({ categoryId: categoryOnProduct.categoryId })
+    .from(orderItem)
+    .innerJoin(order, eq(orderItem.orderId, order.id))
+    .innerJoin(productVariant, eq(orderItem.variantId, productVariant.id))
+    .innerJoin(categoryOnProduct, eq(categoryOnProduct.productId, productVariant.productId))
+    .where(and(eq(order.userId, userId), orderCountsAsSale))
+    .groupBy(categoryOnProduct.categoryId)
+    .orderBy(desc(count()))
+    .limit(CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT)
+
+  return rows.map((row) => row.categoryId)
+}
+
+export const getCustomerPurchasedProductIds = async (userId: string): Promise<string[]> => {
+  const rows = await db
+    .selectDistinct({ productId: productVariant.productId })
+    .from(orderItem)
+    .innerJoin(order, eq(orderItem.orderId, order.id))
+    .innerJoin(productVariant, eq(orderItem.variantId, productVariant.id))
+    .where(eq(order.userId, userId))
+
+  return rows.map((row) => row.productId)
+}
+
+export const getCustomerOrderNumbers = (userId: string) =>
+  db
+    .select({ id: order.id, orderNumber: order.orderNumber })
+    .from(order)
+    .where(eq(order.userId, userId))
+    .orderBy(desc(order.createdAt))
+    .limit(CUSTOMER_ACCOUNT_ORDERS_LIMIT)
+
+export const getOrderItemsForOrders = (orderIds: readonly string[]) => {
+  if (orderIds.length === 0) {
+    return []
+  }
+
+  return db
+    .select({
+      handle: product.handle,
+      id: orderItem.id,
+      orderId: orderItem.orderId,
+      quantity: orderItem.quantity,
+      thumbnail: customerOrderItemThumbnail,
+      title: orderItem.title,
+      total: orderItem.total,
+      unitPrice: orderItem.unitPrice,
+      variantTitle: customerOrderItemVariantTitle,
+    })
+    .from(orderItem)
+    .leftJoin(productVariant, eq(orderItem.variantId, productVariant.id))
+    .leftJoin(product, eq(productVariant.productId, product.id))
+    .where(inJsonList(orderItem.orderId, orderIds))
+    .orderBy(asc(orderItem.createdAt))
+}
+
+export const customerOrderItemThumbnail = sql<string | null>`coalesce(${orderItem.thumbnail}, ${product.thumbnail})`.as("thumbnail")
+
+export const customerOrderItemVariantTitle = sql<string | null>`coalesce(${orderItem.variantTitle}, ${productVariant.title})`.as(
+  "variant_title",
+)

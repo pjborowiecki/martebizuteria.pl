@@ -1,12 +1,13 @@
 import zod from "zod/v4"
 
 import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
-import { dateTimeColumnFilterField, pageField, pageSizeField, uuidField } from "~/src/modules/_core/utils/zod-fields"
+import { dateTimeColumnFilterField, pageField, pageSizeField, searchTermField, uuidField } from "~/src/modules/_core/utils/zod-fields"
 import {
   AUDIT_EMAIL_KIND,
   AUDIT_LOG_ACTION,
   AUDIT_LOG_CATEGORIES,
   AUDIT_LOG_SEVERITIES,
+  CUSTOMER_ACCOUNT_LOGIN_STATUSES,
   CUSTOMER_EMAIL_CHANGE_REFUSAL,
 } from "~/src/modules/audit-log/audit-log.constants"
 
@@ -47,6 +48,12 @@ export const auditLogZodSchemas = {
     newEmail: zod.string(),
     orderNumber: zod.string(),
     refusal: zod.enum(CUSTOMER_EMAIL_CHANGE_REFUSAL).optional(),
+  }),
+  customerLoginHistoryPageInput: zod.object({
+    page: pageField.optional(),
+    pageSize: pageSizeField.optional(),
+    search: searchTermField.optional(),
+    status: zod.enum(CUSTOMER_ACCOUNT_LOGIN_STATUSES).optional(),
   }),
   deleteAuditLogsInput: zod.array(zod.union([uuidField, stripeKeyedAuditLogId])).max(LIST_PAGE_SIZE_MAX),
   emailKind,

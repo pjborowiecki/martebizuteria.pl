@@ -3,9 +3,9 @@ import { useMemo } from "react"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { useTranslations } from "use-intl/react"
 
-import { SESSION_TABLE_COLUMN_ID } from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
-import { listCustomerSessionsQuery } from "~/src/modules/customer-account/use-cases/list-customer-sessions"
+import { SESSION_TABLE_COLUMN_ID } from "~/src/modules/session/session.constants"
+import { type Session } from "~/src/modules/session/session.types"
+import { listCustomerSessionsQuery } from "~/src/modules/session/use-cases/list-customer-sessions"
 
 import { useDataGridInstance } from "~/src/presentation/components/custom/datagrid/hooks/use-data-grid-instance"
 import { createCatalogTableGlobalFilterFn } from "~/src/presentation/components/custom/datagrid/lib/catalog-table-global-filter"
@@ -16,9 +16,9 @@ import { sessionsDataGrid } from "~/src/presentation/components/custom/pages/adm
 
 const SESSIONS_COLUMN_PINNING = { end: [SESSION_TABLE_COLUMN_ID.actions], start: [SESSION_TABLE_COLUMN_ID.device] }
 
-const sessionSearchFilter = createCatalogTableGlobalFilterFn<CustomerAccount["session"]>((row) => [row.device, row.browser, row.ipAddress])
+const sessionSearchFilter = createCatalogTableGlobalFilterFn<Session["customerSession"]>((row) => [row.device, row.browser, row.ipAddress])
 
-export const useSessionsDataGrid = (): DataGridContextValue<CustomerAccount["session"]> => {
+export const useSessionsDataGrid = (): DataGridContextValue<Session["customerSession"]> => {
   const t = useTranslations("pages.admin.settings.security.sessions")
   const { data, isFetching } = useSuspenseQuery(listCustomerSessionsQuery())
   const sessions = useMemo(() => [...data], [data])

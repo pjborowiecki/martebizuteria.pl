@@ -5,9 +5,9 @@ import { LogOut, Monitor, Smartphone, Tablet } from "lucide-react"
 import { toast } from "sonner"
 import { useLocale, useTranslations } from "use-intl/react"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
-import { revokeCustomerSessionMutation } from "~/src/modules/customer-account/use-cases/revoke-customer-session"
+import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
+import { type Session } from "~/src/modules/session/session.types"
+import { revokeCustomerSessionMutation } from "~/src/modules/session/use-cases/revoke-customer-session"
 
 import { useDisplayPreferences } from "~/src/hooks/use-display-format"
 
@@ -26,7 +26,7 @@ const DEVICE_ICONS = {
 export const ActiveSessionCard = ({
   session,
 }: Readonly<{
-  session: CustomerAccount["session"]
+  session: Session["customerSession"]
 }>): JSX.Element => {
   const t = useTranslations("pages.account.sessions")
   const locale = useLocale()
@@ -40,7 +40,7 @@ export const ActiveSessionCard = ({
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS,
+        queryKey: SESSION_QUERY_KEYS.CUSTOMER.SESSIONS,
       })
       toast.success(t("revokeSuccess"))
     },

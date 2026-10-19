@@ -5,8 +5,8 @@ import { cn } from "cn"
 import { useTranslations } from "use-intl/react"
 
 import { LIST_PAGE_FIRST, LIST_PAGE_STEP } from "~/src/modules/_core/utils/pagination"
-import { CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE } from "~/src/modules/customer-account/customer-account.constants"
-import { getCustomerLoginHistoryPageQuery } from "~/src/modules/customer-account/use-cases/get-customer-login-history-page"
+import { CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE } from "~/src/modules/audit-log/audit-log.constants"
+import { getCustomerLoginHistoryPageQuery } from "~/src/modules/audit-log/use-cases/get-customer-login-history-page"
 
 import { LoginHistoryItem } from "~/src/presentation/components/custom/pages/account/sessions/login-history-item"
 

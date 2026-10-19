@@ -2,7 +2,7 @@ import { type JSX } from "react"
 
 import { useTranslations } from "use-intl/react"
 
-import { type CustomerAccountOrderFilter } from "~/src/modules/customer-account/customer-account.constants"
+import { type CustomerAccountOrderFilter } from "~/src/modules/order/order.constants"
 
 import { PaginationLink } from "~/src/presentation/components/custom/pages/account/orders/orders-pagination-link"
 

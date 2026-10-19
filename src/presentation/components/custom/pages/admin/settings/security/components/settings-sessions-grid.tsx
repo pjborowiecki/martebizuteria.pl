@@ -5,9 +5,9 @@ import { Loader2, LogOut } from "lucide-react"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
-import { listCustomerSessionsQuery } from "~/src/modules/customer-account/use-cases/list-customer-sessions"
-import { revokeOtherCustomerSessionsMutation } from "~/src/modules/customer-account/use-cases/revoke-other-customer-sessions"
+import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
+import { listCustomerSessionsQuery } from "~/src/modules/session/use-cases/list-customer-sessions"
+import { revokeOtherCustomerSessionsMutation } from "~/src/modules/session/use-cases/revoke-other-customer-sessions"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
@@ -17,7 +17,7 @@ import { sessionsDataGrid } from "~/src/presentation/components/custom/pages/adm
 import { SettingsGridSection } from "~/src/presentation/components/custom/pages/admin/settings/settings-grid-section"
 import { SettingsRefreshAction } from "~/src/presentation/components/custom/pages/admin/settings/settings-refresh-action"
 
-const SESSIONS_QUERY_KEYS = [CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS]
+const SESSIONS_QUERY_KEYS = [SESSION_QUERY_KEYS.CUSTOMER.SESSIONS]
 
 const SignOutOtherDevicesButton = (): JSX.Element | undefined => {
   const tSessions = useTranslations("pages.account.sessions")
@@ -29,7 +29,7 @@ const SignOutOtherDevicesButton = (): JSX.Element | undefined => {
       toast.error(tSessions("revokeOtherDevicesError"))
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS })
+      await queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.CUSTOMER.SESSIONS })
       toast.success(tSessions("revokeOtherDevicesSuccess"))
     },
   })

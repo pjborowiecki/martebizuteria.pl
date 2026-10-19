@@ -2,7 +2,7 @@ import { type JSX, useMemo } from "react"
 
 import { Link } from "@tanstack/react-router"
 
-import { type CustomerAccountOrderFilter } from "~/src/modules/customer-account/customer-account.constants"
+import { type CustomerAccountOrderFilter } from "~/src/modules/order/order.constants"
 
 import { ROUTES } from "~/src/routes"
 

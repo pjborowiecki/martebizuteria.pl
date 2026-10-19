@@ -4,7 +4,7 @@ import { useTranslations } from "use-intl/react"
 
 import { formatInpostLockerAddress } from "~/src/integrations/inpost/inpost.utils"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type Order } from "~/src/modules/order/order.types"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
@@ -12,7 +12,7 @@ import { AddressLines } from "~/src/presentation/components/custom/pages/account
 
 const HEADING_CLASS = "text-[11px] tracking-[0.2em] text-muted-foreground uppercase"
 
-const LockerRecipient = ({ address }: Readonly<{ address: CustomerAccount["orderAddress"] | undefined }>): JSX.Element | undefined => {
+const LockerRecipient = ({ address }: Readonly<{ address: Order["customerOrderAddress"] | undefined }>): JSX.Element | undefined => {
   const t = useTranslations("pages.account.orderDetail")
 
   if (address === undefined) {
@@ -32,7 +32,7 @@ const LockerRecipient = ({ address }: Readonly<{ address: CustomerAccount["order
 export const ShippingBlock = ({
   order,
 }: Readonly<{
-  order: CustomerAccount["orderDetail"]
+  order: Order["customerOrderDetail"]
 }>): JSX.Element => {
   const t = useTranslations("pages.account.orderDetail")
 

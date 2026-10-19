@@ -29,15 +29,15 @@ vi.mock("~/src/modules/address/use-cases/list-user-addresses", () => ({
   listUserAddressesQuery: () => ({ queryFn: () => Promise.resolve([]), queryKey: ["userAddresses"] }),
 }))
 
+import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/_core/constants/customer-account"
 import { ADDRESS_QUERY_KEYS } from "~/src/modules/address/address.constants"
-import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type Address } from "~/src/modules/address/address.types"
 
 import { Route } from "~/src/routes/account.addresses"
 
 const EPOCH = new Date("2026-01-01T00:00:00.000Z")
 
-const addressRow = (overrides: Partial<CustomerAccount["address"]> = {}): CustomerAccount["address"] => ({
+const addressRow = (overrides: Partial<Address["select"]> = {}): Address["select"] => ({
   address1: "Kwiatowa 12",
   address2: null,
   city: "Warszawa",
@@ -64,7 +64,7 @@ const AddressesPage = (): JSX.Element => {
   return <Component />
 }
 
-const renderPage = (addresses: readonly CustomerAccount["address"][]) => {
+const renderPage = (addresses: readonly Address["select"][]) => {
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })
   queryClient.setQueryData(ADDRESS_QUERY_KEYS.ALL, [...addresses])
 

@@ -3,7 +3,7 @@ import { type JSX } from "react"
 import { Truck } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type Order } from "~/src/modules/order/order.types"
 
 import { useFormatter } from "~/src/hooks/use-display-format"
 
@@ -12,7 +12,7 @@ import { TrackingNumberRow } from "~/src/presentation/components/custom/pages/ac
 export const ShipmentBanner = ({
   order,
 }: Readonly<{
-  order: CustomerAccount["orderDetail"]
+  order: Order["customerOrderDetail"]
 }>): JSX.Element | undefined => {
   const t = useTranslations("pages.account.orderDetail")
   const format = useFormatter()

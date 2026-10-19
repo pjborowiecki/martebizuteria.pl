@@ -10,7 +10,7 @@ import { useTranslations } from "use-intl/react"
 import { type ResetPasswordFormValues, resetPasswordSchema } from "~/src/integrations/better-auth/auth.zod"
 
 import { setAccountPasswordMutation } from "~/src/modules/account/use-cases/set-account-password"
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
+import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 import { useActionError } from "~/src/hooks/use-action-error"
 
@@ -46,7 +46,7 @@ export const SetPasswordDialog = ({ onOpenChange, open, variant = "editorial" }:
         await setPassword.mutateAsync({ newPassword: values.password })
       } catch (error) {
         toast.error(t("errorTitle"), { description: actionError(error) })
-        await queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE })
+        await queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.CUSTOMER.PROFILE })
 
         return
       }
@@ -54,7 +54,7 @@ export const SetPasswordDialog = ({ onOpenChange, open, variant = "editorial" }:
       form.reset()
       onOpenChange(false)
       toast.success(t("successTitle"), { description: t("successDescription") })
-      await queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE })
+      await queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.CUSTOMER.PROFILE })
     },
     [actionError, form, onOpenChange, queryClient, setPassword, t],
   )

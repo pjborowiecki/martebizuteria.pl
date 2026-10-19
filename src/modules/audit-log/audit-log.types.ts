@@ -1,4 +1,4 @@
-import { type AuditEmailKind } from "~/src/modules/audit-log/audit-log.constants"
+import { type AuditEmailKind, type CustomerAccountLoginStatus } from "~/src/modules/audit-log/audit-log.constants"
 import { type auditLog } from "~/src/modules/audit-log/audit-log.schema"
 
 interface AuditLogActor {
@@ -97,10 +97,25 @@ interface AuditLogStats {
   readonly warningCount: number
 }
 
+interface CustomerAccountActivityItem {
+  readonly actionKey: "cartItemAdded" | "loginFailed" | "loginSuccess" | "logout" | "orderDelivered" | "orderPlaced" | "orderShipped"
+  readonly createdAt: Date
+  readonly params: Record<string, string>
+}
+
+interface CustomerAccountLoginHistoryItem {
+  readonly createdAt: Date
+  readonly id: string
+  readonly ipAddress?: string | undefined
+  readonly status: CustomerAccountLoginStatus
+}
+
 export interface AuditLog {
   actor: AuditLogActor
   adminListItem: AdminAuditListItem
   change: AuditLogChange
+  customerActivityItem: CustomerAccountActivityItem
+  customerLoginHistoryItem: CustomerAccountLoginHistoryItem
   detail: AuditLogDetail
   detailValue: AuditLogValue
   emailDetail: AuditLogEmailDetail

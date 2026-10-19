@@ -7,8 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
+import { type Session } from "~/src/modules/session/session.types"
 
 const mocks = vi.hoisted(() => ({
   fetchSessions: vi.fn<() => Promise<unknown>>(),
@@ -19,20 +19,20 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock("sonner", () => ({ toast: { error: mocks.toastError, success: mocks.toastSuccess } }))
-vi.mock("~/src/modules/customer-account/use-cases/list-customer-sessions", () => ({
+vi.mock("~/src/modules/session/use-cases/list-customer-sessions", () => ({
   listCustomerSessionsQuery: () => ({ queryFn: mocks.fetchSessions, queryKey: ["customer-account", "sessions"] }),
 }))
-vi.mock("~/src/modules/customer-account/use-cases/revoke-customer-session", () => ({
+vi.mock("~/src/modules/session/use-cases/revoke-customer-session", () => ({
   revokeCustomerSessionMutation: { mutationFn: mocks.revokeOne, mutationKey: ["customer-account", "revoke-session"] },
 }))
-vi.mock("~/src/modules/customer-account/use-cases/revoke-other-customer-sessions", () => ({
+vi.mock("~/src/modules/session/use-cases/revoke-other-customer-sessions", () => ({
   revokeOtherCustomerSessionsMutation: { mutationFn: mocks.revokeOthers, mutationKey: ["customer-account", "revoke-other-sessions"] },
 }))
 
 const { SettingsSessionsGrid } =
   await import("~/src/presentation/components/custom/pages/admin/settings/security/components/settings-sessions-grid")
 
-const session = (overrides: Partial<CustomerAccount["session"]> = {}): CustomerAccount["session"] => ({
+const session = (overrides: Partial<Session["customerSession"]> = {}): Session["customerSession"] => ({
   browser: "Safari 18",
   createdAt: new Date("2026-10-01T09:00:00.000Z"),
   device: "MacBook Pro",
@@ -56,11 +56,11 @@ const PHONE = session({
 
 const TABLET = session({ device: "iPad", deviceType: "tablet", id: "session-3", isCurrent: false })
 
-const renderGrid = (sessions: readonly CustomerAccount["session"][] = [session(), PHONE]) => {
+const renderGrid = (sessions: readonly Session["customerSession"][] = [session(), PHONE]) => {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false }, queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
   })
-  queryClient.setQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS, sessions)
+  queryClient.setQueryData(SESSION_QUERY_KEYS.CUSTOMER.SESSIONS, sessions)
 
   return renderWithProviders(
     <Suspense fallback={<p>loading</p>}>
@@ -130,7 +130,7 @@ describe("SettingsSessionsGrid", () => {
       expect(mocks.toastSuccess).toHaveBeenCalledWith("Device signed out.")
     })
     expect(mocks.revokeOne.mock.calls[0]?.[0]).toStrictEqual({ sessionId: "session-2" })
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: SESSION_QUERY_KEYS.CUSTOMER.SESSIONS })
   })
 
   it("reports a device that could not be signed out", async () => {

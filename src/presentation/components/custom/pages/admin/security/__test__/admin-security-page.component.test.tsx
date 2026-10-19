@@ -4,7 +4,7 @@ import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react"
 import { IntlProvider } from "use-intl/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type User } from "~/src/modules/user/user.types"
 
 const auth = vi.hoisted(() => ({
   enableTwoFactor: vi.fn<(input: { password: string }) => Promise<{ data: unknown; error: unknown }>>(),
@@ -12,7 +12,7 @@ const auth = vi.hoisted(() => ({
   verifyTotp: vi.fn<(input: { code: string }) => Promise<{ error: unknown }>>(),
 }))
 
-const profile = vi.hoisted(() => ({ fetchProfile: vi.fn<() => Promise<CustomerAccount["profile"]>>() }))
+const profile = vi.hoisted(() => ({ fetchProfile: vi.fn<() => Promise<User["customerProfile"]>>() }))
 
 vi.mock("~/src/integrations/better-auth/auth.client", () => ({
   authClient: { twoFactor: { enable: auth.enableTwoFactor, verifyTotp: auth.verifyTotp } },
@@ -22,10 +22,10 @@ vi.mock("qrcode", () => ({ default: { toString: () => Promise.resolve("<svg></sv
 vi.mock("~/src/modules/account/use-cases/set-account-password", () => ({
   setAccountPasswordMutation: { mutationFn: vi.fn(), mutationKey: ["account", "setAccountPassword"] },
 }))
-vi.mock("~/src/modules/customer-account/use-cases/get-customer-profile", async () => {
-  const { CUSTOMER_ACCOUNT_QUERY_KEYS } = await import("~/src/modules/customer-account/customer-account.constants")
+vi.mock("~/src/modules/user/use-cases/get-customer-profile", async () => {
+  const { USER_QUERY_KEYS } = await import("~/src/modules/user/user.constants")
 
-  return { getCustomerProfileQuery: () => ({ queryFn: profile.fetchProfile, queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE }) }
+  return { getCustomerProfileQuery: () => ({ queryFn: profile.fetchProfile, queryKey: USER_QUERY_KEYS.CUSTOMER.PROFILE }) }
 })
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
@@ -41,7 +41,7 @@ import { ROUTES } from "~/src/routes"
 
 const TOTP_URI = "otpauth://totp/M'ARTE:owner@marte.test?secret=JBSWY3DPEHPK3PXP&issuer=M'ARTE"
 
-const adminProfile = (overrides: Partial<CustomerAccount["profile"]>): CustomerAccount["profile"] => ({
+const adminProfile = (overrides: Partial<User["customerProfile"]>): User["customerProfile"] => ({
   createdAt: new Date("2026-01-10T00:00:00.000Z"),
   email: "owner@marte.test",
   emailVerified: true,

@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type Order } from "~/src/modules/order/order.types"
 
 const state = vi.hoisted((): { order: unknown } => ({ order: undefined }))
 
@@ -38,7 +38,7 @@ vi.mock("@tanstack/react-router", async () => {
     useNavigate: () => spies.navigate,
   }
 })
-vi.mock("~/src/modules/customer-account/use-cases/get-customer-order", () => ({
+vi.mock("~/src/modules/order/use-cases/get-customer-order", () => ({
   getCustomerOrderQuery: (orderId: string) => ({
     queryFn: () => Promise.resolve(state.order),
     queryKey: ["customer-account", "order", orderId],
@@ -67,7 +67,7 @@ const OrderDetailPage = (): JSX.Element => {
 
 const PLACED_AT = new Date("2026-02-01T10:00:00.000Z")
 
-const orderItem = (overrides: Partial<CustomerAccount["orderItem"]> = {}): CustomerAccount["orderItem"] => ({
+const orderItem = (overrides: Partial<Order["customerOrderItem"]> = {}): Order["customerOrderItem"] => ({
   id: "item-1",
   lineTotalMinorUnits: 24_000,
   name: "Silver ring",
@@ -76,7 +76,7 @@ const orderItem = (overrides: Partial<CustomerAccount["orderItem"]> = {}): Custo
   ...overrides,
 })
 
-const order = (overrides: Partial<CustomerAccount["orderDetail"]> = {}): CustomerAccount["orderDetail"] => ({
+const order = (overrides: Partial<Order["customerOrderDetail"]> = {}): Order["customerOrderDetail"] => ({
   createdAt: PLACED_AT,
   currencyCode: "PLN",
   discountMinorUnits: 0,

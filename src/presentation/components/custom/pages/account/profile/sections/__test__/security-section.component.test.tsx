@@ -26,8 +26,8 @@ import { QueryClient, useQuery } from "@tanstack/react-query"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
 import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
+import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 import { SecuritySection } from "~/src/presentation/components/custom/pages/account/profile/sections/security-section"
 
@@ -76,8 +76,8 @@ const renderSection = () => {
 }
 
 const expectAccountReloaded = (invalidateQueries: ReturnType<typeof renderSection>["invalidateQueries"]): void => {
-  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE })
-  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS })
+  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: USER_QUERY_KEYS.CUSTOMER.PROFILE })
+  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: SESSION_QUERY_KEYS.CUSTOMER.SESSIONS })
   expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: SESSION_QUERY_KEYS.CURRENT })
 }
 
@@ -324,7 +324,7 @@ describe("SecuritySection two-factor removal", () => {
 const AccountSecurity = (): JSX.Element => {
   const { data } = useQuery({
     queryFn: () => Promise.resolve({ twoFactorEnabled: accountState.twoFactorEnabled }),
-    queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE,
+    queryKey: USER_QUERY_KEYS.CUSTOMER.PROFILE,
   })
 
   return <SecuritySection hasPassword twoFactorEnabled={data?.twoFactorEnabled === true} />
@@ -332,7 +332,7 @@ const AccountSecurity = (): JSX.Element => {
 
 const renderAccountSecurity = () => {
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })
-  queryClient.setQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE, { twoFactorEnabled: accountState.twoFactorEnabled })
+  queryClient.setQueryData(USER_QUERY_KEYS.CUSTOMER.PROFILE, { twoFactorEnabled: accountState.twoFactorEnabled })
 
   return renderWithProviders(<AccountSecurity />, { queryClient })
 }

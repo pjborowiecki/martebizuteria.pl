@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { requireAdminRole } from "~/src/integrations/better-auth/auth.routes"
 
-import { getCustomerProfileQuery } from "~/src/modules/customer-account/use-cases/get-customer-profile"
+import { getCustomerProfileQuery } from "~/src/modules/user/use-cases/get-customer-profile"
 
 import { AdminSecurityPage } from "~/src/presentation/components/custom/pages/admin/security/admin-security-page"
 

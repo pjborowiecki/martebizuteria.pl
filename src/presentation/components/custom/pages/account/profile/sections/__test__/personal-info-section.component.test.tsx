@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
+import { type User } from "~/src/modules/user/user.types"
 
 const { toastError, toastSuccess, updatePhone, updateUser } = vi.hoisted(() => ({
   toastError: vi.fn(),
@@ -16,7 +16,7 @@ const { toastError, toastSuccess, updatePhone, updateUser } = vi.hoisted(() => (
 
 vi.mock("sonner", () => ({ toast: { error: toastError, success: toastSuccess } }))
 vi.mock("~/src/integrations/better-auth/auth.client", () => ({ authClient: { updateUser } }))
-vi.mock("~/src/modules/customer-account/use-cases/update-customer-phone", () => ({
+vi.mock("~/src/modules/user/use-cases/update-customer-phone", () => ({
   updateCustomerPhoneMutation: { mutationFn: updatePhone, mutationKey: ["customerAccount", "updatePhone"] },
 }))
 
@@ -31,7 +31,7 @@ const nth = (elements: readonly HTMLElement[], index: number): HTMLElement => {
   return element
 }
 
-const profile: CustomerAccount["profile"] = {
+const profile: User["customerProfile"] = {
   createdAt: new Date("2024-01-10T00:00:00.000Z"),
   email: "anna@example.com",
   emailVerified: true,
@@ -221,7 +221,7 @@ describe("PersonalInfoSection phone", () => {
     await waitFor(() => {
       expect(updatePhone.mock.calls[0]?.[0]).toStrictEqual({ phone: "+48600999888" })
     })
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: USER_QUERY_KEYS.CUSTOMER.PROFILE })
     expect(toastSuccess).toHaveBeenCalledWith("Profile updated.")
   })
 

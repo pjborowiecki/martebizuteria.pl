@@ -10,8 +10,8 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS, type CustomerAccountOrderFilter } from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type CustomerAccountOrderFilter, ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
+import { type Order } from "~/src/modules/order/order.types"
 
 import { APP_NAME } from "~/src/presentation/branding/app"
 
@@ -48,14 +48,14 @@ vi.mock("@tanstack/react-router", async () => {
     },
   }
 })
-vi.mock("~/src/modules/customer-account/use-cases/list-customer-orders", () => ({
+vi.mock("~/src/modules/order/use-cases/list-customer-orders", () => ({
   listCustomerOrdersQuery: (input: unknown) => ({
     queryFn: () => {
       listedOrdersQueries.push(input)
 
       return Promise.resolve(pageRef.current)
     },
-    queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.ORDERS,
+    queryKey: ORDER_QUERY_KEYS.CUSTOMER.ORDERS,
   }),
 }))
 vi.mock("~/src/presentation/components/custom/image", () => ({
@@ -68,7 +68,7 @@ import { PLACEHOLDER_IMAGE } from "~/src/lib/image"
 
 const CREATED_AT = new Date("2026-03-14T10:00:00.000Z")
 
-const orderItem = (overrides: Partial<CustomerAccount["orderItem"]> = {}): CustomerAccount["orderItem"] => ({
+const orderItem = (overrides: Partial<Order["customerOrderItem"]> = {}): Order["customerOrderItem"] => ({
   handle: "aurora-bracelet",
   id: "item-1",
   image: "products/aurora.jpg",
@@ -80,7 +80,7 @@ const orderItem = (overrides: Partial<CustomerAccount["orderItem"]> = {}): Custo
   ...overrides,
 })
 
-const orderSummary = (overrides: Partial<CustomerAccount["orderSummary"]> = {}): CustomerAccount["orderSummary"] => ({
+const orderSummary = (overrides: Partial<Order["customerOrderSummary"]> = {}): Order["customerOrderSummary"] => ({
   createdAt: CREATED_AT,
   currencyCode: "PLN",
   filterStatus: "shipped",
@@ -94,7 +94,7 @@ const orderSummary = (overrides: Partial<CustomerAccount["orderSummary"]> = {}):
   ...overrides,
 })
 
-const ordersPage = (overrides: Partial<CustomerAccount["ordersPage"]> = {}): CustomerAccount["ordersPage"] => ({
+const ordersPage = (overrides: Partial<Order["customerOrdersPage"]> = {}): Order["customerOrdersPage"] => ({
   orders: [],
   page: 1,
   pageSize: 10,
@@ -102,7 +102,7 @@ const ordersPage = (overrides: Partial<CustomerAccount["ordersPage"]> = {}): Cus
   ...overrides,
 })
 
-const pageRef: { current: CustomerAccount["ordersPage"] } = { current: ordersPage() }
+const pageRef: { current: Order["customerOrdersPage"] } = { current: ordersPage() }
 
 const renderOrders = () => {
   const OrdersPage = Route.options.component
@@ -110,7 +110,7 @@ const renderOrders = () => {
     throw new Error("the account orders route registered no component")
   }
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  queryClient.setQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.ORDERS, pageRef.current)
+  queryClient.setQueryData(ORDER_QUERY_KEYS.CUSTOMER.ORDERS, pageRef.current)
 
   return renderWithProviders(<OrdersPage />, { queryClient })
 }
@@ -363,7 +363,7 @@ describe("account orders loader", () => {
     await routeOptions().loader({ context: { locale: "en-US", queryClient }, deps: { filter: "shipped", page: 2 } })
 
     expect(listedOrdersQueries).toStrictEqual([{ filter: "shipped", page: 2 }])
-    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.ORDERS)).toStrictEqual(pageRef.current)
+    expect(queryClient.getQueryData(ORDER_QUERY_KEYS.CUSTOMER.ORDERS)).toStrictEqual(pageRef.current)
   })
 
   it("titles the page after the orders section of the account", async () => {

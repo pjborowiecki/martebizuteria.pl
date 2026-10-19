@@ -17,6 +17,7 @@ import {
   type AdminOrderStatFilter,
   type AdminOrderTab,
   type AdminOrderTimelineKind,
+  type CustomerAccountOrderStatus,
   type OrderEmailKind,
   type OrderEmailNoticeStatus,
 } from "~/src/modules/order/order.constants"
@@ -277,6 +278,104 @@ interface FailedOrderRefund {
   readonly orderNumber: string
 }
 
+interface CustomerAccountOrderItem {
+  readonly handle?: string | undefined
+  readonly id: string
+  readonly image?: string | undefined
+  readonly lineTotalMinorUnits: number
+  readonly name: string
+  readonly qty: number
+  readonly unitPriceMinorUnits: number
+  readonly variantTitle?: string | undefined
+}
+
+interface CustomerAccountOrderSummary {
+  readonly createdAt: Date
+  readonly itemCount: number
+  readonly currencyCode: string
+  readonly filterStatus: CustomerAccountOrderStatus
+  readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
+  readonly id: string
+  readonly items: readonly CustomerAccountOrderItem[]
+  readonly orderNumber: string
+  readonly status: Order["select"]["status"]
+  readonly totalMinorUnits: number
+}
+
+interface CustomerAccountOrdersPage {
+  readonly orders: readonly CustomerAccountOrderSummary[]
+  readonly page: number
+  readonly pageSize: number
+  readonly total: number
+}
+
+interface CustomerAccountOrderAddress {
+  readonly city: string
+  readonly countryCode: string
+  readonly line1: string
+  readonly line2?: string | undefined
+  readonly name: string
+  readonly phone?: string | undefined
+  readonly postalCode?: string | undefined
+  readonly province?: string | undefined
+}
+
+interface CustomerAccountOrderTimelineEntry {
+  readonly date: Date
+  readonly event: "cancelled" | "confirmed" | "delivered" | "placed" | "processing" | "refunded" | "shipped"
+}
+
+interface CustomerAccountOrderRefund {
+  readonly amountMinorUnits: number
+  readonly refundedAt?: Date | undefined
+}
+
+interface CustomerAccountOrderDetail extends CustomerAccountOrderSummary {
+  readonly billingAddress?: CustomerAccountOrderAddress | undefined
+  readonly billingCompanyName?: string | undefined
+  readonly billingNip?: string | undefined
+  readonly customerNote?: string | undefined
+  readonly deliveredAt?: Date | undefined
+  readonly deliveryMethodName?: string | undefined
+  readonly discountMinorUnits: number
+  readonly lockerId?: string | undefined
+  readonly lockerPoint?: InpostLockerPoint | undefined
+  readonly paymentProvider?: string | undefined
+  readonly refund?: CustomerAccountOrderRefund | undefined
+  readonly shippedAt?: Date | undefined
+  readonly shippingAddress?: CustomerAccountOrderAddress | undefined
+  readonly shippingMinorUnits: number
+  readonly subtotalMinorUnits: number
+  readonly taxBasisPoints: number
+  readonly taxMinorUnits: number
+  readonly timeline: readonly CustomerAccountOrderTimelineEntry[]
+  readonly trackingNumber?: string | undefined
+  readonly trackingUrl?: string | undefined
+}
+
+interface CustomerAccountOverviewStats {
+  readonly memberSinceYear: string
+  readonly totalOrders: number
+  readonly totalSpentMinorUnits: number
+  readonly wishlistCount: number
+}
+
+interface CustomerAccountRecommendation {
+  readonly handle: string
+  readonly image?: string | undefined
+  readonly name: string
+  readonly priceMinorUnits?: number | undefined
+  readonly productId: string
+}
+
+interface CustomerAccountOverview {
+  readonly activity: readonly AuditLog["customerActivityItem"][]
+  readonly recentOrders: readonly CustomerAccountOrderSummary[]
+  readonly recommendations: readonly CustomerAccountRecommendation[]
+  readonly recommendationsSource: "newArrivals" | "orders"
+  readonly stats: CustomerAccountOverviewStats
+}
+
 export interface Order {
   adminExportInput: Omit<AdminOrdersPageInput, "page" | "pageSize">
   adminListFilters: AdminOrdersListFilters
@@ -289,6 +388,16 @@ export interface Order {
   adminPageInput: AdminOrdersPageInput
   adminStats: AdminOrderStats
   auditSnapshot: AdminOrderAuditSnapshot
+  customerOrderAddress: CustomerAccountOrderAddress
+  customerOrderDetail: CustomerAccountOrderDetail
+  customerOrderItem: CustomerAccountOrderItem
+  customerOrderRefund: CustomerAccountOrderRefund
+  customerOrderSummary: CustomerAccountOrderSummary
+  customerOrdersPage: CustomerAccountOrdersPage
+  customerOrderTimelineEntry: CustomerAccountOrderTimelineEntry
+  customerOverview: CustomerAccountOverview
+  customerOverviewStats: CustomerAccountOverviewStats
+  customerRecommendation: CustomerAccountRecommendation
   disputeMetadata: AdminOrderDisputeMetadata
   email: z.infer<(typeof orderZodSchemas)["email"]>
   emailNotice: OrderEmailNotice

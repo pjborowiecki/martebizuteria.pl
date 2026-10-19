@@ -1,6 +1,6 @@
 import { type JSX, useCallback, useId, useState } from "react"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type Order } from "~/src/modules/order/order.types"
 
 import { OrderRowDetails } from "~/src/presentation/components/custom/pages/account/orders/order-row-details"
 import { OrderRowHeader } from "~/src/presentation/components/custom/pages/account/orders/order-row-header"
@@ -8,7 +8,7 @@ import { OrderRowHeader } from "~/src/presentation/components/custom/pages/accou
 export const OrderRow = ({
   order,
 }: Readonly<{
-  order: CustomerAccount["orderSummary"]
+  order: Order["customerOrderSummary"]
 }>): JSX.Element => {
   const [expanded, setExpanded] = useState(false)
   const detailsId = useId()

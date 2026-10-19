@@ -6,8 +6,8 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
 import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
+import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 interface TwoFactorDialogProps {
   readonly enabled: boolean
@@ -90,9 +90,9 @@ describe("SettingsTwoFactorCard", () => {
     await user().click(screen.getByRole("button", { name: "finish" }))
 
     await waitFor(() => {
-      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE })
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: USER_QUERY_KEYS.CUSTOMER.PROFILE })
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: SESSION_QUERY_KEYS.CUSTOMER.SESSIONS })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: SESSION_QUERY_KEYS.CURRENT })
   })
 })

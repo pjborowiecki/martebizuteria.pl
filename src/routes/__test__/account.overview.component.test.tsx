@@ -3,18 +3,20 @@ import { type JSX, Suspense } from "react"
 import { cleanup, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS, CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/_core/constants/customer-account"
+import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
+import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
+import { type Order } from "~/src/modules/order/order.types"
 
 vi.mock("~/src/lib/url", () => ({
   getAssetURL: (path: string) => `https://assets.test/${path}`,
   isAssetCdnUrl: () => false,
   resolveAssetURL: (path: string) => path,
 }))
-vi.mock("~/src/modules/customer-account/use-cases/get-customer-overview", () => ({
+vi.mock("~/src/modules/order/use-cases/get-customer-overview", () => ({
   getCustomerOverviewQuery: () => ({
     queryFn: () => Promise.resolve(overviewRef.current),
-    queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.OVERVIEW,
+    queryKey: ORDER_QUERY_KEYS.CUSTOMER.OVERVIEW,
   }),
 }))
 vi.mock("~/src/routes/account", () => ({
@@ -34,14 +36,14 @@ import { DisplayPreferencesContext } from "~/src/hooks/use-display-format"
 
 const PLACED_AT = new Date("2026-03-14T10:00:00.000Z")
 
-const activityItem = (overrides: Partial<CustomerAccount["activityItem"]> = {}): CustomerAccount["activityItem"] => ({
+const activityItem = (overrides: Partial<AuditLog["customerActivityItem"]> = {}): AuditLog["customerActivityItem"] => ({
   actionKey: "orderPlaced",
   createdAt: PLACED_AT,
   params: { id: "#AB12CD" },
   ...overrides,
 })
 
-const orderSummary = (overrides: Partial<CustomerAccount["orderSummary"]> = {}): CustomerAccount["orderSummary"] => ({
+const orderSummary = (overrides: Partial<Order["customerOrderSummary"]> = {}): Order["customerOrderSummary"] => ({
   createdAt: PLACED_AT,
   currencyCode: "PLN",
   filterStatus: "shipped",
@@ -55,7 +57,7 @@ const orderSummary = (overrides: Partial<CustomerAccount["orderSummary"]> = {}):
   ...overrides,
 })
 
-const recommendation = (overrides: Partial<CustomerAccount["recommendation"]> = {}): CustomerAccount["recommendation"] => ({
+const recommendation = (overrides: Partial<Order["customerRecommendation"]> = {}): Order["customerRecommendation"] => ({
   handle: "aurora-bracelet",
   image: "products/aurora.jpg",
   name: "Bransoletka Aurora",
@@ -64,7 +66,7 @@ const recommendation = (overrides: Partial<CustomerAccount["recommendation"]> = 
   ...overrides,
 })
 
-const overview = (overrides: Partial<CustomerAccount["overview"]> = {}): CustomerAccount["overview"] => ({
+const overview = (overrides: Partial<Order["customerOverview"]> = {}): Order["customerOverview"] => ({
   activity: [],
   recentOrders: [],
   recommendations: [],
@@ -73,7 +75,7 @@ const overview = (overrides: Partial<CustomerAccount["overview"]> = {}): Custome
   ...overrides,
 })
 
-const overviewRef: { current: CustomerAccount["overview"] } = { current: overview() }
+const overviewRef: { current: Order["customerOverview"] } = { current: overview() }
 
 const renderOverview = async (displayPreferences?: DisplayPreferences) => {
   const OverviewPage = Route.options.component

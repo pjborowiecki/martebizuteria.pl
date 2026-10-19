@@ -2,14 +2,14 @@ import { type JSX } from "react"
 
 import { useTranslations } from "use-intl/react"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type Session } from "~/src/modules/session/session.types"
 
 import { ActiveSessionCard } from "~/src/presentation/components/custom/pages/account/sessions/active-session-card"
 
 export const ActiveSessionList = ({
   sessions,
 }: Readonly<{
-  sessions: readonly CustomerAccount["session"][]
+  sessions: readonly Session["customerSession"][]
 }>): JSX.Element => {
   const t = useTranslations("pages.account.sessions")
   const hasOtherDevices = sessions.some((session) => !session.isCurrent)

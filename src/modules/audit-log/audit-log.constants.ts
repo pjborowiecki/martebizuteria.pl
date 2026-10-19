@@ -199,11 +199,37 @@ export const AUDIT_LOG_TABLE_COLUMN_PINNING = {
 
 export const AUDIT_LOG_TABLE_DEFAULT_COLUMN_VISIBILITY = {} as const
 
+export const CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE = 10
+
+export const CUSTOMER_ACCOUNT_LOGIN_STATUS = {
+  FAILED: "failed",
+  SUCCESS: "success",
+} as const
+
+export const CUSTOMER_ACCOUNT_LOGIN_STATUSES = [CUSTOMER_ACCOUNT_LOGIN_STATUS.SUCCESS, CUSTOMER_ACCOUNT_LOGIN_STATUS.FAILED] as const
+
+export type CustomerAccountLoginStatus = (typeof CUSTOMER_ACCOUNT_LOGIN_STATUSES)[number]
+
+export const LOGIN_HISTORY_TABLE_COLUMN_ID = {
+  createdAt: "createdAt",
+  ipAddress: "ipAddress",
+  status: "status",
+} as const
+
+export const LOGIN_HISTORY_TABLE_COLUMN_SIZE = {
+  createdAt: 240,
+  ipAddress: 240,
+  status: 220,
+} as const
+
 export const AUDIT_LOG_QUERY_KEYS = {
   ADMIN: {
     ALL: ["admin", "audit-log"] as const,
     PAGE: ["admin", "audit-log", "page"] as const,
     STATS: ["admin", "audit-log", "stats"] as const,
+  },
+  CUSTOMER: {
+    LOGIN_HISTORY: ["customer-account", "login-history"] as const,
   },
 } as const
 

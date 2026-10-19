@@ -9,8 +9,8 @@ import { formatInpostLockerAddress } from "~/src/integrations/inpost/inpost.util
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
 import { useCartStore } from "~/src/modules/cart/cart.store"
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
 import { resetCartAbandonedTracking } from "~/src/modules/customer-activity/customer-activity.tracking"
+import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 import { getOrderConfirmationQuery } from "~/src/modules/order/use-cases/get-order-confirmation"
 
@@ -222,8 +222,8 @@ export const CheckoutSuccess = ({ sessionId }: Readonly<CheckoutSuccessProps>): 
   }, [cart, clearCart, sessionId])
 
   useEffect(() => {
-    void queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.ORDERS })
-    void queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.OVERVIEW })
+    void queryClient.invalidateQueries({ queryKey: ORDER_QUERY_KEYS.CUSTOMER.ORDERS })
+    void queryClient.invalidateQueries({ queryKey: ORDER_QUERY_KEYS.CUSTOMER.OVERVIEW })
   }, [queryClient])
 
   return (

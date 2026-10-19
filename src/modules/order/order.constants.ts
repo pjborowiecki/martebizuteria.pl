@@ -402,6 +402,24 @@ export const FULFILLMENT_DOT_COLORS: Record<string, string> = {
   shipped: "bg-blue-500",
 }
 
+export const CUSTOMER_ACCOUNT_ORDERS_LIMIT = 50
+
+export const CUSTOMER_ACCOUNT_ORDERS_PAGE_SIZE = 10
+
+export const CUSTOMER_ACCOUNT_OVERVIEW_ACTIVITY_LIMIT = 5
+
+export const CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT = 3
+
+export const CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT = 2
+
+export const CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT = 3
+
+export const CUSTOMER_ACCOUNT_ORDER_FILTERS = ["all", "confirmed", "processing", "shipped", "delivered", "cancelled", "refunded"] as const
+
+export type CustomerAccountOrderFilter = (typeof CUSTOMER_ACCOUNT_ORDER_FILTERS)[number]
+
+export type CustomerAccountOrderStatus = Exclude<CustomerAccountOrderFilter, "all"> | "pending"
+
 export const ORDER_QUERY_KEYS = {
   ADMIN: {
     ORDERS: ["admin", "orders"] as const,
@@ -410,6 +428,11 @@ export const ORDER_QUERY_KEYS = {
     STATS: ["admin", "orders", "stats"] as const,
   },
   CONFIRMATION: ["order", "confirmation"] as const,
+  CUSTOMER: {
+    ORDERS: ["customer-account", "orders"] as const,
+    ORDER_BY_ID: ["customer-account", "order"] as const,
+    OVERVIEW: ["customer-account", "overview"] as const,
+  },
 } as const
 
 export const ORDER_MUTATION_KEYS = {

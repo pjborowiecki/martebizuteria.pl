@@ -7,8 +7,8 @@ import {
   CUSTOMER_ACCOUNT_LOGIN_STATUS,
   LOGIN_HISTORY_TABLE_COLUMN_ID,
   LOGIN_HISTORY_TABLE_COLUMN_SIZE,
-} from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+} from "~/src/modules/audit-log/audit-log.constants"
+import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 
 import { useFormatter } from "~/src/hooks/use-display-format"
 
@@ -16,7 +16,7 @@ import { type DataGridFeatures } from "~/src/presentation/components/custom/data
 import { CATALOG_DATAGRID_EMPTY_TEXT_CLASS } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell"
 import { SettingsStatusBadge } from "~/src/presentation/components/custom/pages/admin/settings/settings-status-badge"
 
-const columnHelper = createColumnHelper<DataGridFeatures, CustomerAccount["loginHistoryItem"]>()
+const columnHelper = createColumnHelper<DataGridFeatures, AuditLog["customerLoginHistoryItem"]>()
 
 const buildLoginHistoryColumns = ({ format, t }: LoginHistoryColumnContext) =>
   columnHelper.columns([

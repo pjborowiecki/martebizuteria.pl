@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router"
 import { cn } from "cn"
 import { useTranslations } from "use-intl/react"
 
-import { type CustomerAccountOrderFilter } from "~/src/modules/customer-account/customer-account.constants"
+import { type CustomerAccountOrderFilter } from "~/src/modules/order/order.constants"
 
 import { buttonVariants } from "~/src/presentation/components/shadcn/button"
 

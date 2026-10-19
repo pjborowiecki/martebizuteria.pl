@@ -4,8 +4,8 @@ import { createColumnHelper } from "@tanstack/react-table"
 import { Monitor, Smartphone, Tablet } from "lucide-react"
 import { useLocale, useTranslations } from "use-intl/react"
 
-import { SESSION_TABLE_COLUMN_ID, SESSION_TABLE_COLUMN_SIZE } from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { SESSION_TABLE_COLUMN_ID, SESSION_TABLE_COLUMN_SIZE } from "~/src/modules/session/session.constants"
+import { type Session } from "~/src/modules/session/session.types"
 
 import { useDisplayPreferences, useFormatter } from "~/src/hooks/use-display-format"
 
@@ -19,11 +19,11 @@ import {
 import { SessionsRowActions } from "~/src/presentation/components/custom/pages/admin/settings/security/components/sessions-row-actions"
 import { SettingsStatusBadge } from "~/src/presentation/components/custom/pages/admin/settings/settings-status-badge"
 
-const columnHelper = createColumnHelper<DataGridFeatures, CustomerAccount["session"]>()
+const columnHelper = createColumnHelper<DataGridFeatures, Session["customerSession"]>()
 
 const DEVICE_ICONS = { desktop: Monitor, mobile: Smartphone, tablet: Tablet, unknown: Monitor } as const
 
-const SessionDeviceCell = ({ session }: Readonly<{ session: CustomerAccount["session"] }>): JSX.Element => {
+const SessionDeviceCell = ({ session }: Readonly<{ session: Session["customerSession"] }>): JSX.Element => {
   const t = useTranslations("pages.admin.settings.security.sessions")
   const DeviceIcon = DEVICE_ICONS[session.deviceType]
 

@@ -3,7 +3,7 @@ import { type JSX } from "react"
 import { useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type Order } from "~/src/modules/order/order.types"
 
 import { useFormatter } from "~/src/hooks/use-display-format"
 
@@ -16,7 +16,7 @@ export const OrderRowItem = ({
   item,
 }: Readonly<{
   currencyCode: string
-  item: CustomerAccount["orderItem"]
+  item: Order["customerOrderItem"]
 }>): JSX.Element => {
   const t = useTranslations("pages.account.orders")
   const format = useFormatter()

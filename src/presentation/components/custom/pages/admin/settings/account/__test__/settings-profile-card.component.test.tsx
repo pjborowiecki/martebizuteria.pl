@@ -7,8 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
+import { type User } from "~/src/modules/user/user.types"
 
 const mocks = vi.hoisted(() => ({
   emailDialog: vi.fn<(props: { currentEmail: string; hasPassword: boolean; open: boolean; variant?: string }) => void>(),
@@ -20,10 +20,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("sonner", () => ({ toast: { error: mocks.toastError, success: mocks.toastSuccess } }))
 vi.mock("~/src/integrations/better-auth/auth.client", () => ({ authClient: { updateUser: mocks.updateUser } }))
-vi.mock("~/src/modules/customer-account/use-cases/update-customer-phone", () => ({
+vi.mock("~/src/modules/user/use-cases/update-customer-phone", () => ({
   updateCustomerPhoneMutation: { mutationFn: mocks.updatePhone, mutationKey: ["customerAccount", "updatePhone"] },
 }))
-vi.mock("~/src/modules/customer-account/use-cases/get-customer-profile", () => ({
+vi.mock("~/src/modules/user/use-cases/get-customer-profile", () => ({
   getCustomerProfileQuery: () => ({
     queryFn: () => Promise.reject(new Error("the profile is seeded by the test")),
     queryKey: ["customer-account", "profile"],
@@ -39,7 +39,7 @@ vi.mock("~/src/presentation/components/custom/pages/account/profile/sections/cha
 
 const { SettingsProfileCard } = await import("~/src/presentation/components/custom/pages/admin/settings/account/settings-profile-card")
 
-const PROFILE: CustomerAccount["profile"] = {
+const PROFILE: User["customerProfile"] = {
   createdAt: new Date("2024-01-10T12:00:00.000Z"),
   email: "owner@marte.test",
   emailVerified: true,
@@ -50,9 +50,9 @@ const PROFILE: CustomerAccount["profile"] = {
   twoFactorEnabled: true,
 }
 
-const renderCard = (profile: CustomerAccount["profile"] = PROFILE) => {
+const renderCard = (profile: User["customerProfile"] = PROFILE) => {
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })
-  queryClient.setQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE, profile)
+  queryClient.setQueryData(USER_QUERY_KEYS.CUSTOMER.PROFILE, profile)
 
   return renderWithProviders(<SettingsProfileCard />, { queryClient })
 }
@@ -123,7 +123,7 @@ describe("SettingsProfileCard", () => {
     })
     expect(mocks.updatePhone).not.toHaveBeenCalled()
     expect(mocks.toastSuccess).toHaveBeenCalledWith("Profile saved.")
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: USER_QUERY_KEYS.CUSTOMER.PROFILE })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["session", "current"] })
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument()

@@ -3,8 +3,8 @@ import { type JSX, useCallback, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useTranslations } from "use-intl/react"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
 import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
+import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 import { Badge } from "~/src/presentation/components/shadcn/badge"
 import { Button } from "~/src/presentation/components/shadcn/button"
@@ -30,8 +30,8 @@ export const SecuritySection = ({ hasPassword, twoFactorEnabled }: Readonly<Secu
 
   const refreshTwoFactor = useCallback(() => {
     void Promise.all([
-      queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE }),
-      queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS }),
+      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.CUSTOMER.PROFILE }),
+      queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.CUSTOMER.SESSIONS }),
       queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.CURRENT }),
     ])
   }, [queryClient])

@@ -4,7 +4,7 @@ import { useSuspenseQuery } from "@tanstack/react-query"
 import { Mail, Pencil } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
-import { getCustomerProfileQuery } from "~/src/modules/customer-account/use-cases/get-customer-profile"
+import { getCustomerProfileQuery } from "~/src/modules/user/use-cases/get-customer-profile"
 
 import { useFormatter } from "~/src/hooks/use-display-format"
 

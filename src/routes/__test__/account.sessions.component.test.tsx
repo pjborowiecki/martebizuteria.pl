@@ -9,19 +9,18 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
-import {
-  CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE,
-  CUSTOMER_ACCOUNT_QUERY_KEYS,
-} from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE } from "~/src/modules/audit-log/audit-log.constants"
+import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
+import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
+import { type Session } from "~/src/modules/session/session.types"
 
 import { DisplayPreferencesContext } from "~/src/hooks/use-display-format"
 
 import polishAccountMessages from "~/messages/pl-PL/pages.account.json"
 
 interface SessionsState {
-  history: CustomerAccount["loginHistoryItem"][]
-  sessions: CustomerAccount["session"][]
+  history: AuditLog["customerLoginHistoryItem"][]
+  sessions: Session["customerSession"][]
 }
 
 const state = vi.hoisted((): SessionsState => ({
@@ -42,10 +41,10 @@ vi.mock("~/src/lib/url", () => ({
   resolveAssetURL: (path: string) => path,
 }))
 vi.mock("sonner", () => ({ toast: { error: mutations.toastError, success: mutations.toastSuccess } }))
-vi.mock("~/src/modules/customer-account/use-cases/list-customer-sessions", () => ({
+vi.mock("~/src/modules/session/use-cases/list-customer-sessions", () => ({
   listCustomerSessionsQuery: () => ({ queryFn: () => Promise.resolve(state.sessions), queryKey: ["customer-account", "sessions"] }),
 }))
-vi.mock("~/src/modules/customer-account/use-cases/get-customer-login-history-page", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/get-customer-login-history-page", () => ({
   getCustomerLoginHistoryPageQuery: (input: { page: number; pageSize: number }) => ({
     queryFn: () =>
       Promise.resolve({
@@ -58,10 +57,10 @@ vi.mock("~/src/modules/customer-account/use-cases/get-customer-login-history-pag
     queryKey: ["customer-account", "login-history", input],
   }),
 }))
-vi.mock("~/src/modules/customer-account/use-cases/revoke-customer-session", () => ({
+vi.mock("~/src/modules/session/use-cases/revoke-customer-session", () => ({
   revokeCustomerSessionMutation: { mutationFn: mutations.revokeOne, mutationKey: ["customer-account", "revoke-session"] },
 }))
-vi.mock("~/src/modules/customer-account/use-cases/revoke-other-customer-sessions", () => ({
+vi.mock("~/src/modules/session/use-cases/revoke-other-customer-sessions", () => ({
   revokeOtherCustomerSessionsMutation: { mutationFn: mutations.revokeOthers, mutationKey: ["customer-account", "revoke-other-sessions"] },
 }))
 
@@ -76,7 +75,7 @@ const SessionsPage = (): JSX.Element => {
   return <Page />
 }
 
-const session = (overrides: Partial<CustomerAccount["session"]> = {}): CustomerAccount["session"] => ({
+const session = (overrides: Partial<Session["customerSession"]> = {}): Session["customerSession"] => ({
   browser: "Safari 18",
   createdAt: new Date("2026-01-01T09:00:00.000Z"),
   device: "MacBook Pro",
@@ -87,7 +86,7 @@ const session = (overrides: Partial<CustomerAccount["session"]> = {}): CustomerA
   ...overrides,
 })
 
-const historyEntry = (minutesAgo: number): CustomerAccount["loginHistoryItem"] => ({
+const historyEntry = (minutesAgo: number): AuditLog["customerLoginHistoryItem"] => ({
   createdAt: new Date(Date.UTC(2026, 1, 1, 10, 0) - minutesAgo * 60_000),
   id: `audit-${String(minutesAgo)}`,
   ipAddress: "198.51.100.7",
@@ -244,7 +243,7 @@ describe("account sessions revoking", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign out other devices" }))
 
     expect(mutations.revokeOthers).toHaveBeenCalledTimes(1)
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: SESSION_QUERY_KEYS.CUSTOMER.SESSIONS })
     expect(mutations.toastSuccess).toHaveBeenCalledWith("Signed out of your other devices.")
   })
 

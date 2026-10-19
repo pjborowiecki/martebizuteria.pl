@@ -1,4 +1,4 @@
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type Order } from "~/src/modules/order/order.types"
 
 export const PLACED_AT = new Date("2026-02-01T10:00:00.000Z")
 
@@ -6,7 +6,7 @@ export const SHIPPED_AT = new Date("2026-02-03T10:00:00.000Z")
 
 export const DELIVERED_AT = new Date("2026-02-05T10:00:00.000Z")
 
-export const buildAccountOrderItem = (overrides: Partial<CustomerAccount["orderItem"]> = {}): CustomerAccount["orderItem"] => ({
+export const buildAccountOrderItem = (overrides: Partial<Order["customerOrderItem"]> = {}): Order["customerOrderItem"] => ({
   id: "item-1",
   lineTotalMinorUnits: 24_000,
   name: "Silver ring",
@@ -15,7 +15,7 @@ export const buildAccountOrderItem = (overrides: Partial<CustomerAccount["orderI
   ...overrides,
 })
 
-export const buildAccountOrderDetail = (overrides: Partial<CustomerAccount["orderDetail"]> = {}): CustomerAccount["orderDetail"] => ({
+export const buildAccountOrderDetail = (overrides: Partial<Order["customerOrderDetail"]> = {}): Order["customerOrderDetail"] => ({
   createdAt: PLACED_AT,
   currencyCode: "PLN",
   discountMinorUnits: 0,

@@ -2,7 +2,7 @@ import { type JSX } from "react"
 
 import { useTranslations } from "use-intl/react"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
+import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 
 import { DataGridShell } from "~/src/presentation/components/custom/datagrid/components/data-grid-shell"
 import { LoginHistoryStatusFilter } from "~/src/presentation/components/custom/pages/admin/settings/security/components/login-history-status-filter"
@@ -11,7 +11,7 @@ import { loginHistoryDataGrid } from "~/src/presentation/components/custom/pages
 import { SettingsGridSection } from "~/src/presentation/components/custom/pages/admin/settings/settings-grid-section"
 import { SettingsRefreshAction } from "~/src/presentation/components/custom/pages/admin/settings/settings-refresh-action"
 
-const LOGIN_HISTORY_QUERY_KEYS = [CUSTOMER_ACCOUNT_QUERY_KEYS.LOGIN_HISTORY]
+const LOGIN_HISTORY_QUERY_KEYS = [AUDIT_LOG_QUERY_KEYS.CUSTOMER.LOGIN_HISTORY]
 
 export const SettingsLoginHistoryGrid = (): JSX.Element => {
   const t = useTranslations("pages.admin.settings.security.history")

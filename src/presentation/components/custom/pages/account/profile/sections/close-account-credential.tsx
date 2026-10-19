@@ -3,7 +3,7 @@ import { type JSX } from "react"
 import { type Control } from "react-hook-form"
 import { useTranslations } from "use-intl/react"
 
-import { type CloseAccountFormValues } from "~/src/modules/customer-account/customer-account.zod"
+import { type CloseAccountFormValues } from "~/src/modules/user/user.zod"
 
 import { AuthPasswordField } from "~/src/presentation/components/custom/pages/auth/auth-fields"
 

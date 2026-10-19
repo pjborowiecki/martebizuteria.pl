@@ -3,14 +3,14 @@ import { type JSX } from "react"
 import { Globe } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 
 import { useFormatter } from "~/src/hooks/use-display-format"
 
 export const LoginHistoryItem = ({
   entry,
 }: Readonly<{
-  entry: CustomerAccount["loginHistoryItem"]
+  entry: AuditLog["customerLoginHistoryItem"]
 }>): JSX.Element => {
   const t = useTranslations("pages.account.sessions")
   const format = useFormatter()

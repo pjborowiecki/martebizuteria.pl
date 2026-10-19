@@ -31,7 +31,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   }
 })
 vi.mock("~/src/integrations/better-auth/auth.routes", () => guard)
-vi.mock("~/src/modules/customer-account/use-cases/get-customer-profile", () => ({
+vi.mock("~/src/modules/user/use-cases/get-customer-profile", () => ({
   getCustomerProfileQuery: () => ({ queryFn: profile.fetchProfile, queryKey: ["customer-account", "profile"] }),
 }))
 vi.mock("~/src/presentation/components/custom/pages/admin/security/admin-security-page", () => page)

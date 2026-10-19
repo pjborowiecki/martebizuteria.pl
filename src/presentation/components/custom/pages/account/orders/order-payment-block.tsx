@@ -3,7 +3,7 @@ import { type JSX } from "react"
 import { useTranslations } from "use-intl/react"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type Order } from "~/src/modules/order/order.types"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
@@ -12,7 +12,7 @@ const STRIPE_PROVIDER = "stripe"
 export const PaymentInfoBlock = ({
   order,
 }: Readonly<{
-  order: CustomerAccount["orderDetail"]
+  order: Order["customerOrderDetail"]
 }>): JSX.Element => {
   const t = useTranslations("pages.account.orderDetail")
   const billing = order.billingAddress

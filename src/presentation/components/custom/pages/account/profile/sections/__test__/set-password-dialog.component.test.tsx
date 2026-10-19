@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
+import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 const calls = vi.hoisted(() => ({
   saveCredential: vi.fn<(input: Readonly<Record<string, string>>) => Promise<{ ok: true }>>(),
@@ -66,7 +66,7 @@ describe("SetPasswordDialog", () => {
     await userEvent.click(submitButton())
 
     await waitFor(() => {
-      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE })
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: USER_QUERY_KEYS.CUSTOMER.PROFILE })
     })
     expect(calls.saveCredential.mock.calls[0]?.[0]).toStrictEqual({ newPassword: NEW_PASSWORD })
     expect(onOpenChange).toHaveBeenCalledWith(false)
@@ -87,7 +87,7 @@ describe("SetPasswordDialog", () => {
       expect(calls.toastError.mock.calls[0]?.[0]).toBe("Could not set your password")
     })
     await waitFor(() => {
-      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE })
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: USER_QUERY_KEYS.CUSTOMER.PROFILE })
     })
     expect(onOpenChange).not.toHaveBeenCalled()
     expect(screen.getByLabelText("New password")).toHaveValue(NEW_PASSWORD)
