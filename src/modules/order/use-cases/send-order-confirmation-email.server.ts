@@ -13,14 +13,11 @@ import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { getFulfillmentTimeAttributesByVariantId } from "~/src/modules/attribute-on-product/attribute-on-product.accessors"
 import { type FulfillmentTimeAttribute } from "~/src/modules/attribute-on-product/attribute-on-product.types"
-import {
-  type CheckoutFulfillmentLine,
-  resolveCheckoutSessionCurrency,
-  resolveCheckoutSessionLocale,
-} from "~/src/modules/checkout/checkout-metadata.zod"
 import { getCheckoutEmailContext } from "~/src/modules/checkout/checkout.accessors"
-import { readCheckoutSessionLines } from "~/src/modules/checkout/checkout.session-lines.server"
-import { type FulfillmentLine } from "~/src/modules/checkout/checkout.utils"
+import { type FulfillmentLine } from "~/src/modules/checkout/checkout.types"
+import { resolveCheckoutSessionCurrency, resolveCheckoutSessionLocale } from "~/src/modules/checkout/checkout.utils"
+import { type CheckoutFulfillmentLine } from "~/src/modules/checkout/checkout.zod"
+import { readCheckoutSessionLines } from "~/src/modules/checkout/use-cases/read-checkout-session-lines.server"
 import { loadWithdrawalFormAttachment } from "~/src/modules/order-withdrawal/use-cases/load-withdrawal-form-attachment.server"
 import { getOrderTotalsForEmail } from "~/src/modules/order/order.accessors"
 import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"

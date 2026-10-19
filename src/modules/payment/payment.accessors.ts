@@ -2,9 +2,9 @@ import { and, eq, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
-import { type CheckoutFulfillmentLine } from "~/src/modules/checkout/checkout-metadata.zod"
 import { checkout } from "~/src/modules/checkout/checkout.schema"
-import { type ReleaseLine } from "~/src/modules/checkout/checkout.utils"
+import { type ReleaseLine } from "~/src/modules/checkout/checkout.types"
+import { type CheckoutFulfillmentLine } from "~/src/modules/checkout/checkout.zod"
 import { payment } from "~/src/modules/payment/payment.schema"
 
 export const createPendingPayment = async (data: CreatePaymentInput) => {

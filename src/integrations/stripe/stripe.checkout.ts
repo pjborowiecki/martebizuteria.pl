@@ -8,8 +8,7 @@ import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
 import { type CartItem, type CartUnitPrice } from "~/src/modules/cart/cart.types"
 import { getCartLineUnitPriceCents } from "~/src/modules/cart/cart.utils"
-import { toInternationalCheckoutPhone } from "~/src/modules/checkout/checkout.validation.utils"
-import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
+import { type CheckoutFormSchema, toInternationalCheckoutPhone } from "~/src/modules/checkout/checkout.zod"
 import { type OrderTotals } from "~/src/modules/order/order.types"
 
 const MILLISECONDS_PER_SECOND = 1000

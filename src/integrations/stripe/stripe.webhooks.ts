@@ -25,7 +25,7 @@ import {
   recordOrderPaymentFailedAudit,
   recordOrderReleasedAudit,
 } from "~/src/modules/audit-log/use-cases/record-order-audit.server"
-import { resolveCheckoutSessionCurrency, resolveCheckoutSessionLocale } from "~/src/modules/checkout/checkout-metadata.zod"
+import { resolveCheckoutSessionCurrency, resolveCheckoutSessionLocale } from "~/src/modules/checkout/checkout.utils"
 import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checkout.server"
 import { sendPaymentFailedEmail } from "~/src/modules/checkout/use-cases/send-payment-failed-email.server"
 import { clearOrderDispute } from "~/src/modules/order/use-cases/clear-order-dispute.server"

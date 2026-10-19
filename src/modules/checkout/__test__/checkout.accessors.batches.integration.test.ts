@@ -9,7 +9,7 @@ import {
   prepareCreateCheckoutBatch,
   prepareReleaseCheckoutBatch,
   prepareUpdateCheckoutDeliveryBatch,
-} from "~/src/modules/checkout/checkout.utils"
+} from "~/src/modules/checkout/checkout.accessors"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 
 const { sqlite } = await vi.hoisted(async () => {

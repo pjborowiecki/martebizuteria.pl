@@ -1,12 +1,92 @@
 import { createSchemaFactory } from "drizzle-zod"
+import { isValidPhoneNumber, parsePhoneNumberWithError } from "libphonenumber-js/mobile"
 import zod from "zod/v4"
 
-import { normalizeNip } from "~/src/modules/_core/utils/polish-business-ids"
+import { isValidNip, normalizeNip } from "~/src/modules/_core/utils/polish-business-ids"
 import { address } from "~/src/modules/address/address.schema"
 import { COMPANY_NAME_MAX_LENGTH } from "~/src/modules/checkout/checkout.constants"
 import { checkout } from "~/src/modules/checkout/checkout.schema"
-import { isValidCheckoutPhone, refineCheckout } from "~/src/modules/checkout/checkout.validation.utils"
+import { DELIVERY_COUNTRY_CODES } from "~/src/modules/delivery-method/delivery-method.constants"
 import { DISCOUNT_CODE_MAX_LENGTH } from "~/src/modules/discount/discount.constants"
+
+const DEFAULT_COUNTRY = "PL"
+
+const LOCKER_DELIVERY_TYPE = "locker"
+
+const POSTAL_CODE_PATTERNS: Record<string, RegExp> = {
+  PL: /^\d{2}-\d{3}$/u,
+}
+
+const REQUIRED_BILLING_FIELDS = [
+  ["billingAddress1", "validation.addressRequired"],
+  ["billingFirstName", "validation.firstNameRequired"],
+  ["billingLastName", "validation.lastNameRequired"],
+  ["billingCity", "validation.cityRequired"],
+  ["billingCountryCode", "validation.countryRequired"],
+  ["billingPostalCode", "validation.postCodeRequired"],
+] as const
+
+const isValidPostalCode = (countryCode: string, postalCode: string): boolean => {
+  const pattern = POSTAL_CODE_PATTERNS[countryCode]
+
+  return pattern === undefined ? true : pattern.test(postalCode.trim())
+}
+
+const isFilled = (value: string | undefined): value is string => value !== undefined && value.trim().length > 0
+
+const addCheckoutIssue = (ctx: zod.RefinementCtx, path: string, message: string): void => {
+  ctx.addIssue({ code: "custom", message, path: [path] })
+}
+
+const refineBillingAddress = (data: CheckoutValues, ctx: zod.RefinementCtx): void => {
+  for (const [field, message] of REQUIRED_BILLING_FIELDS) {
+    if (!isFilled(data[field])) {
+      addCheckoutIssue(ctx, field, message)
+    }
+  }
+
+  if (isFilled(data.billingPostalCode) && !isValidPostalCode(data.billingCountryCode ?? DEFAULT_COUNTRY, data.billingPostalCode)) {
+    addCheckoutIssue(ctx, "billingPostalCode", "validation.postCodeInvalid")
+  }
+}
+
+const refineCompanyInvoice = (data: CheckoutValues, ctx: zod.RefinementCtx): void => {
+  if (!isFilled(data.billingCompanyName)) {
+    addCheckoutIssue(ctx, "billingCompanyName", "validation.companyNameRequired")
+  }
+
+  if (!isFilled(data.billingNip)) {
+    addCheckoutIssue(ctx, "billingNip", "validation.nipRequired")
+  } else if (!isValidNip(data.billingNip)) {
+    addCheckoutIssue(ctx, "billingNip", "validation.nipInvalid")
+  }
+}
+
+export const isValidCheckoutPhone = (value: string): boolean => isValidPhoneNumber(value, DEFAULT_COUNTRY)
+
+export const toInternationalCheckoutPhone = (value: string): string => parsePhoneNumberWithError(value, DEFAULT_COUNTRY).number
+
+export const refineCheckout = (data: CheckoutValues, ctx: zod.RefinementCtx): void => {
+  if (data.countryCode.length > 0 && !DELIVERY_COUNTRY_CODES.has(data.countryCode)) {
+    addCheckoutIssue(ctx, "countryCode", "validation.countryNotDelivered")
+  }
+
+  if (data.postalCode.length > 0 && !isValidPostalCode(data.countryCode, data.postalCode)) {
+    addCheckoutIssue(ctx, "postalCode", "validation.postCodeInvalid")
+  }
+
+  if (!data.sameAsShipping) {
+    refineBillingAddress(data, ctx)
+  }
+
+  if (data.companyInvoice) {
+    refineCompanyInvoice(data, ctx)
+  }
+
+  if (data.deliveryMethodType === LOCKER_DELIVERY_TYPE && !isFilled(data.lockerId)) {
+    addCheckoutIssue(ctx, "lockerId", "validation.lockerIdRequired")
+  }
+}
 
 const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
   zodInstance: zod,
@@ -71,3 +151,18 @@ export const checkoutZodSchemas = {
   select: createSelectSchema(checkout),
   update: createUpdateSchema(checkout),
 }
+
+export const checkoutMetadataMinorUnitsSchema = zod.string().regex(/^\d+$/u).transform(Number)
+
+export const checkoutFulfillmentLinesSchema = zod.array(
+  zod.object({
+    handle: zod.string().optional(),
+    imageUrl: zod.string().optional(),
+    price: zod.number(),
+    qty: zod.number(),
+    title: zod.string(),
+    variantId: zod.string(),
+  }),
+)
+
+export type CheckoutFulfillmentLine = zod.infer<typeof checkoutFulfillmentLinesSchema>[number]

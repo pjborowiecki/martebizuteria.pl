@@ -1,6 +1,6 @@
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
-import { prepareCreateCheckoutBatch } from "~/src/modules/checkout/checkout.utils"
+import { prepareCreateCheckoutBatch } from "~/src/modules/checkout/checkout.accessors"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 
 export const createCheckout = async (input: CreateCheckoutInput): Promise<CreatedCheckout> => {

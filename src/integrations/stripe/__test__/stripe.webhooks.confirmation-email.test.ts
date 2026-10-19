@@ -82,8 +82,8 @@ vi.mock("~/src/modules/store-setting/store-setting.accessors", async () => {
 vi.mock("~/src/modules/order/use-cases/clear-order-dispute.server", () => ({ clearOrderDispute: vi.fn() }))
 vi.mock("~/src/modules/order/use-cases/flag-order-dispute.server", () => ({ flagOrderDispute: vi.fn() }))
 vi.mock("~/src/modules/order/use-cases/refund-order.server", () => ({ refundOrder: vi.fn() }))
-vi.mock("~/src/modules/checkout/checkout.session-lines.server", async () => {
-  const { parseCheckoutSessionFulfillmentLines } = await import("~/src/modules/checkout/checkout-metadata.zod")
+vi.mock("~/src/modules/checkout/use-cases/read-checkout-session-lines.server", async () => {
+  const { parseCheckoutSessionFulfillmentLines } = await import("~/src/modules/checkout/checkout.utils")
 
   return {
     readCheckoutSessionLines: (session: Parameters<typeof parseCheckoutSessionFulfillmentLines>[0]) =>

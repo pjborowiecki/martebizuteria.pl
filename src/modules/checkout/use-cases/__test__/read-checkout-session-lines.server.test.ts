@@ -9,7 +9,7 @@ vi.mock("~/src/modules/payment/payment.accessors", () => ({ getCheckoutLinesByTr
 
 import { checkoutSession } from "~/src/integrations/stripe/__test__/fixtures/stripe-webhook-events"
 
-import { readCheckoutSessionLines } from "~/src/modules/checkout/checkout.session-lines.server"
+import { readCheckoutSessionLines } from "~/src/modules/checkout/use-cases/read-checkout-session-lines.server"
 
 const STORED_LINE = { price: 24_900, qty: 1, title: "Ring", variantId: "var-ring" }
 

@@ -1,9 +1,9 @@
 import { type DrizzleBatchStatement, runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 
 import { recordDiscountRedeemedAudit, recordOrderPlacedAudit } from "~/src/modules/audit-log/use-cases/record-order-audit.server"
-import { getCheckoutForFulfillment } from "~/src/modules/checkout/checkout.accessors"
-import { findPendingCheckoutByTransaction } from "~/src/modules/checkout/checkout.pending.server"
-import { type FulfillCheckoutInput, prepareFulfillCheckoutBatch } from "~/src/modules/checkout/checkout.utils"
+import { getCheckoutForFulfillment, prepareFulfillCheckoutBatch } from "~/src/modules/checkout/checkout.accessors"
+import { type FulfillCheckoutInput } from "~/src/modules/checkout/checkout.types"
+import { findPendingCheckoutByTransaction } from "~/src/modules/checkout/use-cases/find-pending-checkout.server"
 import { calculateDiscountAmount } from "~/src/modules/discount/discount.utils"
 import { prepareDiscountRedemption } from "~/src/modules/discount/use-cases/redeem-discount.server"
 import { getOrderByCheckoutId } from "~/src/modules/order/order.accessors"
