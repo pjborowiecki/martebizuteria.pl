@@ -50,8 +50,10 @@ vi.mock("~/src/modules/checkout/use-cases/supersede-checkout-session.server", ()
 vi.mock("~/src/modules/checkout/use-cases/update-checkout-delivery.server", () => ({
   updateCheckoutDelivery: mocked.updateCheckoutDelivery,
 }))
-vi.mock("~/src/modules/discount/discount.checkout.server", () => ({ resolveCheckoutDiscount: mocked.resolveCheckoutDiscount }))
-vi.mock("~/src/modules/discount/discount.claim.server", () => ({
+vi.mock("~/src/modules/discount/use-cases/resolve-checkout-discount.server", () => ({
+  resolveCheckoutDiscount: mocked.resolveCheckoutDiscount,
+}))
+vi.mock("~/src/modules/discount/use-cases/claim-checkout-discount.server", () => ({
   claimCheckoutDiscount: ({ applied }: { applied: unknown }) => Promise.resolve(applied),
   keepClaimedDiscount: vi.fn(),
   releaseDiscountClaims: vi.fn(),

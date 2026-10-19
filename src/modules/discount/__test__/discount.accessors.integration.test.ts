@@ -33,10 +33,10 @@ import {
   getDiscountByCodeForCustomerQuery,
   getDiscountById,
   insertDiscount,
+  toDiscountUpdateValues,
   updateDiscountById,
 } from "~/src/modules/discount/discount.accessors"
 import { DISCOUNT_STATUSES, DISCOUNT_TYPE, type DiscountType } from "~/src/modules/discount/discount.constants"
-import { toDiscountUpdateValues } from "~/src/modules/discount/discount.persist.utils"
 import { resolveDiscountStatus } from "~/src/modules/discount/discount.utils"
 
 const NOW = Date.UTC(2026, 5, 1, 12)

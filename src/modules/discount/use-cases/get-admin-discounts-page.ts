@@ -8,7 +8,7 @@ import { LIST_PAGE_FIRST, buildListPaginationResult, listPaginationParamsFromPag
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { getAdminDiscountsPage as accessorGetAdminDiscountsPage } from "~/src/modules/discount/discount.accessors"
 import { ADMIN_DISCOUNTS_PAGE_SIZE, DISCOUNT_QUERY_KEYS, DISCOUNT_QUERY_STALE_MS } from "~/src/modules/discount/discount.constants"
-import { toAdminDiscountListItem } from "~/src/modules/discount/discount.persist.utils"
+import { toAdminDiscountListItem } from "~/src/modules/discount/discount.utils"
 import { discountZodSchemas } from "~/src/modules/discount/discount.zod"
 
 export const getAdminDiscountsPage = createServerFn({ method: "GET" })

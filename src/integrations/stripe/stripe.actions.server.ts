@@ -39,14 +39,14 @@ import { updateCheckoutDelivery } from "~/src/modules/checkout/use-cases/update-
 import { getOfferedDeliveryMethodByIdQuery } from "~/src/modules/delivery-method/delivery-method.accessors"
 import { DELIVERY_METHOD, type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
 import { resolveDeliveryPrice } from "~/src/modules/delivery-method/delivery-method.utils"
-import { resolveCheckoutDiscount } from "~/src/modules/discount/discount.checkout.server"
+import { type Discount } from "~/src/modules/discount/discount.types"
 import {
   claimCheckoutDiscount,
   keepClaimedDiscount,
   releaseDiscountClaims,
   releaseUnappliedDiscountClaims,
-} from "~/src/modules/discount/discount.claim.server"
-import { type Discount } from "~/src/modules/discount/discount.types"
+} from "~/src/modules/discount/use-cases/claim-checkout-discount.server"
+import { resolveCheckoutDiscount } from "~/src/modules/discount/use-cases/resolve-checkout-discount.server"
 import { releaseInventoryForItems } from "~/src/modules/inventory/inventory.accessors"
 import { quantitiesBeyond, sumHeldQuantity } from "~/src/modules/inventory/inventory.utils"
 import { reserveInventoryForItems } from "~/src/modules/inventory/use-cases/reserve-inventory.server"

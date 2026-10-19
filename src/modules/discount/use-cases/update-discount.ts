@@ -6,9 +6,9 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordDiscountUpdatedAudit } from "~/src/modules/audit-log/use-cases/record-settings-audit.server"
-import { getDiscountByCode, getDiscountById, updateDiscountById } from "~/src/modules/discount/discount.accessors"
+import { getDiscountByCode, getDiscountById, toDiscountUpdateValues, updateDiscountById } from "~/src/modules/discount/discount.accessors"
 import { DISCOUNT_ERROR_CODES, DISCOUNT_MUTATION_KEYS } from "~/src/modules/discount/discount.constants"
-import { refuseTakenDiscountCode, toDiscountUpdateValues } from "~/src/modules/discount/discount.persist.utils"
+import { refuseTakenDiscountCode } from "~/src/modules/discount/discount.utils"
 import { discountZodSchemas } from "~/src/modules/discount/discount.zod"
 
 export const updateDiscount = createServerFn({ method: "POST" })
