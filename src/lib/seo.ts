@@ -3,7 +3,7 @@ import { deLocalizePathname, localeLinks, localizePathname } from "~/src/integra
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { formatMinorUnitsToNumberInput } from "~/src/modules/_core/utils/currency"
-import { getVariantQuantityAvailable } from "~/src/modules/inventory/inventory.availability.utils"
+import { getVariantQuantityAvailable } from "~/src/modules/inventory/inventory.utils"
 import { type Product } from "~/src/modules/product/product.types"
 import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
 

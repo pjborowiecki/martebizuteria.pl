@@ -7,8 +7,8 @@ import { checkout } from "~/src/modules/checkout/checkout.schema"
 import { type ReleaseLine } from "~/src/modules/checkout/checkout.utils"
 import { discountClaim } from "~/src/modules/discount/discount.schema"
 import { inventoryReleaseValues } from "~/src/modules/inventory/inventory.accessors"
-import { quantitiesBeyond } from "~/src/modules/inventory/inventory.availability.utils"
 import { inventory } from "~/src/modules/inventory/inventory.schema"
+import { quantitiesBeyond } from "~/src/modules/inventory/inventory.utils"
 import { payment } from "~/src/modules/payment/payment.schema"
 
 export const supersedeCheckoutSession = async ({

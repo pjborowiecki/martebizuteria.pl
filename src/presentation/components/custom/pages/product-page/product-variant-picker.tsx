@@ -3,7 +3,7 @@ import { type JSX, useCallback } from "react"
 import { cn } from "cn"
 import { useTranslations } from "use-intl/react"
 
-import { getVariantQuantityAvailable } from "~/src/modules/inventory/inventory.availability.utils"
+import { getVariantQuantityAvailable } from "~/src/modules/inventory/inventory.utils"
 import { type Product } from "~/src/modules/product/product.types"
 
 import { IMPLICIT_VARIANT_OPTION_TITLES } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-variant-form.utils"

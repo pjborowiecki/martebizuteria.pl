@@ -1,88 +1,157 @@
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { describe, expect, it } from "vite-plus/test"
 
-import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
+import { type VariantWithInventory } from "~/src/modules/inventory/inventory.types"
+import {
+  getVariantQuantityAvailable,
+  isProductInStock,
+  isVariantPurchasable,
+  quantitiesBeyond,
+  resolveProductTotalAvailableStock,
+  sumHeldQuantity,
+} from "~/src/modules/inventory/inventory.utils"
 
-import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { type ReserveInventoryItem, reserveInventoryForItems } from "~/src/modules/inventory/inventory.utils"
+const variant = (quantityAvailable: number | undefined, id = "variant-1"): VariantWithInventory => ({
+  barcode: null,
+  compareAtPrice: null,
+  createdAt: new Date(2024, 0, 1),
+  id,
+  inventory:
+    quantityAvailable === undefined
+      ? null
+      : {
+          createdAt: new Date(2024, 0, 1),
+          id: `inventory-${id}`,
+          quantityAvailable,
+          quantityReserved: 0,
+          updatedAt: new Date(2024, 0, 1),
+          variantId: id,
+        },
+  manageInventory: true,
+  metadata: null,
+  price: 12_000,
+  productId: "product-1",
+  sku: null,
+  title: "Default",
+  updatedAt: new Date(2024, 0, 1),
+})
 
-const accessors = vi.hoisted(() => ({
-  releaseInventoryForItems: vi.fn<(items: readonly { inventoryId: string; qty: number }[]) => Promise<void>>(),
-  reserveInventoryRows: vi.fn<(items: readonly { inventoryId: string }[]) => Promise<ReadonlySet<string>>>(),
-}))
-
-vi.mock("~/src/modules/inventory/inventory.accessors", () => accessors)
-
-const item = (inventoryId: string, title: string, qty = 1): ReserveInventoryItem => ({ inventoryId, qty, title })
-
-const reserveAllBut = (...failing: string[]) => {
-  accessors.reserveInventoryRows.mockImplementation((items) =>
-    Promise.resolve(new Set(items.map((entry) => entry.inventoryId).filter((id) => !failing.includes(id)))),
-  )
-}
-
-const OUT_OF_STOCK = { code: ERROR_CODES.CONFLICT, message: CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY }
-
-describe("reserveInventoryForItems", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.spyOn(console, "warn").mockImplementation(() => {})
-    accessors.releaseInventoryForItems.mockResolvedValue()
-    reserveAllBut()
+describe("getVariantQuantityAvailable", () => {
+  it("reads the joined inventory row", () => {
+    expect(getVariantQuantityAvailable(variant(4))).toBe(4)
   })
 
-  it("reserves every item in one call and releases nothing when all succeed", async () => {
-    await reserveInventoryForItems([item("inv-a", "Ring"), item("inv-b", "Bracelet")])
+  it("treats a variant with no inventory row as out of stock rather than unlimited", () => {
+    expect(getVariantQuantityAvailable(variant(undefined))).toBe(0)
+    expect(getVariantQuantityAvailable(undefined)).toBe(0)
+  })
+})
 
-    expect(accessors.reserveInventoryRows).toHaveBeenCalledExactlyOnceWith([item("inv-a", "Ring"), item("inv-b", "Bracelet")])
-    expect(accessors.releaseInventoryForItems).not.toHaveBeenCalled()
+describe("isVariantPurchasable", () => {
+  it("allows a quantity up to the available stock", () => {
+    expect(isVariantPurchasable(variant(4), 1)).toBe(true)
+    expect(isVariantPurchasable(variant(4), 4)).toBe(true)
   })
 
-  it("asks for the quantity of every line on the same stock row at once", async () => {
-    await reserveInventoryForItems([item("inv-a", "Ring", 2), item("inv-a", "Ring", 3)])
-
-    expect(accessors.reserveInventoryRows).toHaveBeenCalledExactlyOnceWith([item("inv-a", "Ring", 5)])
+  it("refuses to oversell", () => {
+    expect(isVariantPurchasable(variant(4), 5)).toBe(false)
+    expect(isVariantPurchasable(variant(0), 1)).toBe(false)
   })
 
-  it("releases nothing for an empty item list", async () => {
-    await reserveInventoryForItems([])
-
-    expect(accessors.reserveInventoryRows).toHaveBeenCalledWith([])
-    expect(accessors.releaseInventoryForItems).not.toHaveBeenCalled()
+  it.each([[0], [-1]])("refuses the non-positive quantity %i", (quantity) => {
+    expect(isVariantPurchasable(variant(4), quantity)).toBe(false)
   })
 
-  it("tells the shopper the stock ran out and names the first failing item in the log", async () => {
-    reserveAllBut("inv-b", "inv-c")
+  it("refuses a variant that was never loaded", () => {
+    expect(isVariantPurchasable(undefined, 1)).toBe(false)
+  })
+})
 
-    await expect(
-      reserveInventoryForItems([item("inv-a", "Ring"), item("inv-b", "Bracelet"), item("inv-c", "Pendant")]),
-    ).rejects.toMatchObject(OUT_OF_STOCK)
-    expect(console.warn).toHaveBeenCalledExactlyOnceWith("Inventory reservation failed for Bracelet. Not enough stock available.")
+describe("resolveProductTotalAvailableStock", () => {
+  it("sums availability across the product's variants", () => {
+    expect(resolveProductTotalAvailableStock([variant(4, "a"), variant(3, "b"), variant(undefined, "c")])).toBe(7)
   })
 
-  it("rolls back only the items that were actually reserved", async () => {
-    reserveAllBut("inv-b")
+  it("is zero for a product with no variants", () => {
+    expect(resolveProductTotalAvailableStock([])).toBe(0)
+  })
+})
 
-    await expect(reserveInventoryForItems([item("inv-a", "Ring"), item("inv-b", "Bracelet")])).rejects.toThrow()
-
-    expect(accessors.releaseInventoryForItems).toHaveBeenCalledWith([item("inv-a", "Ring")])
+describe("isProductInStock", () => {
+  it("is in stock when any variant has availability", () => {
+    expect(isProductInStock([variant(0, "a"), variant(1, "b")])).toBe(true)
   })
 
-  it("still reports the reservation failure when the rollback itself fails", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
-    reserveAllBut("inv-b")
-    accessors.releaseInventoryForItems.mockRejectedValue(new Error("d1 unavailable"))
+  it("is out of stock when every variant is empty or unlinked", () => {
+    expect(isProductInStock([variant(0, "a"), variant(undefined, "b")])).toBe(false)
+    expect(isProductInStock([])).toBe(false)
+  })
+})
 
-    await expect(reserveInventoryForItems([item("inv-a", "Ring"), item("inv-b", "Bracelet")])).rejects.toMatchObject(OUT_OF_STOCK)
-    expect(consoleError).toHaveBeenCalledWith("Failed to roll back partial inventory reservation:", new Error("d1 unavailable"))
-
-    consoleError.mockRestore()
+describe("sumHeldQuantity", () => {
+  it("adds up every held line of the variant and ignores the others", () => {
+    expect(
+      sumHeldQuantity(
+        [
+          { qty: 1, variantId: "a" },
+          { qty: 2, variantId: "b" },
+          { qty: 3, variantId: "a" },
+        ],
+        "a",
+      ),
+    ).toBe(4)
   })
 
-  it("rolls back with an empty list when nothing could be reserved", async () => {
-    reserveAllBut("inv-a")
+  it("is zero when nothing of the variant is held", () => {
+    expect(sumHeldQuantity([{ qty: 2, variantId: "b" }], "a")).toBe(0)
+    expect(sumHeldQuantity([], "a")).toBe(0)
+  })
+})
 
-    await expect(reserveInventoryForItems([item("inv-a", "Ring")])).rejects.toThrow()
+describe("quantitiesBeyond", () => {
+  it("keeps of each line only the units the baseline does not already cover", () => {
+    expect(
+      quantitiesBeyond(
+        [
+          { qty: 3, variantId: "a" },
+          { qty: 1, variantId: "b" },
+          { qty: 2, variantId: "c" },
+        ],
+        [
+          { qty: 1, variantId: "a" },
+          { qty: 1, variantId: "b" },
+          { qty: 4, variantId: "c" },
+        ],
+      ),
+    ).toStrictEqual([{ qty: 2, variantId: "a" }])
+  })
 
-    expect(accessors.releaseInventoryForItems).toHaveBeenCalledWith([])
+  it("keeps a whole line whose variant the baseline does not hold", () => {
+    expect(quantitiesBeyond([{ qty: 2, variantId: "a" }], [{ qty: 2, variantId: "b" }])).toStrictEqual([{ qty: 2, variantId: "a" }])
+    expect(quantitiesBeyond([{ qty: 2, variantId: "a" }], [])).toStrictEqual([{ qty: 2, variantId: "a" }])
+  })
+
+  it("spends the baseline of a variant once across several lines of it", () => {
+    expect(
+      quantitiesBeyond(
+        [
+          { qty: 2, variantId: "a" },
+          { qty: 2, variantId: "a" },
+          { qty: 1, variantId: "a" },
+        ],
+        [
+          { qty: 1, variantId: "a" },
+          { qty: 2, variantId: "a" },
+        ],
+      ),
+    ).toStrictEqual([
+      { qty: 1, variantId: "a" },
+      { qty: 1, variantId: "a" },
+    ])
+  })
+
+  it("carries every other field of the line it shortens", () => {
+    expect(
+      quantitiesBeyond([{ inventoryId: "inventory-a", qty: 3, title: "Ring", variantId: "a" }], [{ qty: 1, variantId: "a" }]),
+    ).toStrictEqual([{ inventoryId: "inventory-a", qty: 2, title: "Ring", variantId: "a" }])
   })
 })

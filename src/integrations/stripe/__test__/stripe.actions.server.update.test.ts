@@ -61,7 +61,7 @@ vi.mock("~/src/modules/delivery-method/delivery-method.accessors", () => ({
   getOfferedDeliveryMethodByIdQuery: mocked.getOfferedDeliveryMethodByIdQuery,
 }))
 vi.mock("~/src/modules/inventory/inventory.accessors", () => ({ releaseInventoryForItems: mocked.releaseInventoryForItems }))
-vi.mock("~/src/modules/inventory/inventory.utils", () => ({ reserveInventoryForItems: mocked.reserveInventoryForItems }))
+vi.mock("~/src/modules/inventory/use-cases/reserve-inventory.server", () => ({ reserveInventoryForItems: mocked.reserveInventoryForItems }))
 vi.mock("~/src/modules/payment/payment.accessors", () => ({
   createPendingPayment: vi.fn(),
   getHeldLinesByTransactionId: mocked.getHeldLinesByTransactionId,

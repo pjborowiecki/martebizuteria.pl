@@ -5,7 +5,7 @@ import type * as zod from "zod"
 import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
-import { isProductInStock } from "~/src/modules/inventory/inventory.availability.utils"
+import { isProductInStock } from "~/src/modules/inventory/inventory.utils"
 import { getPriceReductions } from "~/src/modules/price-history/price-history.accessors"
 import { attachPriceReductions } from "~/src/modules/price-history/price-history.utils"
 import { getPublishedProductByHandleQuery } from "~/src/modules/product/product.accessors"
