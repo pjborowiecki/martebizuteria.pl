@@ -4,8 +4,8 @@ import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
+import { getProductImagesQuery as productImageGetProductImagesQuery } from "~/src/modules/product-image/product-image.accessors"
 import { PRODUCT_IMAGE_QUERY_KEYS } from "~/src/modules/product-image/product-image.constants"
-import { getProductImagesQuery as productImageGetProductImagesQuery } from "~/src/modules/product-image/product-image.server"
 import { productImageZodSchemas } from "~/src/modules/product-image/product-image.zod"
 import { PRODUCT_QUERY_STALE_MS } from "~/src/modules/product/product.constants"
 

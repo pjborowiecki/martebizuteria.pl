@@ -8,7 +8,7 @@ import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-
 
 import { loadAttributeOnProductRows, prepareAttributeOnProductBatch } from "~/src/modules/attribute-on-product/attribute-on-product.utils"
 import { recordCatalogProductCreatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
-import { prepareProductImagesBatch } from "~/src/modules/product-image/product-image.persist.utils"
+import { prepareProductImagesBatch } from "~/src/modules/product-image/product-image.accessors"
 import {
   assertCatalogSkusAvailable,
   deleteOrphanProductByHandle,

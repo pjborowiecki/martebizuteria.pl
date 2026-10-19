@@ -17,7 +17,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 const { productImage } = await import("~/src/modules/product-image/product-image.schema")
 const { productVariant } = await import("~/src/modules/product-variant/product-variant.schema")
 const { product } = await import("~/src/modules/product/product.schema")
-const { getProductImagesQuery } = await import("~/src/modules/product-image/product-image.server")
+const { getProductImagesQuery } = await import("~/src/modules/product-image/product-image.accessors")
 
 const { createTables } = await import("~/src/modules/product/__test__/product-sqlite-schema")
 

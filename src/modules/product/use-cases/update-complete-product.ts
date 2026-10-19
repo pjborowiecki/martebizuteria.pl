@@ -9,7 +9,7 @@ import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { loadAttributeOnProductRows, prepareAttributeOnProductBatch } from "~/src/modules/attribute-on-product/attribute-on-product.utils"
 import { recordCatalogProductUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { expireCheckoutsHoldingVariants } from "~/src/modules/checkout/use-cases/expire-checkouts-holding-variants.server"
-import { prepareProductImagesBatch } from "~/src/modules/product-image/product-image.persist.utils"
+import { prepareProductImagesBatch } from "~/src/modules/product-image/product-image.accessors"
 import { buildProductAuditChange, extractProductAuditSnapshot } from "~/src/modules/product/product-audit.utils"
 import { getAdminProductDetailByIdQuery, getProductByHandleQuery } from "~/src/modules/product/product.accessors"
 import {

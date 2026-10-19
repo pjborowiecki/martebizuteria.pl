@@ -40,7 +40,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordCatalo
 vi.mock("~/src/modules/checkout/use-cases/expire-checkouts-holding-variants.server", () => ({
   expireCheckoutsHoldingVariants: operations.expireCheckouts,
 }))
-vi.mock("~/src/modules/product-image/product-image.persist.utils", () => ({ prepareProductImagesBatch: operations.images }))
+vi.mock("~/src/modules/product-image/product-image.accessors", () => ({ prepareProductImagesBatch: operations.images }))
 vi.mock("~/src/modules/product/product.accessors", () => ({
   getAdminProductDetailByIdQuery: { execute: operations.detailById },
   getProductByHandleQuery: { execute: operations.productByHandle },

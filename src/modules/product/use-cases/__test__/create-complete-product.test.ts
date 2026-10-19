@@ -27,7 +27,7 @@ vi.mock("~/src/modules/attribute-on-product/attribute-on-product.utils", () => (
   prepareAttributeOnProductBatch: operations.attributes,
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordCatalogProductCreatedAudit: operations.audit }))
-vi.mock("~/src/modules/product-image/product-image.persist.utils", () => ({ prepareProductImagesBatch: operations.images }))
+vi.mock("~/src/modules/product-image/product-image.accessors", () => ({ prepareProductImagesBatch: operations.images }))
 vi.mock("~/src/modules/product/product.catalog.server", () => ({
   assertCatalogSkusAvailable: operations.assertSkus,
   deleteOrphanProductByHandle: operations.removeOrphan,
