@@ -28,19 +28,21 @@ A folder in `src/modules` exists only for a database table of the same name: `pr
 
 ## File suffixes
 
-| File                              | Contains                                                                   |
-| --------------------------------- | -------------------------------------------------------------------------- |
-| `<feature>.schema.ts`             | The `sqliteTable` definition, its indexes and its `relations`              |
-| `<feature>.zod.ts`                | Input schemas shared by react-hook-form and the server function validators |
-| `<feature>.constants.ts`          | Query keys, mutation keys, enums, page sizes, stale times, column metadata |
-| `<feature>.types.ts`              | Row and input types derived from the schema and the Zod shapes             |
-| `<feature>.utils.ts`              | Pure helpers with no database or request access                            |
-| `<feature>.accessors.ts`          | Data access: Drizzle queries, prepared statements, batch builders          |
-| `<feature>.*.server.ts`           | Server-only helpers that are not RPC endpoints                             |
-| `use-cases/<verb-noun>.ts`        | One `createServerFn` plus the query or mutation options that call it       |
-| `use-cases/<verb-noun>.server.ts` | One server-only operation that other server code calls; no RPC endpoint    |
+| File                              | Contains                                                                                              |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `<module>.schema.ts`              | The `sqliteTable` definition, its indexes and its `relations`                                         |
+| `<module>.types.ts`               | Row and input types derived from the schema and the Zod shapes                                        |
+| `<module>.zod.ts`                 | Input schemas shared by react-hook-form and the server function validators                            |
+| `<module>.constants.ts`           | Query keys, mutation keys, enums, error codes, page sizes, stale times, column metadata               |
+| `<module>.accessors.ts`           | Server-side data access: Drizzle queries, prepared statements, batch builders                         |
+| `<module>.utils.ts`               | Pure helpers with no database, request or `cloudflare:workers` access, safe to bundle for the browser |
+| `use-cases/<verb-noun>.ts`        | One `createServerFn` plus the query or mutation options that call it                                  |
+| `use-cases/<verb-noun>.server.ts` | One server-only operation that other server code calls; no RPC endpoint                               |
+| `__test__/`                       | The tests, beside the module and in `use-cases/__test__/`, each named after the file it tests         |
 
-`order` is a good module to read end to end: `order.schema.ts`, `order.zod.ts`, `order.constants.ts`, `order.types.ts`, `order.utils.ts`, `order.totals.ts`, `order.display.utils.ts`, `order.detail.utils.ts`, `order.email.utils.ts`, `order.fulfillment-time.utils.ts`, `order.customer.utils.ts`, `order.dashboard.utils.ts`, `order.accessors.ts`, `order.dashboard.accessors.ts`, `order.admin-action.server.ts`, `order.admin-actions.utils.ts`, `order.settled.server.ts`, `order.number.server.ts`, `order.claim.server.ts`, `order.email-delivery.server.ts`, `order.refund.server.ts`, `order.restock.server.ts`, `order.shipment.server.ts`, `order-audit.utils.ts`, `order.admin-list-filters.ts` and thirty-five files under `use-cases/`.
+No other file kind is allowed in a module folder. When a query serves a single operation and the accessors would pass the 800-line limit, it moves into that operation's `use-cases/<verb-noun>.server.ts`; when the utils would pass it, a helper that one use case alone needs sits beside that use case. Browser state, such as the cart's Zustand store in `src/hooks/use-cart-store.ts`, is not module code, and the order e-mail content builders sit with the e-mail templates in `src/presentation/emails/order-email-content.ts`.
+
+`order` is a good module to read end to end: `order.schema.ts`, `order.types.ts`, `order.zod.ts`, `order.constants.ts`, `order.accessors.ts`, `order.utils.ts` and forty-eight files under `use-cases/`.
 
 ## A mutation use case
 
@@ -90,9 +92,9 @@ Every part of that is load-bearing:
 
 - **Middleware** comes from `src/integrations/better-auth/auth.middleware.ts`. `withRequest` captures the request headers and normalizes errors; `authorized()` requires a session; `authorized({ order: ["update"] })` also checks the role's permission from `auth.access.ts` and refuses with `FORBIDDEN` while `needsTwoFactorSetup` holds — an admin-role account without two-factor authentication in a build that requires it (production and test); `withRateLimit(kind, RATE_LIMITS.SENSITIVE)` counts attempts per operation and IP.
 - **Validation** parses the input with the module's Zod schema before the handler runs, so the handler receives `zod.output` types.
-- **State guards** live in the module, not the component. `assertOrderActionState` refuses transitions that `order.admin-actions.utils.ts` says are impossible, and `transitionOrder` from `order.admin-action.server.ts` repeats the check in the write: its `UPDATE` only matches an order whose fulfilment status is still one of `SHIPPABLE_FULFILLMENT_STATUSES` and which is not cancelled, and it throws a conflict when no row matched.
+- **State guards** live in the module, not the component. `assertOrderActionState` refuses transitions that `order.utils.ts` says are impossible, and `transitionOrder` from `transition-order.server.ts` repeats the check in the write: its `UPDATE` only matches an order whose fulfilment status is still one of `SHIPPABLE_FULFILLMENT_STATUSES` and which is not cancelled, and it throws a conflict when no row matched.
 - **Links follow the request.** `resolveRequestOrigin(getRequest())` runs first, so a request on a host this build does not serve is refused with `FORBIDDEN` before the order changes, and the shipping email links to the deployment the admin is using. See [Security model](/docs/architecture/security-model).
-- **Audit is background work; the email is awaited.** The recorder enqueues to the Cloudflare Queue, so it does not delay the response. The email is awaited because the admin is told whether it went out. `announceOrderShipment` first claims the e-mail with a conditional `UPDATE` (`shippedEmailAt` for the shipped e-mail, `trackingEmailNumber` for a later tracking e-mail), so a repeated call reports `alreadySent` instead of sending twice. `sendOrderShippedEmail` goes through `deliverOrderEmail` in `order.email-delivery.server.ts`, which records the outcome in the audit log and returns `false` instead of throwing; a failed send is retried twice in the background and then raises an incident alert, and a refused email never undoes the shipment. `awaitOrderEmailNotice` hands the delivery promise to `scheduleBackgroundWork`, so the send finishes even if the admin disconnects first, and returns `{ kind, status }` with `status` set to `sent` or `failed`, which the admin order actions show as a toast.
+- **Audit is background work; the email is awaited.** The recorder enqueues to the Cloudflare Queue, so it does not delay the response. The email is awaited because the admin is told whether it went out. `announceOrderShipment` first claims the e-mail with a conditional `UPDATE` (`shippedEmailAt` for the shipped e-mail, `trackingEmailNumber` for a later tracking e-mail), so a repeated call reports `alreadySent` instead of sending twice. `sendOrderShippedEmail` goes through `deliverOrderEmail` in `deliver-order-email.server.ts`, which records the outcome in the audit log and returns `false` instead of throwing; a failed send is retried twice in the background and then raises an incident alert, and a refused email never undoes the shipment. `awaitOrderEmailNotice` hands the delivery promise to `scheduleBackgroundWork`, so the send finishes even if the admin disconnects first, and returns `{ kind, status }` with `status` set to `sent` or `failed`, which the admin order actions show as a toast.
 - **The mutation options are exported next to the function**, keyed by `ORDER_MUTATION_KEYS.SHIP`.
 
 ## A read use case

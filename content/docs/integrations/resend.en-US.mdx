@@ -71,7 +71,7 @@ It returns `undefined` on success and the failure message otherwise. The Resend 
 
 ### Attachments
 
-`attachments` goes to Resend unchanged. Resend can fetch an attachment from a `path` URL, but not from `localhost` or `127.0.0.1`, so a file the shop serves is read inside the Worker and sent as base64 `content` instead. The order confirmation attaches the model withdrawal form this way: `loadWithdrawalFormAttachment(seller, origin)` in `src/modules/order-withdrawal/order-withdrawal.form.server.ts` makes it with `pdf-lib` from the seller details, with fonts it fetches from `env.ASSETS`, the static assets binding every environment in `wrangler.jsonc` declares. `vp dev` answers them from `public/` through Vite, and a deployed Worker from the uploaded assets. A font the binding does not return throws, and the confirmation is recorded as failed rather than sent without the form.
+`attachments` goes to Resend unchanged. Resend can fetch an attachment from a `path` URL, but not from `localhost` or `127.0.0.1`, so a file the shop serves is read inside the Worker and sent as base64 `content` instead. The order confirmation attaches the model withdrawal form this way: `loadWithdrawalFormAttachment(seller, origin)` in `src/modules/order-withdrawal/use-cases/load-withdrawal-form-attachment.server.ts` makes it with `pdf-lib` from the seller details, with fonts it fetches from `env.ASSETS`, the static assets binding every environment in `wrangler.jsonc` declares. `vp dev` answers them from `public/` through Vite, and a deployed Worker from the uploaded assets. A font the binding does not return throws, and the confirmation is recorded as failed rather than sent without the form.
 
 The order confirmation's product images go the same way, as inline attachments with a `contentId` that the HTML refers to as `cid:`; `embedEmailImages` reads them from the `IMAGES` bucket (see [Email](/docs/features/email)).
 
@@ -202,7 +202,7 @@ In the webhook, a refused host or a session with no `return_url` stops only the 
 
 ## Order e-mail builders
 
-`src/modules/order/order.email.utils.ts` turns database rows into template props:
+`src/presentation/emails/order-email-content.ts`, beside the templates, turns database rows into template props:
 
 | Export                                                                                          | Purpose                                                                                                                                      |
 | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -214,18 +214,19 @@ In the webhook, a refused host or a session with no `return_url` stops only the 
 | `buildOrderConfirmationItems(lines, locale, origin)`                                            | The item rows, with formatted prices and product URLs                                                                                        |
 | `buildOrderAccountCta({ isGuest, locale, messages, orderId, origin })`                          | Either "create an account and track this order" or a link into `/account/orders/<id>`                                                        |
 | `buildOrderLegalLinks(origin, locale)`                                                          | Links to the terms of service, the exchanges-and-returns page and the privacy policy                                                         |
-| `resolveStripePaymentMethodLabel(session, messages)`                                            | Reads the PaymentIntent to name the method the customer actually used (card, BLIK, P24)                                                      |
 
-`src/modules/order/order.fulfillment-time.utils.ts` turns the ordered products' `czas-realizacji` attribute into the fulfilment time the confirmation states:
+`resolveStripePaymentMethodLabel(session, messages)` reads the PaymentIntent to name the method the customer actually used (card, BLIK, P24). It calls Stripe, so it sits in `src/modules/order/use-cases/send-order-confirmation-email.server.ts`, the one e-mail that names it.
+
+The ordered products' `czas-realizacji` attribute becomes the fulfilment time the confirmation states through `resolveOrderLineFulfillmentTimes` in the same use case and `describeOrderFulfillmentTime` in `src/modules/order/order.utils.ts`:
 
 | Export                                                                   | Purpose                                                                                                                                                  |
 | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `resolveOrderLineFulfillmentTimes(lines, attributesByVariantId, locale)` | Each line's title with the time its product page shows, labelled in the order's locale, or `undefined` when it shows none                                |
 | `describeOrderFulfillmentTime(lines, messages)`                          | The longest of those times, 10 business days for a line without one, then the note on when it runs; each product's own time when they cannot be compared |
 
-`order.email.utils.ts` also reuses the order-confirmation builders for the shipped e-mail: `buildOrderShippedDetails` picks the delivery timing string by the method's `type` (`courier`, `locker` or `in_store`), and `buildOrderShippedAccountCta` delegates to `buildOrderAccountCta`. `resolveOrderTracking`, which the shipped and tracking number e-mails share, names the method's carrier for any courier or locker order and none for a pickup, and links the number to the order's stored URL or, only for a method whose carrier is InPost, to InPost's tracking page.
+`order-email-content.ts` also reuses the order-confirmation builders for the shipped e-mail: `buildOrderShippedDetails` picks the delivery timing string by the method's `type` (`courier`, `locker` or `in_store`), and `buildOrderShippedAccountCta` delegates to `buildOrderAccountCta`. `resolveOrderTracking`, which the shipped and tracking number e-mails share, names the method's carrier for any courier or locker order and none for a pickup, and links the number to the order's stored URL or, only for a method whose carrier is InPost, to InPost's tracking page.
 
-`src/modules/order/use-cases/send-order-shipped-email.server.ts` is the whole shipped-e-mail flow. `attemptOrderShippedEmail(orderId, origin, idempotencyKey)` loads the order with `getOrderForShippedEmail`, resolves the locale from `order.metadata` with `resolveOrderLocale`, loads the checkout context when there is a `checkoutId`, renders and sends under the key it is given. It returns the outcome instead of recording it, and a missing order or a blank address is an outcome too. `sendOrderShippedEmail(orderId, origin)` hands it to `deliverOrderEmail` from `src/modules/order/order.email-delivery.server.ts`, which every order e-mail goes through:
+`src/modules/order/use-cases/send-order-shipped-email.server.ts` is the whole shipped-e-mail flow. `attemptOrderShippedEmail(orderId, origin, idempotencyKey)` loads the order with `getOrderForShippedEmail`, resolves the locale from `order.metadata` with `resolveOrderLocale`, loads the checkout context when there is a `checkoutId`, renders and sends under the key it is given. It returns the outcome instead of recording it, and a missing order or a blank address is an outcome too. `sendOrderShippedEmail(orderId, origin)` hands it to `deliverOrderEmail` from `src/modules/order/use-cases/deliver-order-email.server.ts`, which every order e-mail goes through:
 
 ```ts
 export const sendOrderShippedEmail = (orderId: string, origin: string): Promise<boolean> =>

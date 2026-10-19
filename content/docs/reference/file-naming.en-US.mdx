@@ -9,33 +9,21 @@ Names are compound rather than nested: a module's files sit flat beside each oth
 
 ## Module files
 
-A module in `src/modules/<feature>/` is named after its feature and every file in it repeats that name as a prefix.
+A module in `src/modules/<table>/` is named after the database table it owns, and every file in it repeats that name as a prefix. These are the only file kinds a module may hold:
 
-| Pattern                             | Contains                                                                   | Example                                           |
-| ----------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------- |
-| `<feature>.schema.ts`               | The Drizzle table and its `relations`                                      | `order/order.schema.ts`                           |
-| `<feature>.types.ts`                | Types derived from the table, usually one interface with `select`/`insert` | `address/address.types.ts`                        |
-| `<feature>.zod.ts`                  | Zod schemas, mostly built from `drizzle-zod`                               | `product/product.zod.ts`                          |
-| `<feature>.constants.ts`            | Column lengths, status enums, error codes, query and mutation keys         | `product-category/product-category.constants.ts`  |
-| `<feature>.utils.ts`                | Pure helpers with no I/O                                                   | `order/order.admin-actions.utils.ts`              |
-| `<feature>.accessors.ts`            | Data access with no authorization: reads and writes against `db`           | `payment/payment.accessors.ts`                    |
-| `<feature>.server.ts`               | Server-only helpers, typically prepared statements                         | `product-collection/product-collection.server.ts` |
-| `use-cases/<verb>-<noun>.ts`        | One operation, exporting its server function and query options             | `order/use-cases/ship-order.ts`                   |
-| `use-cases/<verb>-<noun>.server.ts` | One operation with no RPC endpoint, called from server code only           | `checkout/use-cases/fulfill-checkout.server.ts`   |
+| Pattern                             | Contains                                                                                    | Example                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `<table>.schema.ts`                 | The Drizzle table and its `relations`                                                       | `order/order.schema.ts`                          |
+| `<table>.types.ts`                  | Types derived from the table, usually one interface with `select`/`insert`                  | `address/address.types.ts`                       |
+| `<table>.zod.ts`                    | Zod schemas, mostly built from `drizzle-zod`                                                | `product/product.zod.ts`                         |
+| `<table>.constants.ts`              | Column lengths, status enums, error codes, query and mutation keys                          | `product-category/product-category.constants.ts` |
+| `<table>.accessors.ts`              | Data access with no authorization: reads, writes and batch builders against `db`            | `payment/payment.accessors.ts`                   |
+| `<table>.utils.ts`                  | Pure helpers with no database, request or `cloudflare:workers` access, safe for the browser | `order/order.utils.ts`                           |
+| `use-cases/<verb>-<noun>.ts`        | One operation, exporting its server function and query options                              | `order/use-cases/ship-order.ts`                  |
+| `use-cases/<verb>-<noun>.server.ts` | One operation with no RPC endpoint, called from server code only                            | `order/use-cases/claim-guest-orders.server.ts`   |
+| `__test__/<file>.test.ts`           | The tests of one file, optionally with a topic: `order.utils.totals.test.ts`                | `order/__test__/order.utils.display.test.ts`     |
 
-Some modules need a second axis and stack two suffixes. The second-to-last segment narrows the concern:
-
-| File                                              | Purpose                                                                                                        |
-| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `audit-log/audit-log.diff.utils.ts`               | Helpers for diffing before/after audit snapshots                                                               |
-| `audit-log/audit-log.queue.server.ts`             | The Cloudflare Queue producer and consumer                                                                     |
-| `audit-log/audit-log.events.server.ts`            | The typed recorder functions the domain layer calls                                                            |
-| `inventory/inventory.availability.utils.ts`       | Availability arithmetic separated from row mapping                                                             |
-| `product/product.admin-list.server.ts`            | The admin list query, separate from the storefront one                                                         |
-| `product/product.storefront-catalog.accessors.ts` | Storefront catalog reads                                                                                       |
-| `product-image/product-image.persist.utils.ts`    | Image persistence helpers                                                                                      |
-| `order/order.settled.server.ts`                   | Lookups for orders that have already settled                                                                   |
-| `order/order.claim.server.ts`                     | Files guest orders under the account that held their e-mail address when they were placed, or that verifies it |
+No other suffix is allowed in a module, and no file stacks two of them. See [Modules and use cases](/docs/architecture/modules-and-use-cases#file-suffixes) for where a helper or a query goes when a file would pass the 800-line limit.
 
 ## Routes
 

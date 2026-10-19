@@ -229,16 +229,16 @@ src/
   routes.ts                   Route constants shared by links, guards and head metadata
   routes/                     78 locale-free route files (including __root and the two PDF form routes) + 5 API handlers
   modules/{feature}/          40 modules, one per database table of the same name — schema, Zod, types, constants, utils
-    *.accessors.ts              unauthenticated data access (reads and writes), 28 files
-    use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 177 files
-                                (138 server functions; 39 server-side operations — e-mail senders, webhook steps, retention clean-ups)
+    *.accessors.ts              unauthenticated data access (reads and writes), 27 files
+    use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 193 files
+                                (138 server functions; 55 server-side operations — e-mail senders, webhook steps, retention clean-ups)
   modules/_core/              Shared error codes, HTTP statuses, currency, pagination, table export, column filters
   integrations/{vendor}/      14 vendors: better-auth, stripe, drizzle-orm, resend, cloudflare-r2, inpost, use-intl,
                                 fumadocs, mdxeditor, tanstack-query, realtime-invalidation, gsap, lenis, react-day-picker
-  presentation/               1,448 files (798 outside tests) — shadcn baseline (57), feature UI, data grid, emails, styles, theme, branding
+  presentation/               1,451 files (799 outside tests) — shadcn baseline (57), feature UI, data grid, emails, styles, theme, branding
   durable-objects/            RealtimeInvalidationHub
   providers/                  Theme and translation providers
-  hooks/                      Shared React hooks
+  hooks/                      Shared React hooks, including the cart's persisted Zustand store
   lib/                        background (ALS + waitUntil), catalog-debug-log, cookie, deployment (live-site check), image, incident-alert,
                                 rate-limit, request, retention, security-headers, seo, sitemap, url
   data/                       The blog's article list, the landing page's media paths and the sitemap's static pages

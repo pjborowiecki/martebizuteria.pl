@@ -60,7 +60,7 @@ export const shipOrder = createServerFn({ method: "POST" })
   })
 ```
 
-`getAdminOrderActionRow`, `assertOrderActionState` i `transitionOrder` pochodzą z `src/modules/order/order.admin-action.server.ts`. `transitionOrder` to warunkowy `UPDATE`, który przesuwa tylko zamówienie, którego status realizacji nadal należy do `SHIPPABLE_FULFILLMENT_STATUSES` i które nie jest anulowane, a gdy żaden wiersz nie pasuje, rzuca błąd konfliktu. `announceOrderShipment` (`use-cases/announce-order-shipment.server.ts`) rezerwuje potem i wysyła e-mail o wysyłce albo — gdy po wcześniejszym e-mailu o wysyłce pojawi się nowy numer przesyłki — e-mail z numerem śledzenia, i zwraca informację o e-mailu, którą akcje zamówień w panelu pokazują jako toast.
+`getAdminOrderActionRow`, `assertOrderActionState` i `transitionOrder` pochodzą z `src/modules/order/use-cases/transition-order.server.ts`. `transitionOrder` to warunkowy `UPDATE`, który przesuwa tylko zamówienie, którego status realizacji nadal należy do `SHIPPABLE_FULFILLMENT_STATUSES` i które nie jest anulowane, a gdy żaden wiersz nie pasuje, rzuca błąd konfliktu. `announceOrderShipment` (`use-cases/announce-order-shipment.server.ts`) rezerwuje potem i wysyła e-mail o wysyłce albo — gdy po wcześniejszym e-mailu o wysyłce pojawi się nowy numer przesyłki — e-mail z numerem śledzenia, i zwraca informację o e-mailu, którą akcje zamówień w panelu pokazują jako toast.
 
 Ponieważ istnieje dokładnie jedna warstwa, w której można zapomnieć o `authorized()`, to właśnie ją celują testy. Przypadek użycia czytający dane samego wywołującego wkompilowuje predykat własności w SQL, a nie pobiera i filtruje:
 

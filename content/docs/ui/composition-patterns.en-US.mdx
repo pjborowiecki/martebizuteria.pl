@@ -200,7 +200,7 @@ Only two application providers exist, and both are mounted once in `src/routes/_
 }
 ```
 
-Everything else is state, not context: the cart is a Zustand store (`src/modules/cart/cart.store.ts`), the data grid's context is created privately by `createDataGrid`, and the checkout form uses its own `CheckoutFormProvider`. Do not add a global provider for something one screen needs.
+Everything else is state, not context: the cart is a Zustand store (`src/hooks/use-cart-store.ts`), the data grid's context is created privately by `createDataGrid`, and the checkout form uses its own `CheckoutFormProvider`. Do not add a global provider for something one screen needs.
 
 ## Loading, error and empty states
 

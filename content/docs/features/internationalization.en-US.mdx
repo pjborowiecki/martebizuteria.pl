@@ -290,7 +290,7 @@ format.number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "cur
 Code that formats outside a component takes the preferences as arguments, with no default to fall back on:
 
 - `src/routes/_storefront.cart.tsx` formats its totals with `formatPrice(…, STORE_CURRENCY_CODE, formatLocale)`, with `formatLocale` from `useFormatLocale()`
-- `formatAdminOrderDate(createdAt, { formatLocale, timeZone })` in `order.display.utils.ts` requires both, and the order list, its export and the overview's recent orders pass the admin's own
+- `formatAdminOrderDate(createdAt, { formatLocale, timeZone })` in `order.utils.ts` requires both, and the order list, its export and the overview's recent orders pass the admin's own
 
 The Stripe Elements form is localised separately, by mapping the app locale to a Stripe locale in `stripe.client.ts` (`pl-PL → pl`, `en-US → en`).
 

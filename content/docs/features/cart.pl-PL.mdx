@@ -7,7 +7,7 @@ M'Arte nie ma koszyka po stronie serwera. Koszyk żyje w `localStorage` pod kluc
 
 ## Store
 
-`src/modules/cart/cart.store.ts` tworzy `useCartStore` z middleware `persist` z zustand:
+`src/hooks/use-cart-store.ts` tworzy `useCartStore` z middleware `persist` z zustand:
 
 ```ts
 {
@@ -44,7 +44,7 @@ Obok store'a eksportowane jest `useCartHydrated()`. Subskrybuje `useCartStore.pe
 
 ## Ceny
 
-`src/modules/cart/cart.pricing.ts` zawiera dwie funkcje wspólne dla store'a i interfejsu:
+`src/modules/cart/cart.utils.ts` zawiera dwie funkcje wspólne dla store'a i interfejsu:
 
 ```ts
 export const getCartLineUnitPriceCents = (item: { readonly price: string; readonly rawPrice: number }): number => {

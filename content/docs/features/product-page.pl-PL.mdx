@@ -56,7 +56,7 @@ if (prod === undefined || !isProductInStock(prod.variants)) {
 return attachPriceReductions(mapPublishedProductForStorefront(prod, locale), await getPriceReductions(prod.variants))
 ```
 
-Zwróć uwagę na typ zwracany. **Brak produktu i brak stanu magazynowego to oba `false`**, a trasa zamienia `false` w `notFound()`. Nie ma osobnej strony „wyprzedane”: produkt, którego wszystkie warianty mają zero dostępnych sztuk, jest w witrynie błędem 404. `isProductInStock` leży w `src/modules/inventory/inventory.availability.utils.ts`.
+Zwróć uwagę na typ zwracany. **Brak produktu i brak stanu magazynowego to oba `false`**, a trasa zamienia `false` w `notFound()`. Nie ma osobnej strony „wyprzedane”: produkt, którego wszystkie warianty mają zero dostępnych sztuk, jest w witrynie błędem 404. `isProductInStock` leży w `src/modules/inventory/inventory.utils.ts`.
 
 `getPublishedProductByHandleQuery` to przygotowane relacyjne zapytanie Drizzle w `product.accessors.ts`, które wczytuje produkt z wariantami, zdjęciami, opcjami i ich wartościami, kategoriami, kolekcjami oraz wartościami atrybutów w jednym przebiegu. `getPriceReductions` dokłada drugi odczyt tylko wtedy, gdy któryś wariant jest przeceniony (zobacz [Obniżone ceny](#obniżone-ceny-i-najniższa-cena-z-30-dni-przed-obniżką)).
 
