@@ -20,7 +20,7 @@ const toasts = vi.hoisted(() => ({
 }))
 
 vi.mock("sonner", () => ({ toast: toasts }))
-vi.mock("~/src/modules/newsletter/use-cases/get-newsletter-stats", () => ({
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/get-newsletter-stats", () => ({
   getNewsletterStatsQuery: () => ({ queryFn: () => Promise.resolve(remote.stats.current), queryKey: ["admin", "newsletter", "stats"] }),
 }))
 vi.mock("~/src/modules/newsletter-campaign/use-cases/send-newsletter-campaign", () => ({

@@ -4,7 +4,7 @@ import { index, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
 import { timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
-import { NEWSLETTER_SOURCES, NEWSLETTER_STATUSES } from "~/src/modules/newsletter/newsletter.constants"
+import { NEWSLETTER_SOURCES, NEWSLETTER_STATUSES } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 import { user } from "~/src/modules/user/user.schema"
 
 export const newsletterSubscriber = sqliteTable(

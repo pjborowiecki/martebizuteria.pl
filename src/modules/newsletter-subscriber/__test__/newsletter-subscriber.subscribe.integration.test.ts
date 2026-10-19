@@ -45,10 +45,12 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
 vi.mock("@tanstack/react-start/server", () => ({ getRequest }))
 vi.mock("cloudflare:workers", () => ({ env: { APP_ENV: "test" } }))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession }))
-vi.mock("~/src/modules/newsletter/use-cases/send-newsletter-already-subscribed-email.server", () => ({
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/send-newsletter-already-subscribed-email.server", () => ({
   sendNewsletterAlreadySubscribedEmail,
 }))
-vi.mock("~/src/modules/newsletter/use-cases/send-newsletter-confirmation-email.server", () => ({ sendNewsletterConfirmationEmail }))
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/send-newsletter-confirmation-email.server", () => ({
+  sendNewsletterConfirmationEmail,
+}))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordEmailFailedAudit,
@@ -87,16 +89,16 @@ import {
   NEWSLETTER_OUTCOME,
   NEWSLETTER_STATUS,
   NEWSLETTER_TOKEN_RESULT,
-} from "~/src/modules/newsletter/newsletter.constants"
+} from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 import {
   confirmNewsletterSubscription,
   confirmNewsletterSubscriptionMutation,
-} from "~/src/modules/newsletter/use-cases/confirm-newsletter-subscription"
-import { subscribeToNewsletter, subscribeToNewsletterMutation } from "~/src/modules/newsletter/use-cases/subscribe-to-newsletter"
+} from "~/src/modules/newsletter-subscriber/use-cases/confirm-newsletter-subscription"
+import { subscribeToNewsletter, subscribeToNewsletterMutation } from "~/src/modules/newsletter-subscriber/use-cases/subscribe-to-newsletter"
 import {
   unsubscribeFromNewsletter,
   unsubscribeFromNewsletterMutation,
-} from "~/src/modules/newsletter/use-cases/unsubscribe-from-newsletter"
+} from "~/src/modules/newsletter-subscriber/use-cases/unsubscribe-from-newsletter"
 
 const mutationContext = { client: new QueryClient(), meta: undefined }
 

@@ -13,7 +13,7 @@ import {
   recordCustomerStripeEmailFailedAudit,
   resolveAuthAuditActor,
 } from "~/src/modules/audit-log/audit-log.events.server"
-import { followAccountAddressChange } from "~/src/modules/newsletter/newsletter.address-change.server"
+import { followAccountAddressChange } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.address-change.server"
 import { session } from "~/src/modules/session/session.schema"
 import { sendEmailChangedEmail } from "~/src/modules/user/use-cases/send-email-changed-email.server"
 import { deleteVerificationsOfUser } from "~/src/modules/verification/verification.accessors"

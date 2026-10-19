@@ -2,8 +2,8 @@ import { type JSX } from "react"
 
 import { CheckCircle2, XCircle } from "lucide-react"
 
-import { NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter/newsletter.constants"
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
+import { NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 

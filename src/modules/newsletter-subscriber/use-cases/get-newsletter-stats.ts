@@ -3,9 +3,9 @@ import { createServerFn } from "@tanstack/react-start"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
-import { getAdminNewsletterStats } from "~/src/modules/newsletter/newsletter.accessors"
-import { NEWSLETTER_QUERY_KEYS, NEWSLETTER_QUERY_STALE_MS } from "~/src/modules/newsletter/newsletter.constants"
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
+import { getAdminNewsletterStats } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
+import { NEWSLETTER_QUERY_KEYS, NEWSLETTER_QUERY_STALE_MS } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
 
 export const getNewsletterStats = createServerFn({ method: "GET" })
   .middleware([authorized({ user: ["list"] })])

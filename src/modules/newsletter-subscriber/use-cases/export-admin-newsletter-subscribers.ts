@@ -5,10 +5,10 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { recordListExportedAudit } from "~/src/modules/audit-log/audit-log.events.server"
-import { getAdminSubscribersFilteredList } from "~/src/modules/newsletter/newsletter.accessors"
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
-import { toAdminNewsletterListItem } from "~/src/modules/newsletter/newsletter.utils"
-import { newsletterZodSchemas } from "~/src/modules/newsletter/newsletter.zod"
+import { getAdminSubscribersFilteredList } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
+import { toAdminNewsletterListItem } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.utils"
+import { newsletterZodSchemas } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.zod"
 
 export const exportAdminNewsletterSubscribers = createServerFn({ method: "GET" })
   .middleware([authorized({ user: ["list"] })])

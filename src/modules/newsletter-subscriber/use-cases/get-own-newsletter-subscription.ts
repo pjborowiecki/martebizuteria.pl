@@ -3,8 +3,12 @@ import { createServerFn } from "@tanstack/react-start"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
-import { getSubscriberByEmail, normalizeSubscriberEmail } from "~/src/modules/newsletter/newsletter.accessors"
-import { NEWSLETTER_QUERY_KEYS, NEWSLETTER_QUERY_STALE_MS, type NewsletterStatus } from "~/src/modules/newsletter/newsletter.constants"
+import { getSubscriberByEmail, normalizeSubscriberEmail } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
+import {
+  NEWSLETTER_QUERY_KEYS,
+  NEWSLETTER_QUERY_STALE_MS,
+  type NewsletterStatus,
+} from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 
 export const getOwnNewsletterSubscription = createServerFn({ method: "GET" })
   .middleware([authorized()])

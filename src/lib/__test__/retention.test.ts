@@ -19,7 +19,7 @@ vi.mock("~/src/modules/audit-log/use-cases/delete-expired-audit-logs.server", ()
 vi.mock("~/src/modules/checkout/use-cases/anonymize-ended-checkouts.server", () => ({
   anonymizeEndedCheckouts: cleanUp.anonymizeEndedCheckouts,
 }))
-vi.mock("~/src/modules/newsletter/use-cases/delete-lapsed-newsletter-subscribers.server", () => ({
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/delete-lapsed-newsletter-subscribers.server", () => ({
   deleteLapsedNewsletterSubscribers: cleanUp.deleteLapsedNewsletterSubscribers,
 }))
 vi.mock("~/src/modules/rate-limit/use-cases/delete-expired-rate-limits.server", () => ({

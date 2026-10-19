@@ -3,9 +3,9 @@ import { createServerFn } from "@tanstack/react-start"
 
 import { RATE_LIMITS, authorized, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
 
-import { getSubscriberByEmail, normalizeSubscriberEmail } from "~/src/modules/newsletter/newsletter.accessors"
-import { NEWSLETTER_MUTATION_KEYS } from "~/src/modules/newsletter/newsletter.constants"
-import { unsubscribeSubscriber } from "~/src/modules/newsletter/newsletter.unsubscribe.server"
+import { getSubscriberByEmail, normalizeSubscriberEmail } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
+import { NEWSLETTER_MUTATION_KEYS } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { unsubscribeSubscriber } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.unsubscribe.server"
 
 export const unsubscribeOwnNewsletter = createServerFn({ method: "POST" })
   .middleware([withRateLimit("newsletter-unsubscribe-own", RATE_LIMITS.SENSITIVE), authorized()])

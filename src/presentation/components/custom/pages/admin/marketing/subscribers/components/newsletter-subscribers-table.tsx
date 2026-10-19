@@ -1,6 +1,6 @@
 import { type JSX, useMemo } from "react"
 
-import { type NewsletterStatus } from "~/src/modules/newsletter/newsletter.constants"
+import { type NewsletterStatus } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 
 import { DataGridShell } from "~/src/presentation/components/custom/datagrid/components/data-grid-shell"
 import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"

@@ -18,18 +18,18 @@ import {
   insertSubscriber,
   normalizeSubscriberEmail,
   updateSubscriberById,
-} from "~/src/modules/newsletter/newsletter.accessors"
+} from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
 import {
   NEWSLETTER_MUTATION_KEYS,
   NEWSLETTER_OUTCOME,
   NEWSLETTER_SOURCE,
   NEWSLETTER_STATUS,
   type NewsletterSource,
-} from "~/src/modules/newsletter/newsletter.constants"
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
-import { newsletterZodSchemas } from "~/src/modules/newsletter/newsletter.zod"
-import { sendNewsletterAlreadySubscribedEmail } from "~/src/modules/newsletter/use-cases/send-newsletter-already-subscribed-email.server"
-import { sendNewsletterConfirmationEmail } from "~/src/modules/newsletter/use-cases/send-newsletter-confirmation-email.server"
+} from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
+import { newsletterZodSchemas } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.zod"
+import { sendNewsletterAlreadySubscribedEmail } from "~/src/modules/newsletter-subscriber/use-cases/send-newsletter-already-subscribed-email.server"
+import { sendNewsletterConfirmationEmail } from "~/src/modules/newsletter-subscriber/use-cases/send-newsletter-confirmation-email.server"
 
 import { resolveRequestOrigin } from "~/src/lib/request"
 

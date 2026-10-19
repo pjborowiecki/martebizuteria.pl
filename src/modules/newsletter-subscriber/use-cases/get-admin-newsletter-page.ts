@@ -6,10 +6,14 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { LIST_PAGE_FIRST, buildListPaginationResult, listPaginationParamsFromPage } from "~/src/modules/_core/utils/pagination"
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
-import { getAdminSubscribersPage } from "~/src/modules/newsletter/newsletter.accessors"
-import { ADMIN_NEWSLETTER_PAGE_SIZE, NEWSLETTER_QUERY_KEYS, NEWSLETTER_QUERY_STALE_MS } from "~/src/modules/newsletter/newsletter.constants"
-import { toAdminNewsletterListItem } from "~/src/modules/newsletter/newsletter.utils"
-import { newsletterZodSchemas } from "~/src/modules/newsletter/newsletter.zod"
+import { getAdminSubscribersPage } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
+import {
+  ADMIN_NEWSLETTER_PAGE_SIZE,
+  NEWSLETTER_QUERY_KEYS,
+  NEWSLETTER_QUERY_STALE_MS,
+} from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { toAdminNewsletterListItem } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.utils"
+import { newsletterZodSchemas } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.zod"
 
 export const getAdminNewsletterPage = createServerFn({ method: "GET" })
   .middleware([authorized({ user: ["list"] })])

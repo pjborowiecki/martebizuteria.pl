@@ -10,9 +10,9 @@ import {
   NEWSLETTER_QUERY_STALE_MS,
   NEWSLETTER_STATUSES,
   type NewsletterStatus,
-} from "~/src/modules/newsletter/newsletter.constants"
-import { getAdminNewsletterPageQuery } from "~/src/modules/newsletter/use-cases/get-admin-newsletter-page"
-import { getNewsletterStatsQuery } from "~/src/modules/newsletter/use-cases/get-newsletter-stats"
+} from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { getAdminNewsletterPageQuery } from "~/src/modules/newsletter-subscriber/use-cases/get-admin-newsletter-page"
+import { getNewsletterStatsQuery } from "~/src/modules/newsletter-subscriber/use-cases/get-newsletter-stats"
 
 import { ADMIN_CATALOG_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"

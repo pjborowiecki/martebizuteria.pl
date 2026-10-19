@@ -5,8 +5,8 @@ import { userEvent } from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { type TextFileDownload } from "~/src/modules/_core/utils/download"
-import { type NewsletterStatus } from "~/src/modules/newsletter/newsletter.constants"
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
+import { type NewsletterStatus } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
 
 const calls = vi.hoisted(() => ({
   download: vi.fn<(file: TextFileDownload) => void>(),
@@ -16,13 +16,13 @@ const calls = vi.hoisted(() => ({
 }))
 
 vi.mock("~/src/modules/_core/utils/download", () => ({ downloadTextFile: calls.download }))
-vi.mock("~/src/modules/newsletter/use-cases/unsubscribe-newsletter-subscriber", () => ({
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/unsubscribe-newsletter-subscriber", () => ({
   unsubscribeNewsletterSubscriberMutation: { mutationFn: vi.fn() },
 }))
-vi.mock("~/src/modules/newsletter/use-cases/erase-newsletter-subscriber", () => ({
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/erase-newsletter-subscriber", () => ({
   eraseNewsletterSubscriberMutation: { mutationFn: vi.fn() },
 }))
-vi.mock("~/src/modules/newsletter/use-cases/get-admin-newsletter-page", async () => {
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/get-admin-newsletter-page", async () => {
   const { queryOptions } = await import("@tanstack/react-query")
 
   return {
@@ -30,12 +30,12 @@ vi.mock("~/src/modules/newsletter/use-cases/get-admin-newsletter-page", async ()
       queryOptions({ queryFn: () => calls.page(input), queryKey: ["admin", "newsletter", "page", input] }),
   }
 })
-vi.mock("~/src/modules/newsletter/use-cases/get-newsletter-stats", async () => {
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/get-newsletter-stats", async () => {
   const { queryOptions } = await import("@tanstack/react-query")
 
   return { getNewsletterStatsQuery: () => queryOptions({ queryFn: () => calls.stats(), queryKey: ["admin", "newsletter", "stats"] }) }
 })
-vi.mock("~/src/modules/newsletter/use-cases/export-admin-newsletter-subscribers", () => ({
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/export-admin-newsletter-subscribers", () => ({
   exportAdminNewsletterSubscribers: calls.exportSubscribers,
 }))
 

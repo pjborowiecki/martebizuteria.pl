@@ -8,10 +8,10 @@ import { useLocale, useTranslations } from "use-intl/react"
 
 import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
-import { NEWSLETTER_OUTCOME, NEWSLETTER_SOURCE } from "~/src/modules/newsletter/newsletter.constants"
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
-import { newsletterZodSchemas } from "~/src/modules/newsletter/newsletter.zod"
-import { subscribeToNewsletterMutation } from "~/src/modules/newsletter/use-cases/subscribe-to-newsletter"
+import { NEWSLETTER_OUTCOME, NEWSLETTER_SOURCE } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
+import { newsletterZodSchemas } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.zod"
+import { subscribeToNewsletterMutation } from "~/src/modules/newsletter-subscriber/use-cases/subscribe-to-newsletter"
 
 import { Input } from "~/src/presentation/components/shadcn/input"
 

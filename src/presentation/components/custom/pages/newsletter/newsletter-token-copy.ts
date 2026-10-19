@@ -1,5 +1,5 @@
-import { NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter/newsletter.constants"
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
+import { NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
 
 export const newsletterTitleKey = (result: Newsletter["tokenResult"]["result"]): "alreadyTitle" | "invalidTitle" | "okTitle" => {
   if (result === NEWSLETTER_TOKEN_RESULT.OK) {

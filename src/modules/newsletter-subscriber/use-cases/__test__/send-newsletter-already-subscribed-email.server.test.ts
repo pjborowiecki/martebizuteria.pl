@@ -13,7 +13,7 @@ const { sendEmail } = vi.hoisted(() => ({
 
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 
-import { sendNewsletterAlreadySubscribedEmail } from "~/src/modules/newsletter/use-cases/send-newsletter-already-subscribed-email.server"
+import { sendNewsletterAlreadySubscribedEmail } from "~/src/modules/newsletter-subscriber/use-cases/send-newsletter-already-subscribed-email.server"
 
 const notice = { email: "anna@example.com", locale: "en-US", origin: "http://127.0.0.1:3000" } as const
 

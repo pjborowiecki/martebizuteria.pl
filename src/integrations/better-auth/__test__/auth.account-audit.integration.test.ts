@@ -68,7 +68,7 @@ vi.mock(import("~/src/modules/order/order.claim.server"), async (importOriginal)
   ...(await importOriginal()),
   claimGuestOrdersForUser: vi.fn(() => Promise.resolve(0)),
 }))
-vi.mock(import("~/src/modules/newsletter/newsletter.accessors"), async (importOriginal) => ({
+vi.mock(import("~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"), async (importOriginal) => ({
   ...(await importOriginal()),
   linkSubscriberToUser: vi.fn(() => Promise.resolve()),
 }))

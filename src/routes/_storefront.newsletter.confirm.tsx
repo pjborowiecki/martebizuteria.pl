@@ -6,9 +6,9 @@ import { z } from "zod/v4"
 
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
-import { NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter/newsletter.constants"
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
-import { confirmNewsletterSubscription } from "~/src/modules/newsletter/use-cases/confirm-newsletter-subscription"
+import { NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
+import { confirmNewsletterSubscription } from "~/src/modules/newsletter-subscriber/use-cases/confirm-newsletter-subscription"
 
 import { pageHead } from "~/src/lib/seo"
 

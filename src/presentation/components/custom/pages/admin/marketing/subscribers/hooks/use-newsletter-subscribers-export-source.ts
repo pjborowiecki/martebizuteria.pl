@@ -2,8 +2,8 @@ import { useMemo } from "react"
 
 import { useTranslations } from "use-intl/react"
 
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
-import { exportAdminNewsletterSubscribers } from "~/src/modules/newsletter/use-cases/export-admin-newsletter-subscribers"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
+import { exportAdminNewsletterSubscribers } from "~/src/modules/newsletter-subscriber/use-cases/export-admin-newsletter-subscribers"
 
 import { type DataGridExportSource, exportFilter } from "~/src/presentation/components/custom/datagrid/lib/data-grid-export"
 

@@ -1,4 +1,4 @@
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
 
 export const buildSubscriber = (overrides: Partial<Newsletter["adminListItem"]> = {}): Newsletter["adminListItem"] => ({
   confirmedAt: new Date("2026-03-01T11:00:00.000Z"),

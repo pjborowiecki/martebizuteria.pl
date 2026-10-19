@@ -20,8 +20,8 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock("sonner", () => ({ toast: { error: mocks.toastError, success: mocks.toastSuccess } }))
-vi.mock("~/src/modules/newsletter/use-cases/get-own-newsletter-subscription", async () => {
-  const { NEWSLETTER_QUERY_KEYS } = await import("~/src/modules/newsletter/newsletter.constants")
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/get-own-newsletter-subscription", async () => {
+  const { NEWSLETTER_QUERY_KEYS } = await import("~/src/modules/newsletter-subscriber/newsletter-subscriber.constants")
 
   return {
     getOwnNewsletterSubscriptionQuery: () => ({
@@ -30,18 +30,22 @@ vi.mock("~/src/modules/newsletter/use-cases/get-own-newsletter-subscription", as
     }),
   }
 })
-vi.mock("~/src/modules/newsletter/use-cases/subscribe-to-newsletter", async () => {
-  const { NEWSLETTER_MUTATION_KEYS } = await import("~/src/modules/newsletter/newsletter.constants")
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/subscribe-to-newsletter", async () => {
+  const { NEWSLETTER_MUTATION_KEYS } = await import("~/src/modules/newsletter-subscriber/newsletter-subscriber.constants")
 
   return { subscribeToNewsletterMutation: { mutationFn: mocks.subscribe, mutationKey: NEWSLETTER_MUTATION_KEYS.SUBSCRIBE } }
 })
-vi.mock("~/src/modules/newsletter/use-cases/unsubscribe-own-newsletter", async () => {
-  const { NEWSLETTER_MUTATION_KEYS } = await import("~/src/modules/newsletter/newsletter.constants")
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/unsubscribe-own-newsletter", async () => {
+  const { NEWSLETTER_MUTATION_KEYS } = await import("~/src/modules/newsletter-subscriber/newsletter-subscriber.constants")
 
   return { unsubscribeOwnNewsletterMutation: { mutationFn: mocks.unsubscribe, mutationKey: NEWSLETTER_MUTATION_KEYS.UNSUBSCRIBE_OWN } }
 })
 
-import { NEWSLETTER_QUERY_KEYS, NEWSLETTER_SOURCE, NEWSLETTER_STATUS } from "~/src/modules/newsletter/newsletter.constants"
+import {
+  NEWSLETTER_QUERY_KEYS,
+  NEWSLETTER_SOURCE,
+  NEWSLETTER_STATUS,
+} from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 
 import { NewsletterField } from "~/src/presentation/components/custom/pages/account/profile/newsletter-field"
 

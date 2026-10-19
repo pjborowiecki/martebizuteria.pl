@@ -7,8 +7,8 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { TestProviders, createTestRouter } from "~/src/platform/testing/lib/render"
 
-import { ADMIN_NEWSLETTER_TABLE_COLUMN_ID } from "~/src/modules/newsletter/newsletter.constants"
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
+import { ADMIN_NEWSLETTER_TABLE_COLUMN_ID } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
 
 import { useFormatter } from "~/src/hooks/use-display-format"
 

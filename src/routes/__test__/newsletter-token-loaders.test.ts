@@ -26,10 +26,10 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
     return { options, useLoaderData: () => ({}) }
   },
 }))
-vi.mock("~/src/modules/newsletter/use-cases/confirm-newsletter-subscription", () => ({
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/confirm-newsletter-subscription", () => ({
   confirmNewsletterSubscription: calls.confirm,
 }))
-vi.mock("~/src/modules/newsletter/use-cases/unsubscribe-from-newsletter", () => ({
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/unsubscribe-from-newsletter", () => ({
   unsubscribeFromNewsletter: calls.unsubscribe,
 }))
 

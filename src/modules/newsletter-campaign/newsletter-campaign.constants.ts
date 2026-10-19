@@ -1,4 +1,4 @@
-import { type NewsletterBadgeStyle } from "~/src/modules/newsletter/newsletter.constants"
+import { type NewsletterBadgeStyle } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 
 export const NEWSLETTER_CAMPAIGN_STATUSES = ["sending", "sent", "failed"] as const
 

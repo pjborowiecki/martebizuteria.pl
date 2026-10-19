@@ -52,7 +52,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import newsletterMigration from "~/src/integrations/drizzle-orm/migrations/20261001090000_newsletter_subscribers.sql?raw"
 
-import { insertSubscriber, linkSubscriberToUser } from "~/src/modules/newsletter/newsletter.accessors"
+import { insertSubscriber, linkSubscriberToUser } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
 import {
   ADMIN_NEWSLETTER_PAGE_SIZE,
   NEWSLETTER_QUERY_KEYS,
@@ -60,11 +60,14 @@ import {
   NEWSLETTER_SOURCE,
   NEWSLETTER_STATUS,
   type NewsletterStatus,
-} from "~/src/modules/newsletter/newsletter.constants"
-import { newsletterZodSchemas } from "~/src/modules/newsletter/newsletter.zod"
-import { exportAdminNewsletterSubscribers } from "~/src/modules/newsletter/use-cases/export-admin-newsletter-subscribers"
-import { getAdminNewsletterPage, getAdminNewsletterPageQuery } from "~/src/modules/newsletter/use-cases/get-admin-newsletter-page"
-import { getNewsletterStats, getNewsletterStatsQuery } from "~/src/modules/newsletter/use-cases/get-newsletter-stats"
+} from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { newsletterZodSchemas } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.zod"
+import { exportAdminNewsletterSubscribers } from "~/src/modules/newsletter-subscriber/use-cases/export-admin-newsletter-subscribers"
+import {
+  getAdminNewsletterPage,
+  getAdminNewsletterPageQuery,
+} from "~/src/modules/newsletter-subscriber/use-cases/get-admin-newsletter-page"
+import { getNewsletterStats, getNewsletterStatsQuery } from "~/src/modules/newsletter-subscriber/use-cases/get-newsletter-stats"
 
 const LIST_USERS = { user: ["list"] }
 

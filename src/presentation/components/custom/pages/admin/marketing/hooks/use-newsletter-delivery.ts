@@ -11,7 +11,7 @@ import {
 } from "~/src/modules/newsletter-campaign/newsletter-campaign.constants"
 import { type NewsletterCampaign } from "~/src/modules/newsletter-campaign/newsletter-campaign.types"
 import { sendNewsletterCampaignMutation } from "~/src/modules/newsletter-campaign/use-cases/send-newsletter-campaign"
-import { NEWSLETTER_QUERY_KEYS } from "~/src/modules/newsletter/newsletter.constants"
+import { NEWSLETTER_QUERY_KEYS } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 
 import { ROUTES } from "~/src/routes"
 

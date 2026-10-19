@@ -38,7 +38,7 @@ const { getCustomerActivityAuditRows, getCustomerLoginAuditRows, pageViewsQuery 
   await import("~/src/modules/audit-log/audit-log.accessors")
 const { getDiscountByCodeForCustomerQuery, getDiscountByCodeForPreviewQuery } = await import("~/src/modules/discount/discount.accessors")
 const { prepareDiscountClaim } = await import("~/src/modules/discount/discount.claim.server")
-const { getAdminSubscribersPage } = await import("~/src/modules/newsletter/newsletter.accessors")
+const { getAdminSubscribersPage } = await import("~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors")
 const { getAdminOrderTimelineRows, getOrderByTransactionId } = await import("~/src/modules/order/order.accessors")
 const { claimGuestOrdersForUser } = await import("~/src/modules/order/order.claim.server")
 const { getPriceReductions } = await import("~/src/modules/price-history/price-history.accessors")

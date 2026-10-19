@@ -7,9 +7,9 @@ import {
   type NewsletterSource,
   type NewsletterStatus,
   type NewsletterTokenResult,
-} from "~/src/modules/newsletter/newsletter.constants"
-import { type newsletterSubscriber } from "~/src/modules/newsletter/newsletter.schema"
-import { type newsletterZodSchemas } from "~/src/modules/newsletter/newsletter.zod"
+} from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { type newsletterSubscriber } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.schema"
+import { type newsletterZodSchemas } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.zod"
 
 interface AdminNewsletterListItem {
   readonly confirmedAt: Date | undefined

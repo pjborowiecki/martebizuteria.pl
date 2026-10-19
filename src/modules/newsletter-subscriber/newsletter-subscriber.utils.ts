@@ -1,4 +1,4 @@
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
 
 export const toAdminNewsletterListItem = (row: Newsletter["select"]): Newsletter["adminListItem"] => ({
   confirmedAt: row.confirmedAt ?? undefined,
