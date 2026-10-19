@@ -3,7 +3,7 @@ import zod from "zod/v4"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { uuidField } from "~/src/modules/_core/utils/zod-fields"
-import { hasOnlyMarkdownLinksMatching } from "~/src/modules/content-page/content-page.validation.utils"
+import { hasOnlyMarkdownLinksMatching } from "~/src/modules/content-page/content-page.utils"
 import {
   NEWSLETTER_CAMPAIGN_COLUMN_LENGTH,
   NEWSLETTER_CAMPAIGN_VALIDATION_KEYS,

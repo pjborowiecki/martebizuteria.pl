@@ -17,8 +17,8 @@ import {
   SELLER_PLACEHOLDERS,
   SELLER_PLACEHOLDER_DIRECTIVE,
   type SellerPlaceholder,
-  readSellerPlaceholder,
-} from "~/src/modules/content-page/content-page.seller-placeholders"
+} from "~/src/modules/content-page/content-page.constants"
+import { readSellerPlaceholder } from "~/src/modules/content-page/content-page.utils"
 
 const SellerDetailChip = ({ mdastNode }: Readonly<DirectiveEditorProps>): JSX.Element => {
   const t = useTranslations("pages.admin.content.editor.sellerDetails")

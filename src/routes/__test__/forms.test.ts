@@ -22,7 +22,7 @@ vi.mock("@tanstack/react-router", () => ({
     return options
   },
 }))
-vi.mock("~/src/modules/content-page/content-page.forms.server", () => ({ respondWithForm }))
+vi.mock("~/src/modules/content-page/use-cases/respond-with-form.server", () => ({ respondWithForm }))
 
 await import("~/src/routes/forms.formularz_zwrotu[.]pdf")
 await import("~/src/routes/forms.formularz_reklamacji[.]pdf")

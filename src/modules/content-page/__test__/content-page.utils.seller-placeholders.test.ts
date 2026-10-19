@@ -2,14 +2,14 @@ import { describe, expect, it } from "vite-plus/test"
 
 import { TEST_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
 
+import { SELLER_PLACEHOLDERS } from "~/src/modules/content-page/content-page.constants"
 import {
-  SELLER_PLACEHOLDERS,
   findLocalesShowingSellerFields,
   findSellerPlaceholders,
   formatSellerPlaceholder,
   isSellerPlaceholder,
   removeSellerPlaceholders,
-} from "~/src/modules/content-page/content-page.seller-placeholders"
+} from "~/src/modules/content-page/content-page.utils"
 
 describe("findSellerPlaceholders", () => {
   it("lists every store detail a body names, in order, known or not", () => {

@@ -8,7 +8,7 @@ import {
   CONTENT_PAGE_HANDLES,
   CONTENT_PAGE_VALIDATION_KEYS,
 } from "~/src/modules/content-page/content-page.constants"
-import { hasOnlyPublishableMarkdown } from "~/src/modules/content-page/content-page.validation.utils"
+import { hasOnlyPublishableMarkdown } from "~/src/modules/content-page/content-page.utils"
 
 const handleField = zod.enum(CONTENT_PAGE_HANDLES)
 
