@@ -16,7 +16,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
 const { LIST_PAGE_SIZE_MAX } = await import("~/src/modules/_core/utils/pagination")
 const { productAttribute } = await import("~/src/modules/product-attribute/product-attribute.schema")
-const { deleteProductAttributes, getProductAttributesByIds } = await import("~/src/modules/product-attribute/product-attribute.server")
+const { deleteProductAttributes, getProductAttributesByIds } = await import("~/src/modules/product-attribute/product-attribute.accessors")
 
 const { createTables } = await import("~/src/modules/product/__test__/product-sqlite-schema")
 

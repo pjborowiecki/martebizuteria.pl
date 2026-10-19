@@ -6,7 +6,10 @@ import { runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { loadAttributeOnProductRows, prepareAttributeOnProductBatch } from "~/src/modules/attribute-on-product/attribute-on-product.utils"
+import {
+  loadAttributeOnProductRows,
+  prepareAttributeOnProductBatch,
+} from "~/src/modules/attribute-on-product/attribute-on-product.accessors"
 import { recordCatalogProductUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { expireCheckoutsHoldingVariants } from "~/src/modules/checkout/use-cases/expire-checkouts-holding-variants.server"
 import { prepareProductImagesBatch } from "~/src/modules/product-image/product-image.accessors"

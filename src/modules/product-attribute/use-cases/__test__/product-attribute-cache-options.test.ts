@@ -12,7 +12,7 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: (
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleProductAttributeCatalogInvalidation: invalidation.schedule,
 }))
-vi.mock("~/src/modules/product-attribute/product-attribute.server", () => ({
+vi.mock("~/src/modules/product-attribute/product-attribute.accessors", () => ({
   getAdminProductAttributeListItems: server.getAdminProductAttributeListItems,
   setProductAttributeRanks: server.setProductAttributeRanks,
 }))

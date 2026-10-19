@@ -81,7 +81,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderPaymentFailedAudit,
   recordOrderReleasedAudit,
 }))
-vi.mock("~/src/modules/attribute-on-product/attribute-on-product.server", () => ({
+vi.mock("~/src/modules/attribute-on-product/attribute-on-product.accessors", () => ({
   getFulfillmentTimeAttributesByVariantId: vi.fn(() => Promise.resolve(new Map())),
 }))
 vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutEmailContext }))

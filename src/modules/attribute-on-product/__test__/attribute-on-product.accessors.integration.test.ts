@@ -15,7 +15,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 
 import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
-import { countForAttributeIds } from "~/src/modules/attribute-on-product/attribute-on-product.server"
+import { countForAttributeIds } from "~/src/modules/attribute-on-product/attribute-on-product.accessors"
 
 const DDL = `
   drop table if exists attribute_on_product;

@@ -1,13 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { loadAttributeOnProductRows } from "~/src/modules/attribute-on-product/attribute-on-product.utils"
+import {
+  countForAttributeIds,
+  getByProductIdQuery,
+  getProductCountsByAttributeId,
+  loadAttributeOnProductRows,
+} from "~/src/modules/attribute-on-product/attribute-on-product.accessors"
 
 const operations = vi.hoisted(() => ({
+  groupBy: vi.fn(),
   listAttributes: vi.fn(),
+  prepared: vi.fn(),
+  where: vi.fn(),
 }))
 
-vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: {} }))
-vi.mock("~/src/modules/product-attribute/product-attribute.server", () => ({
+vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
+  db: {
+    query: {
+      attributeOnProduct: {
+        findMany: () => ({ prepare: () => ({ execute: operations.prepared }) }),
+      },
+    },
+    select: () => ({ from: () => ({ groupBy: operations.groupBy, where: operations.where }) }),
+  },
+}))
+vi.mock("~/src/modules/product-attribute/product-attribute.accessors", () => ({
   getAdminProductAttributesQuery: { execute: operations.listAttributes },
 }))
 
@@ -25,16 +42,86 @@ const definition = (id: string, type: "boolean" | "multiselect" | "number" | "se
   updatedAt: AT,
 })
 
-beforeEach(() => {
-  vi.resetAllMocks()
-  operations.listAttributes.mockResolvedValue([
-    definition("attr-1", "number"),
-    definition("attr-2", "text"),
-    definition("attr-3", "boolean"),
-  ])
+const row = (attributeId: string) => ({
+  attributeId,
+  id: `row-${attributeId}`,
+  productId: "prod-1",
+  rank: 0,
+  value: "gold",
+})
+
+describe("countForAttributeIds", () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it("answers zero without querying when no ids are given", async () => {
+    await expect(countForAttributeIds([])).resolves.toBe(0)
+    expect(operations.where).not.toHaveBeenCalled()
+  })
+
+  it("returns the counted rows", async () => {
+    operations.where.mockResolvedValue([{ value: 3 }])
+
+    await expect(countForAttributeIds(["attr-1", "attr-2"])).resolves.toBe(3)
+    expect(operations.where).toHaveBeenCalledOnce()
+  })
+
+  it("treats an empty result as zero rather than undefined", async () => {
+    operations.where.mockResolvedValue([])
+
+    await expect(countForAttributeIds(["attr-1"])).resolves.toBe(0)
+  })
+})
+
+describe("getProductCountsByAttributeId", () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it("keys the grouped counts by attribute id", async () => {
+    operations.groupBy.mockResolvedValue([
+      { attributeId: "attr-1", productCount: 2 },
+      { attributeId: "attr-2", productCount: 5 },
+    ])
+
+    const counts = await getProductCountsByAttributeId()
+
+    expect(counts.get("attr-1")).toBe(2)
+    expect(counts.get("attr-2")).toBe(5)
+    expect(counts.size).toBe(2)
+  })
+
+  it("returns an empty map when no attribute is in use", async () => {
+    operations.groupBy.mockResolvedValue([])
+
+    await expect(getProductCountsByAttributeId()).resolves.toStrictEqual(new Map())
+  })
+})
+
+describe("getByProductIdQuery", () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it("is prepared once at module load and executed per product", async () => {
+    operations.prepared.mockResolvedValue([row("attr-1")])
+
+    await expect(getByProductIdQuery.execute({ productId: "prod-1" })).resolves.toStrictEqual([row("attr-1")])
+    expect(operations.prepared).toHaveBeenCalledExactlyOnceWith({ productId: "prod-1" })
+  })
 })
 
 describe("loadAttributeOnProductRows", () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+    operations.listAttributes.mockResolvedValue([
+      definition("attr-1", "number"),
+      definition("attr-2", "text"),
+      definition("attr-3", "boolean"),
+    ])
+  })
+
   it("skips reading the definitions when there is nothing to store", async () => {
     await expect(loadAttributeOnProductRows("prod-1", [], [{ rows: [], variantId: "var-1" }])).resolves.toStrictEqual([])
 

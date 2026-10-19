@@ -6,14 +6,14 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleProductAttributeCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { countForAttributeIds } from "~/src/modules/attribute-on-product/attribute-on-product.server"
+import { countForAttributeIds } from "~/src/modules/attribute-on-product/attribute-on-product.accessors"
 import { recordCatalogAttributeDeletedAudit, resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.events.server"
 import { resolveRequestAuditIp } from "~/src/modules/audit-log/audit-log.record.server"
-import { PRODUCT_ATTRIBUTE_ERROR_CODES, PRODUCT_ATTRIBUTE_MUTATION_KEYS } from "~/src/modules/product-attribute/product-attribute.constants"
 import {
   getProductAttributesByIds,
   deleteProductAttributes as productAttributeDeleteProductAttributes,
-} from "~/src/modules/product-attribute/product-attribute.server"
+} from "~/src/modules/product-attribute/product-attribute.accessors"
+import { PRODUCT_ATTRIBUTE_ERROR_CODES, PRODUCT_ATTRIBUTE_MUTATION_KEYS } from "~/src/modules/product-attribute/product-attribute.constants"
 import { productAttributeZodSchemas } from "~/src/modules/product-attribute/product-attribute.zod"
 
 export const deleteProductAttributes = createServerFn({ method: "POST" })

@@ -4,11 +4,11 @@ import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
+import { getByProductIdQuery } from "~/src/modules/attribute-on-product/attribute-on-product.accessors"
 import {
   ATTRIBUTE_ON_PRODUCT_QUERY_KEYS,
   ATTRIBUTE_ON_PRODUCT_QUERY_STALE_MS,
 } from "~/src/modules/attribute-on-product/attribute-on-product.constants"
-import { getByProductIdQuery } from "~/src/modules/attribute-on-product/attribute-on-product.server"
 import { attributeOnProductZodSchemas } from "~/src/modules/attribute-on-product/attribute-on-product.zod"
 
 export const getProductAttributes = createServerFn({ method: "GET" })

@@ -47,7 +47,7 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
   scheduleProductCatalogInvalidation: vi.fn(),
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderEmailOutcome, recordOrderReleasedAudit }))
-vi.mock("~/src/modules/attribute-on-product/attribute-on-product.server", () => ({ getFulfillmentTimeAttributesByVariantId: vi.fn() }))
+vi.mock("~/src/modules/attribute-on-product/attribute-on-product.accessors", () => ({ getFulfillmentTimeAttributesByVariantId: vi.fn() }))
 vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutEmailContext }))
 vi.mock("~/src/modules/checkout/use-cases/fulfill-checkout.server", () => ({ fulfillCheckout: vi.fn() }))
 vi.mock("~/src/modules/checkout/use-cases/release-checkout.server", () => ({ releaseCheckout }))

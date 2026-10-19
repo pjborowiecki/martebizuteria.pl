@@ -8,12 +8,12 @@ import { scheduleProductAttributeCatalogInvalidation } from "~/src/integrations/
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordCatalogAttributeCreatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { getNextProductAttributeRank, getProductAttributeByHandleQuery } from "~/src/modules/product-attribute/product-attribute.accessors"
 import {
   PRODUCT_ATTRIBUTE_ERROR_CODES,
   productAttributeTypeUsesAllowedValues,
 } from "~/src/modules/product-attribute/product-attribute.constants"
 import { productAttribute } from "~/src/modules/product-attribute/product-attribute.schema"
-import { getNextProductAttributeRank, getProductAttributeByHandleQuery } from "~/src/modules/product-attribute/product-attribute.server"
 import {
   normalizeAllowedValuesForSave,
   normalizeProductAttributeLocaleMapForSave,

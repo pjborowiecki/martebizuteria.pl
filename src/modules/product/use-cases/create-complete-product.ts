@@ -6,7 +6,10 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
-import { loadAttributeOnProductRows, prepareAttributeOnProductBatch } from "~/src/modules/attribute-on-product/attribute-on-product.utils"
+import {
+  loadAttributeOnProductRows,
+  prepareAttributeOnProductBatch,
+} from "~/src/modules/attribute-on-product/attribute-on-product.accessors"
 import { recordCatalogProductCreatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { prepareProductImagesBatch } from "~/src/modules/product-image/product-image.accessors"
 import {

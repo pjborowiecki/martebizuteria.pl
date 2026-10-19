@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { TEST_STORED_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
 
-import { type FulfillmentTimeAttribute } from "~/src/modules/attribute-on-product/attribute-on-product.server"
+import { type FulfillmentTimeAttribute } from "~/src/modules/attribute-on-product/attribute-on-product.types"
 import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
 
 type OrderConfirmationElement = ReactElement<ComponentProps<typeof OrderConfirmation>>
@@ -67,7 +67,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderPaymentFailedAudit: vi.fn(),
   recordOrderReleasedAudit: vi.fn(),
 }))
-vi.mock("~/src/modules/attribute-on-product/attribute-on-product.server", () => ({ getFulfillmentTimeAttributesByVariantId }))
+vi.mock("~/src/modules/attribute-on-product/attribute-on-product.accessors", () => ({ getFulfillmentTimeAttributesByVariantId }))
 vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutEmailContext }))
 vi.mock("~/src/modules/checkout/use-cases/fulfill-checkout.server", () => ({ fulfillCheckout }))
 vi.mock("~/src/modules/checkout/use-cases/release-checkout.server", () => ({ releaseCheckout: vi.fn() }))

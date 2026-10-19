@@ -1,11 +1,14 @@
 import { count, eq, isNull, sql } from "drizzle-orm"
 
+import { type DrizzleBatchStatement, insertRowChunks } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { attributeOnProduct } from "~/src/modules/attribute-on-product/attribute-on-product.schema"
+import { type AttributeOnProductRow, type FulfillmentTimeAttribute } from "~/src/modules/attribute-on-product/attribute-on-product.types"
+import { normalizeAttributeOnProductRows } from "~/src/modules/attribute-on-product/attribute-on-product.utils"
+import { getAdminProductAttributesQuery } from "~/src/modules/product-attribute/product-attribute.accessors"
 import { FULFILLMENT_TIME_ATTRIBUTE_HANDLE } from "~/src/modules/product-attribute/product-attribute.constants"
-import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
 
 export const getByProductIdQuery = db.query.attributeOnProduct
@@ -80,9 +83,31 @@ export const getFulfillmentTimeAttributesByVariantId = async (
   )
 }
 
-export interface FulfillmentTimeAttribute {
-  readonly allowedValues: readonly ProductAttribute["allowedValue"][] | null
-  readonly type: ProductAttribute["select"]["type"]
-  readonly unit: string | null
-  readonly value: string
+interface VariantAttributeGroup {
+  readonly rows: readonly AttributeOnProductRow[]
+  readonly variantId: string
 }
+
+export const loadAttributeOnProductRows = async (
+  productId: string,
+  productLevelRows: readonly AttributeOnProductRow[],
+  variantGroups: readonly VariantAttributeGroup[] = [],
+): Promise<(typeof attributeOnProduct.$inferInsert)[]> => {
+  const hasRows = productLevelRows.length > 0 || variantGroups.some((group) => group.rows.length > 0)
+  const productAttributes = hasRows ? await getAdminProductAttributesQuery.execute() : []
+
+  return [
+    ...normalizeAttributeOnProductRows({ productAttributes, productId, rows: productLevelRows }),
+    ...variantGroups.flatMap((group) =>
+      normalizeAttributeOnProductRows({ productAttributes, productId, rows: group.rows, variantId: group.variantId }),
+    ),
+  ]
+}
+
+export const prepareAttributeOnProductBatch = (
+  productId: string,
+  rows: readonly (typeof attributeOnProduct.$inferInsert)[],
+): DrizzleBatchStatement[] => [
+  db.delete(attributeOnProduct).where(eq(attributeOnProduct.productId, productId)),
+  ...insertRowChunks(attributeOnProduct, rows).map((chunk) => db.insert(attributeOnProduct).values(chunk)),
+]

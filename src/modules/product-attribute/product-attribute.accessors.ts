@@ -4,7 +4,7 @@ import { type RankUpdate, chunkRankUpdates, runDrizzleBatch } from "~/src/integr
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { getProductCountsByAttributeId } from "~/src/modules/attribute-on-product/attribute-on-product.server"
+import { getProductCountsByAttributeId } from "~/src/modules/attribute-on-product/attribute-on-product.accessors"
 import { productAttribute } from "~/src/modules/product-attribute/product-attribute.schema"
 import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 
