@@ -23,7 +23,7 @@ vi.mock("~/src/modules/collection-on-product/collection-on-product.accessors", (
   getCollectionProductTotalQuery: { execute: operations.productTotal },
   getProductCountsQuery: { execute: operations.productCounts },
 }))
-vi.mock("~/src/modules/product-collection/product-collection.server", () => ({
+vi.mock("~/src/modules/product-collection/product-collection.accessors", () => ({
   getAdminCollectionsQuery: { execute: operations.adminCollections },
   getCollectionStatusCountsQuery: { execute: operations.statusCounts },
   getStorefrontCollectionByHandleQuery: { execute: operations.byHandle },

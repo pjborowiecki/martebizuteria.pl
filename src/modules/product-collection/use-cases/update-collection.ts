@@ -9,9 +9,9 @@ import { scheduleCollectionCatalogInvalidation } from "~/src/integrations/realti
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordCatalogCollectionUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { normalizeProductAttributeLocaleMapForSave } from "~/src/modules/product-attribute/product-attribute.utils"
+import { getCollectionByHandleQuery } from "~/src/modules/product-collection/product-collection.accessors"
 import { COLLECTION_ERROR_CODES } from "~/src/modules/product-collection/product-collection.constants"
 import { productCollection } from "~/src/modules/product-collection/product-collection.schema"
-import { getCollectionByHandleQuery } from "~/src/modules/product-collection/product-collection.server"
 import { normalizeOptionalCollectionLocaleMapForSave } from "~/src/modules/product-collection/product-collection.utils"
 import { productCollectionZodSchemas } from "~/src/modules/product-collection/product-collection.zod"
 

@@ -4,8 +4,8 @@ import { createServerFn } from "@tanstack/react-start"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { getProductCountsQuery } from "~/src/modules/collection-on-product/collection-on-product.accessors"
+import { getAdminCollectionsQuery as productCollectionGetAdminCollectionsQuery } from "~/src/modules/product-collection/product-collection.accessors"
 import { COLLECTION_QUERY_KEYS, COLLECTION_QUERY_STALE_MS } from "~/src/modules/product-collection/product-collection.constants"
-import { getAdminCollectionsQuery as productCollectionGetAdminCollectionsQuery } from "~/src/modules/product-collection/product-collection.server"
 import { toAdminCollectionListItem } from "~/src/modules/product-collection/product-collection.utils"
 
 export const getAdminCollections = createServerFn({ method: "GET" })

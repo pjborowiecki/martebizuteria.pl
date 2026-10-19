@@ -23,7 +23,7 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordCatalogCollectionCreatedAudit: operations.audit,
 }))
-vi.mock("~/src/modules/product-collection/product-collection.server", () => ({
+vi.mock("~/src/modules/product-collection/product-collection.accessors", () => ({
   getCollectionByHandleQuery: { execute: operations.findByHandle },
   getMaxRankQuery: { execute: operations.maxRank },
 }))

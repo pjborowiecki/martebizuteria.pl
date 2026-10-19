@@ -22,7 +22,7 @@ vi.mock("~/src/modules/category-on-product/category-on-product.accessors", () =>
   getCategoryProductTotalQuery: { execute: access.query },
   getProductCountsQuery: { execute: access.query },
 }))
-vi.mock("~/src/modules/product-collection/product-collection.server", () => ({
+vi.mock("~/src/modules/product-collection/product-collection.accessors", () => ({
   getAdminCollectionsQuery: { execute: access.query },
   getCollectionStatusCountsQuery: { execute: access.query },
 }))

@@ -26,7 +26,7 @@ vi.mock("~/src/modules/product-category/product-category.server", () => ({
   getStorefrontCategoryByHandleQuery: { execute: access.categoryByHandle },
 }))
 
-vi.mock("~/src/modules/product-collection/product-collection.server", () => ({
+vi.mock("~/src/modules/product-collection/product-collection.accessors", () => ({
   getStorefrontCollectionByHandleQuery: { execute: access.collectionByHandle },
 }))
 

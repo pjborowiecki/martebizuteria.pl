@@ -8,8 +8,8 @@ import { scheduleCollectionCatalogInvalidation } from "~/src/integrations/realti
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordCatalogCollectionDeletedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { countProductsForCollections } from "~/src/modules/collection-on-product/collection-on-product.accessors"
+import { deleteCollections as productCollectionDeleteCollections } from "~/src/modules/product-collection/product-collection.accessors"
 import { COLLECTION_ERROR_CODES, COLLECTION_MUTATION_KEYS } from "~/src/modules/product-collection/product-collection.constants"
-import { deleteCollections as productCollectionDeleteCollections } from "~/src/modules/product-collection/product-collection.server"
 import { productCollectionZodSchemas } from "~/src/modules/product-collection/product-collection.zod"
 
 export const deleteCollections = createServerFn({ method: "POST" })

@@ -13,7 +13,7 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: v
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleCollectionCatalogInvalidation: operations.invalidate,
 }))
-vi.mock("~/src/modules/product-collection/product-collection.server", () => ({
+vi.mock("~/src/modules/product-collection/product-collection.accessors", () => ({
   setCollectionRanks: operations.setRanks,
 }))
 vi.mock("@tanstack/react-start", () => ({

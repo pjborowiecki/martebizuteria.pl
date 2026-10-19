@@ -4,8 +4,8 @@ import { createServerFn } from "@tanstack/react-start"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { getCollectionProductTotalQuery } from "~/src/modules/collection-on-product/collection-on-product.accessors"
+import { getCollectionStatusCountsQuery } from "~/src/modules/product-collection/product-collection.accessors"
 import { COLLECTION_QUERY_KEYS, COLLECTION_QUERY_STALE_MS } from "~/src/modules/product-collection/product-collection.constants"
-import { getCollectionStatusCountsQuery } from "~/src/modules/product-collection/product-collection.server"
 import { computeCollectionStats } from "~/src/modules/product-collection/product-collection.utils"
 
 export const getCollectionStats = createServerFn({ method: "GET" })

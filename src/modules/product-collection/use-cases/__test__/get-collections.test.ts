@@ -11,7 +11,7 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: v
 vi.mock("~/src/modules/collection-on-product/collection-on-product.accessors", () => ({
   getProductCountsQuery: { execute: accessors.productCounts },
 }))
-vi.mock("~/src/modules/product-collection/product-collection.server", () => ({
+vi.mock("~/src/modules/product-collection/product-collection.accessors", () => ({
   getAdminCollectionsQuery: { execute: accessors.adminCollections },
   getStorefrontCollectionsQuery: { execute: accessors.storefrontCollections },
 }))
