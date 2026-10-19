@@ -7,8 +7,8 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { getSubscriberById } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
 import { NEWSLETTER_ERROR_CODES, NEWSLETTER_MUTATION_KEYS } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
-import { unsubscribeSubscriber } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.unsubscribe.server"
 import { newsletterZodSchemas } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.zod"
+import { unsubscribeSubscriber } from "~/src/modules/newsletter-subscriber/use-cases/unsubscribe-subscriber.server"
 
 export const unsubscribeNewsletterSubscriber = createServerFn({ method: "POST" })
   .middleware([authorized({ user: ["update"] })])

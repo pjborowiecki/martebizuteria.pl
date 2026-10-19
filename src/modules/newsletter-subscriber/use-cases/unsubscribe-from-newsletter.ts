@@ -6,8 +6,8 @@ import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.
 
 import { NEWSLETTER_MUTATION_KEYS } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
-import { unsubscribeByToken } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.unsubscribe.server"
 import { newsletterZodSchemas } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.zod"
+import { unsubscribeByToken } from "~/src/modules/newsletter-subscriber/use-cases/unsubscribe-subscriber.server"
 
 export const unsubscribeFromNewsletter = createServerFn({ method: "POST" })
   .middleware([withRateLimit("newsletter-unsubscribe", RATE_LIMITS.SENSITIVE)])

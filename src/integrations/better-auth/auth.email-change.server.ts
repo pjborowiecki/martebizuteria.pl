@@ -11,7 +11,7 @@ import { updateStripeCustomerEmail } from "~/src/integrations/stripe/stripe.cust
 import { resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.utils"
 import { recordAuthEmailChangedAudit } from "~/src/modules/audit-log/use-cases/record-auth-audit.server"
 import { recordCustomerStripeEmailFailedAudit } from "~/src/modules/audit-log/use-cases/record-customer-audit.server"
-import { followAccountAddressChange } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.address-change.server"
+import { followAccountAddressChange } from "~/src/modules/newsletter-subscriber/use-cases/follow-account-address-change.server"
 import { session } from "~/src/modules/session/session.schema"
 import { sendEmailChangedEmail } from "~/src/modules/user/use-cases/send-email-changed-email.server"
 import { deleteVerificationsOfUser } from "~/src/modules/verification/verification.accessors"

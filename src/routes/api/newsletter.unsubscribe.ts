@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
 import { NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
-import { unsubscribeByToken } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.unsubscribe.server"
 import { newsletterZodSchemas } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.zod"
+import { unsubscribeByToken } from "~/src/modules/newsletter-subscriber/use-cases/unsubscribe-subscriber.server"
 
 export const Route = createFileRoute("/api/newsletter/unsubscribe")({
   server: {

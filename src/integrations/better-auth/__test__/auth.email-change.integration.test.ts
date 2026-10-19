@@ -71,7 +71,7 @@ vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", async () 
   recordEmailFailedAudit: vi.fn(),
   recordEmailSentAudit: vi.fn(),
 }))
-vi.mock(import("~/src/modules/newsletter-subscriber/newsletter-subscriber.address-change.server"), async (importOriginal) => {
+vi.mock(import("~/src/modules/newsletter-subscriber/use-cases/follow-account-address-change.server"), async (importOriginal) => {
   const { followAccountAddressChange } = await importOriginal()
 
   return { followAccountAddressChange: vi.fn(followAccountAddressChange) }
@@ -90,7 +90,7 @@ const customerAudit = await import("~/src/modules/audit-log/use-cases/record-cus
 
 const emailAudit = await import("~/src/modules/audit-log/use-cases/record-email-audit.server")
 
-const newsletter = await import("~/src/modules/newsletter-subscriber/newsletter-subscriber.address-change.server")
+const newsletter = await import("~/src/modules/newsletter-subscriber/use-cases/follow-account-address-change.server")
 
 const HOUR_MS = 3_600_000
 

@@ -5,7 +5,7 @@ import { RATE_LIMITS, authorized, withRateLimit } from "~/src/integrations/bette
 
 import { getSubscriberByEmail, normalizeSubscriberEmail } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
 import { NEWSLETTER_MUTATION_KEYS } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
-import { unsubscribeSubscriber } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.unsubscribe.server"
+import { unsubscribeSubscriber } from "~/src/modules/newsletter-subscriber/use-cases/unsubscribe-subscriber.server"
 
 export const unsubscribeOwnNewsletter = createServerFn({ method: "POST" })
   .middleware([withRateLimit("newsletter-unsubscribe-own", RATE_LIMITS.SENSITIVE), authorized()])
