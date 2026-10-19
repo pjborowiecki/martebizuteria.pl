@@ -48,8 +48,8 @@ import {
 } from "~/src/modules/discount/discount.claim.server"
 import { type Discount } from "~/src/modules/discount/discount.types"
 import { releaseInventoryForItems } from "~/src/modules/inventory/inventory.accessors"
-import { quantitiesBeyond, sumHeldQuantity } from "~/src/modules/inventory/inventory.availability.utils"
-import { reserveInventoryForItems } from "~/src/modules/inventory/inventory.utils"
+import { quantitiesBeyond, sumHeldQuantity } from "~/src/modules/inventory/inventory.utils"
+import { reserveInventoryForItems } from "~/src/modules/inventory/use-cases/reserve-inventory.server"
 import { type OrderTotals, computeOrderTotals, sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
 import {
   createPendingPayment,

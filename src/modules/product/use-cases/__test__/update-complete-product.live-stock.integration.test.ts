@@ -8,7 +8,7 @@ import { ROLES } from "~/src/integrations/better-auth/auth.access"
 import { countOpenCheckouts } from "~/src/modules/checkout/use-cases/count-open-checkouts.server"
 import { fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
 import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checkout.server"
-import { reserveInventoryForItems } from "~/src/modules/inventory/inventory.utils"
+import { reserveInventoryForItems } from "~/src/modules/inventory/use-cases/reserve-inventory.server"
 import {
   buildAllProductImageRows,
   buildProductLevelAttributeRows,

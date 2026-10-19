@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react"
 
-import { getVariantQuantityAvailable } from "~/src/modules/inventory/inventory.availability.utils"
+import { getVariantQuantityAvailable } from "~/src/modules/inventory/inventory.utils"
 import { type Product } from "~/src/modules/product/product.types"
 
 const variantsMatchSelection = (variant: Product["storefrontVariant"], selection: Readonly<Record<string, string>>): boolean =>

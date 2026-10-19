@@ -1,46 +1,32 @@
-import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
+import { type ReserveInventoryVariantLine, type VariantWithInventory } from "~/src/modules/inventory/inventory.types"
 
-import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { releaseInventoryForItems, reserveInventoryRows } from "~/src/modules/inventory/inventory.accessors"
+export const getVariantQuantityAvailable = (variant: VariantWithInventory | undefined): number => variant?.inventory?.quantityAvailable ?? 0
 
-export interface ReserveInventoryItem {
-  inventoryId: string
-  qty: number
-  title: string
-}
-
-export interface ReleaseInventoryItem {
-  inventoryId: string
-  qty: number
-}
-
-export interface ReserveInventoryVariantLine {
-  qty: number
-  variantId: string
-}
-
-const mergeLinesByInventory = (items: readonly ReserveInventoryItem[]): ReserveInventoryItem[] => {
-  const merged = new Map<string, ReserveInventoryItem>()
-  for (const item of items) {
-    const existing = merged.get(item.inventoryId)
-    merged.set(item.inventoryId, existing === undefined ? item : { ...existing, qty: existing.qty + item.qty })
+export const isVariantPurchasable = (variant: VariantWithInventory | undefined, quantity: number): boolean => {
+  if (quantity <= 0) {
+    return false
   }
 
-  return [...merged.values()]
+  return getVariantQuantityAvailable(variant) >= quantity
 }
 
-export const reserveInventoryForItems = async (items: readonly ReserveInventoryItem[]): Promise<void> => {
-  const lines = mergeLinesByInventory(items)
-  const reservedIds = await reserveInventoryRows(lines)
+export const resolveProductTotalAvailableStock = (variants: readonly VariantWithInventory[]): number =>
+  variants.reduce((sum, variant) => sum + getVariantQuantityAvailable(variant), 0)
 
-  const firstFailure = lines.find((line) => !reservedIds.has(line.inventoryId))
-  if (firstFailure !== undefined) {
-    const reserved = lines.filter((line) => reservedIds.has(line.inventoryId))
-    await releaseInventoryForItems(reserved).catch((error: unknown) => {
-      console.error("Failed to roll back partial inventory reservation:", error)
-    })
+export const isProductInStock = (variants: readonly VariantWithInventory[]): boolean => resolveProductTotalAvailableStock(variants) > 0
 
-    console.warn(`Inventory reservation failed for ${firstFailure.title}. Not enough stock available.`)
-    throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY)
-  }
-}
+export const sumHeldQuantity = (heldLines: readonly ReserveInventoryVariantLine[], variantId: string): number =>
+  heldLines.reduce((total, line) => (line.variantId === variantId ? total + line.qty : total), 0)
+
+export const quantitiesBeyond = <Line extends ReserveInventoryVariantLine>(
+  lines: readonly Line[],
+  baselineLines: readonly ReserveInventoryVariantLine[],
+): Line[] =>
+  lines.flatMap((line, index) => {
+    const baselineLeft = Math.max(
+      0,
+      sumHeldQuantity(baselineLines, line.variantId) - sumHeldQuantity(lines.slice(0, index), line.variantId),
+    )
+
+    return line.qty > baselineLeft ? [{ ...line, qty: line.qty - baselineLeft }] : []
+  })

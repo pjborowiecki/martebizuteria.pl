@@ -9,7 +9,8 @@ import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
 import { releaseInventoryForItems, reserveInventoryRows } from "~/src/modules/inventory/inventory.accessors"
 import { inventory } from "~/src/modules/inventory/inventory.schema"
-import { type ReserveInventoryItem, reserveInventoryForItems } from "~/src/modules/inventory/inventory.utils"
+import { type ReserveInventoryItem } from "~/src/modules/inventory/inventory.types"
+import { reserveInventoryForItems } from "~/src/modules/inventory/use-cases/reserve-inventory.server"
 import { getPublishedProductsWithInventoryByHandles } from "~/src/modules/product/product.accessors"
 
 const { sqlite, trips } = await vi.hoisted(async () => {

@@ -8,7 +8,7 @@ import { CHECKOUT_SESSION_ID_MAX_LENGTH } from "~/src/integrations/stripe/stripe
 import { CART_LINES_MAX, CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { type CartUnitPrice } from "~/src/modules/cart/cart.pricing"
 import { getAvailabilityByVariantIds } from "~/src/modules/inventory/inventory.accessors"
-import { sumHeldQuantity } from "~/src/modules/inventory/inventory.availability.utils"
+import { sumHeldQuantity } from "~/src/modules/inventory/inventory.utils"
 import { getHeldLinesByTransactionId } from "~/src/modules/payment/payment.accessors"
 import { getSellPricesByVariantIds } from "~/src/modules/product-variant/product-variant.accessors"
 import { PRODUCT_VARIANT_COLUMN_LENGTH } from "~/src/modules/product-variant/product-variant.constants"
