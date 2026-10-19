@@ -65,7 +65,7 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
 vi.mock("~/src/lib/incident-alert.server", () => ({ sendIncidentAlert }))
 vi.mock("~/src/modules/order/use-cases/send-new-order-email.server", () => ({ sendNewOrderEmail }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
-vi.mock("~/src/modules/order-withdrawal/order-withdrawal.form.server", () => ({
+vi.mock("~/src/modules/order-withdrawal/use-cases/load-withdrawal-form-attachment.server", () => ({
   loadWithdrawalFormAttachment: vi.fn(() => Promise.resolve({ content: "JVBERi0=", filename: "formularz_zwrotu.pdf" })),
 }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({

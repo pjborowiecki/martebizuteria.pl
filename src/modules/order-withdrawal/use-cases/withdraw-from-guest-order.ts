@@ -13,9 +13,9 @@ import {
   ORDER_WITHDRAWAL_OUTCOME,
   ORDER_WITHDRAWAL_SCOPE,
 } from "~/src/modules/order-withdrawal/order-withdrawal.constants"
-import { recordOrderWithdrawal, sendOrderWithdrawalEmails } from "~/src/modules/order-withdrawal/order-withdrawal.record.server"
 import { presentText } from "~/src/modules/order-withdrawal/order-withdrawal.utils"
 import { orderWithdrawalZodSchemas } from "~/src/modules/order-withdrawal/order-withdrawal.zod"
+import { recordOrderWithdrawal, sendOrderWithdrawalEmails } from "~/src/modules/order-withdrawal/use-cases/record-order-withdrawal.server"
 import { orderReachableAt, orderRecipientEmail } from "~/src/modules/order/order.accessors"
 import { order } from "~/src/modules/order/order.schema"
 

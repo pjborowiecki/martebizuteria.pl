@@ -15,10 +15,10 @@ import {
   ORDER_WITHDRAWAL_OUTCOME,
   ORDER_WITHDRAWAL_SCOPE,
 } from "~/src/modules/order-withdrawal/order-withdrawal.constants"
-import { recordOrderWithdrawal, sendOrderWithdrawalEmails } from "~/src/modules/order-withdrawal/order-withdrawal.record.server"
 import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
 import { describeWithdrawnItems, presentText } from "~/src/modules/order-withdrawal/order-withdrawal.utils"
 import { orderWithdrawalZodSchemas } from "~/src/modules/order-withdrawal/order-withdrawal.zod"
+import { recordOrderWithdrawal, sendOrderWithdrawalEmails } from "~/src/modules/order-withdrawal/use-cases/record-order-withdrawal.server"
 import { orderRecipientEmail } from "~/src/modules/order/order.accessors"
 import { order } from "~/src/modules/order/order.schema"
 
