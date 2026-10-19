@@ -47,7 +47,7 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.ws.serve
 vi.mock("~/src/modules/audit-log/use-cases/process-audit-log-queue.server", () => queue)
 vi.mock("~/src/lib/sitemap", () => sitemap)
 vi.mock("~/src/lib/retention", () => retention)
-vi.mock("~/src/modules/newsletter-campaign/newsletter-campaign.queue.server", () => newsletterQueue)
+vi.mock("~/src/modules/newsletter-campaign/use-cases/process-newsletter-queue.server", () => newsletterQueue)
 
 const { default: server } = await import("~/src/server")
 

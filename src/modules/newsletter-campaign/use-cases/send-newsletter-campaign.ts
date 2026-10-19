@@ -16,8 +16,8 @@ import {
   NEWSLETTER_CAMPAIGN_QUERY_KEYS,
   NEWSLETTER_CAMPAIGN_STATUS,
 } from "~/src/modules/newsletter-campaign/newsletter-campaign.constants"
-import { enqueueNewsletterCampaign } from "~/src/modules/newsletter-campaign/newsletter-campaign.queue.server"
 import { newsletterCampaignZodSchemas } from "~/src/modules/newsletter-campaign/newsletter-campaign.zod"
+import { enqueueNewsletterCampaign } from "~/src/modules/newsletter-campaign/use-cases/process-newsletter-queue.server"
 import { countConfirmedSubscribers } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
 
 import { resolveRequestOrigin } from "~/src/lib/request"
