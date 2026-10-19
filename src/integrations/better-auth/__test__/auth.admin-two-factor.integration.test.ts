@@ -39,7 +39,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audit)
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminCustomersInvalidation: vi.fn(),
 }))
-vi.mock("~/src/modules/order/order.claim.server", () => ({ claimGuestOrdersForUser: vi.fn(() => Promise.resolve(0)) }))
+vi.mock("~/src/modules/order/use-cases/claim-guest-orders.server", () => ({ claimGuestOrdersForUser: vi.fn(() => Promise.resolve(0)) }))
 vi.mock("~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors", () => ({
   linkSubscriberToUser: vi.fn(() => Promise.resolve()),
 }))

@@ -25,7 +25,7 @@ vi.mock("~/src/modules/order/order.accessors", () => ({
   getOrderMetadata: accessors.getOrderMetadata,
   updateOrderMetadata: accessors.updateOrderMetadata,
 }))
-vi.mock("~/src/modules/order/order.settled.server", () => ({
+vi.mock("~/src/modules/order/use-cases/find-settled-order.server", () => ({
   findSettledOrder: () => Promise.resolve(settled.current),
 }))
 

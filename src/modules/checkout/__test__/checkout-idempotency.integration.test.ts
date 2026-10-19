@@ -12,8 +12,8 @@ import {
   prepareFulfillCheckoutBatch,
   resolvePendingCheckout,
 } from "~/src/modules/checkout/checkout.utils"
-import { currentOrderNumberPeriod } from "~/src/modules/order/order.number.server"
-import { computeOrderTotals } from "~/src/modules/order/order.totals"
+import { computeOrderTotals } from "~/src/modules/order/order.utils"
+import { currentOrderNumberPeriod } from "~/src/modules/order/use-cases/allocate-order-number.server"
 
 const { queries, sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")

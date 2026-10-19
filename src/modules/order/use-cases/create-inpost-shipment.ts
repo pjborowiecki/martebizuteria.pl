@@ -11,13 +11,12 @@ import { type InpostShipmentDraft, postShipxShipment } from "~/src/integrations/
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordOrderShipmentCreatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { getAdminOrderDetailRow } from "~/src/modules/order/order.accessors"
-import { assertOrderActionState } from "~/src/modules/order/order.admin-action.server"
-import { canCreateAdminOrderInpostShipment } from "~/src/modules/order/order.admin-actions.utils"
 import { DISPATCHED_FULFILLMENT_STATUSES, ORDER_ERROR_CODES, ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
-import { resolveOrderShippingAddressRow } from "~/src/modules/order/order.detail.utils"
 import { order } from "~/src/modules/order/order.schema"
-import { bookedInpostShipmentColumns } from "~/src/modules/order/order.shipment.server"
+import { canCreateAdminOrderInpostShipment, resolveOrderShippingAddressRow } from "~/src/modules/order/order.utils"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
+import { bookedInpostShipmentColumns } from "~/src/modules/order/use-cases/sync-order-inpost-shipment.server"
+import { assertOrderActionState } from "~/src/modules/order/use-cases/transition-order.server"
 
 type ShipmentInput = zod.output<typeof orderZodSchemas.adminCreateInpostShipmentInput>
 

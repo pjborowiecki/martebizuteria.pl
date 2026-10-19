@@ -5,13 +5,12 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { getAdminOrderRefundTarget } from "~/src/modules/order/order.accessors"
-import { assertOrderActionState } from "~/src/modules/order/order.admin-action.server"
-import { canRefundAdminOrder } from "~/src/modules/order/order.admin-actions.utils"
 import { ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
-import { resolveAdminOrderPaymentUiKey } from "~/src/modules/order/order.display.utils"
-import { requestFullOrderRefund } from "~/src/modules/order/order.refund.server"
-import { returnOrderToStock } from "~/src/modules/order/order.restock.server"
+import { canRefundAdminOrder, resolveAdminOrderPaymentUiKey } from "~/src/modules/order/order.utils"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
+import { requestFullOrderRefund } from "~/src/modules/order/use-cases/request-full-order-refund.server"
+import { returnOrderToStock } from "~/src/modules/order/use-cases/return-order-to-stock.server"
+import { assertOrderActionState } from "~/src/modules/order/use-cases/transition-order.server"
 
 export const refundAdminOrder = createServerFn({ method: "POST" })
   .middleware([authorized({ order: ["update", "refund"] })])

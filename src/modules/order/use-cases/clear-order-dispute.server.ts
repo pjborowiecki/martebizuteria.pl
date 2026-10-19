@@ -1,6 +1,6 @@
 import { getOrderMetadata, updateOrderMetadata } from "~/src/modules/order/order.accessors"
-import { clearDisputeMetadata } from "~/src/modules/order/order.display.utils"
-import { findSettledOrder } from "~/src/modules/order/order.settled.server"
+import { clearDisputeMetadata } from "~/src/modules/order/order.utils"
+import { findSettledOrder } from "~/src/modules/order/use-cases/find-settled-order.server"
 
 export const clearOrderDispute = async (transactionId: string): Promise<void> => {
   const settled = await findSettledOrder(transactionId)

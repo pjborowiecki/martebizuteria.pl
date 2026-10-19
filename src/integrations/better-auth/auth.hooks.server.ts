@@ -34,7 +34,7 @@ import {
 } from "~/src/modules/audit-log/audit-log.events.server"
 import { SYSTEM_AUDIT_ACTOR } from "~/src/modules/audit-log/audit-log.record.server"
 import { linkSubscriberToUser } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
-import { claimGuestOrdersForUser } from "~/src/modules/order/order.claim.server"
+import { claimGuestOrdersForUser } from "~/src/modules/order/use-cases/claim-guest-orders.server"
 import { sendAccountDeletedEmail } from "~/src/modules/user/use-cases/send-account-deleted-email.server"
 import { getUserById } from "~/src/modules/user/user.accessors"
 import { eraseAccountData } from "~/src/modules/user/user.erasure.server"

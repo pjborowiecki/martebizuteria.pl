@@ -10,9 +10,12 @@ vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => ({
 }))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: { batch: reads.batch } }))
-vi.mock("~/src/modules/order/order.dashboard.accessors", async (importOriginal) => ({
+vi.mock("~/src/modules/order/order.accessors", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   orderAggregatesQuery: reads.query,
+}))
+vi.mock("~/src/modules/order/use-cases/get-dashboard-snapshot.server", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   recentOrdersQuery: reads.query,
   salesTotalsQuery: reads.query,
   topProductsQuery: reads.query,

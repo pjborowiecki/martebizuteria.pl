@@ -7,11 +7,11 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { recordOrderShippedAudit } from "~/src/modules/audit-log/audit-log.events.server"
-import { assertOrderActionState, getAdminOrderActionRow, transitionOrder } from "~/src/modules/order/order.admin-action.server"
-import { canMarkAdminOrderShipped } from "~/src/modules/order/order.admin-actions.utils"
 import { ORDER_MUTATION_KEYS, SHIPPABLE_FULFILLMENT_STATUSES } from "~/src/modules/order/order.constants"
+import { canMarkAdminOrderShipped } from "~/src/modules/order/order.utils"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 import { announceOrderShipment } from "~/src/modules/order/use-cases/announce-order-shipment.server"
+import { assertOrderActionState, getAdminOrderActionRow, transitionOrder } from "~/src/modules/order/use-cases/transition-order.server"
 
 import { resolveRequestOrigin } from "~/src/lib/request"
 

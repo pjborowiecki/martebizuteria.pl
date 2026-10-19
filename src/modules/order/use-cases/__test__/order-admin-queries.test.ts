@@ -2,7 +2,7 @@ import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
-import { type toAdminOrderListItem } from "~/src/modules/order/order.display.utils"
+import { type toAdminOrderListItem } from "~/src/modules/order/order.utils"
 
 import { exportAdminOrders } from "../export-admin-orders"
 import { getAdminOrderStats, getAdminOrderStatsQuery } from "../get-admin-order-stats"

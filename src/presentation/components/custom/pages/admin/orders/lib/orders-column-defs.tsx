@@ -13,8 +13,8 @@ import {
   ADMIN_ORDER_TABLE_COLUMN_ID,
   ADMIN_ORDER_TABLE_COLUMN_SIZE,
 } from "~/src/modules/order/order.constants"
-import { formatAdminOrderDate } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
+import { formatAdminOrderDate } from "~/src/modules/order/order.utils"
 
 import { selectionColumn } from "~/src/presentation/components/custom/datagrid/components/selection-column"
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"

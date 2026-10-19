@@ -6,7 +6,6 @@ import { createTranslator } from "use-intl"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
-import { type OrderAccountCta } from "~/src/modules/order/order.email.utils"
 
 import type emailMessages from "~/messages/en-US/emails.order-cancelled.json"
 import {
@@ -19,6 +18,7 @@ import {
   EmailDetailRow,
 } from "~/src/presentation/emails/email-highlight-box"
 import { EmailLayout } from "~/src/presentation/emails/email-layout"
+import { type OrderAccountCta } from "~/src/presentation/emails/order-email-content"
 
 export const ORDER_CANCELLED_NAMESPACE = "emails.order-cancelled"
 

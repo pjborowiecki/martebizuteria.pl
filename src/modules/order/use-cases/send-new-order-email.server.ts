@@ -10,22 +10,22 @@ import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { getAdminOrderDetailRow, getAdminOrderItemRows } from "~/src/modules/order/order.accessors"
 import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
+import { type Order } from "~/src/modules/order/order.types"
 import {
   describeOrderLocker,
+  formatOrderAddressLocality,
   mapAdminOrderDetailItem,
   resolveAdminOrderDetailAddresses,
   resolveOrderLocker,
-} from "~/src/modules/order/order.detail.utils"
-import { formatOrderAddressLocality } from "~/src/modules/order/order.display.utils"
-import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
-import { describeCompanyInvoice, resolveDeliveryMethodLabel } from "~/src/modules/order/order.email.utils"
-import { type Order } from "~/src/modules/order/order.types"
+} from "~/src/modules/order/order.utils"
+import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/use-cases/deliver-order-email.server"
 
 import { resolveDeploymentOrigin } from "~/src/lib/request"
 import { buildLocalizedUrl } from "~/src/lib/seo"
 
 import type newOrderMessages from "~/messages/en-US/emails.new-order.json"
 import { NEW_ORDER_NAMESPACE, NewOrder, type NewOrderDetails } from "~/src/presentation/emails/new-order"
+import { describeCompanyInvoice, resolveDeliveryMethodLabel } from "~/src/presentation/emails/order-email-content"
 import { ROUTES } from "~/src/routes"
 
 const NEW_ORDER_LABEL = "New order notification"

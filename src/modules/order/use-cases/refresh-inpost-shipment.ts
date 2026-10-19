@@ -6,9 +6,9 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
-import { requireOrderInpostShipment, syncOrderInpostShipment } from "~/src/modules/order/order.shipment.server"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 import { announceOrderShipment } from "~/src/modules/order/use-cases/announce-order-shipment.server"
+import { requireOrderInpostShipment, syncOrderInpostShipment } from "~/src/modules/order/use-cases/sync-order-inpost-shipment.server"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
 import { resolveRequestOrigin } from "~/src/lib/request"

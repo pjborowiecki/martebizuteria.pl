@@ -2,8 +2,8 @@ import { type JSX } from "react"
 
 import { useTranslations } from "use-intl/react"
 
-import { resolveAdminOrderDeliveryLocker } from "~/src/modules/order/order.detail.utils"
 import { type Order } from "~/src/modules/order/order.types"
+import { resolveAdminOrderDeliveryLocker } from "~/src/modules/order/order.utils"
 
 import { OrderAddressLines } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-address-lines"
 import {

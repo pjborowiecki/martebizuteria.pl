@@ -7,7 +7,8 @@ import { type FulfillCheckoutInput, prepareFulfillCheckoutBatch } from "~/src/mo
 import { prepareDiscountRedemption } from "~/src/modules/discount/discount.redeem.server"
 import { calculateDiscountAmount } from "~/src/modules/discount/discount.utils"
 import { getOrderByCheckoutId } from "~/src/modules/order/order.accessors"
-import { type OrderTotals, computeOrderTotals, sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
+import { type OrderTotals } from "~/src/modules/order/order.types"
+import { computeOrderTotals, sumOrderLineSubtotal } from "~/src/modules/order/order.utils"
 
 const NO_AMOUNT = 0
 

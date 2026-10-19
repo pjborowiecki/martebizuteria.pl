@@ -6,9 +6,9 @@ import { useTranslations } from "use-intl/react"
 import { INPOST_CANCELED_SHIPMENT_STATUS, type InpostParcelTemplate } from "~/src/integrations/inpost/inpost.constants"
 import { formatInpostLockerAddress } from "~/src/integrations/inpost/inpost.utils"
 
-import { canCreateAdminOrderInpostShipment, isInpostDelivery } from "~/src/modules/order/order.admin-actions.utils"
 import { type InpostDeliveryType } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
+import { canCreateAdminOrderInpostShipment, isInpostDelivery } from "~/src/modules/order/order.utils"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"

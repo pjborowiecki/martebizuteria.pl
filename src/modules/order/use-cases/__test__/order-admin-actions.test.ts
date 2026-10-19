@@ -73,7 +73,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderFulfillmentStartedAudit: audit.fulfillmentStarted,
   recordOrderShippedAudit: audit.shipped,
 }))
-vi.mock(import("~/src/modules/order/order.admin-action.server"), async (importOriginal) => {
+vi.mock(import("~/src/modules/order/use-cases/transition-order.server"), async (importOriginal) => {
   const actual = await importOriginal()
 
   return { ...actual, getAdminOrderActionRow: () => Promise.resolve(orderRow.current) }

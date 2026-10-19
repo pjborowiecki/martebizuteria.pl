@@ -5,8 +5,8 @@ import { ArrowRight } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
-import { formatAdminOrderDate } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
+import { formatAdminOrderDate } from "~/src/modules/order/order.utils"
 
 import { useDisplayTimeZone, useFormatLocale } from "~/src/hooks/use-display-format"
 

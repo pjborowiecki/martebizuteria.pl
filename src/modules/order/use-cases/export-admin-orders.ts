@@ -8,9 +8,9 @@ import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { recordListExportedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { getAdminOrdersExport as orderGetAdminOrdersExport } from "~/src/modules/order/order.accessors"
-import { loadAdminOrderListItems } from "~/src/modules/order/order.admin-list.server"
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
+import { loadAdminOrderListItems } from "~/src/modules/order/use-cases/load-admin-order-list-items.server"
 
 const buildAdminOrdersExportParams = (input: zod.output<typeof orderZodSchemas.adminOrdersExportInput>, timeZone: string) => ({
   filters: {

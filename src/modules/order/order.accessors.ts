@@ -1,7 +1,8 @@
-import { type SQL, and, asc, count, desc, eq, inArray, ne, not, notInArray, or, sql } from "drizzle-orm"
+import { type SQL, and, asc, count, desc, eq, gte, inArray, lt, ne, not, notInArray, or, sql } from "drizzle-orm"
+import { type BatchItem } from "drizzle-orm/batch"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
-import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
+import { calendarPeriodKey, inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
@@ -23,13 +24,14 @@ import {
   ADMIN_ORDER_TIMELINE_ACTIONS,
   type AdminOrderStatFilter,
   type AdminOrderTab,
+  CANCELLED_ORDER_STATUSES,
   CUSTOMER_ACCOUNT_ORDERS_LIMIT,
   CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT,
   type CustomerAccountOrderFilter,
   ORDER_SALE_STATUSES,
 } from "~/src/modules/order/order.constants"
 import { order } from "~/src/modules/order/order.schema"
-import { type Order } from "~/src/modules/order/order.types"
+import { type AdminDashboardChartWindow, type Order } from "~/src/modules/order/order.types"
 import { payment } from "~/src/modules/payment/payment.schema"
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
 import { product } from "~/src/modules/product/product.schema"
@@ -43,6 +45,22 @@ const orderNetSales = sql<number>`max(${order.total} - coalesce(${payment.refund
 export const netSalesSum = sql<number>`coalesce(sum(${orderNetSales}), 0)`
 
 export const netSalesAverage = sql<number>`case when count(*) > 0 then cast(round(${netSalesSum} * 1.0 / count(*)) as integer) else 0 end`
+
+export const orderAggregatesQuery = ({ end, periods, start }: AdminDashboardChartWindow) => {
+  const periodKey = calendarPeriodKey(order.createdAt, periods)
+
+  return db
+    .select({
+      orders: sql<number>`count(*)`,
+      periodKey,
+      revenue: netSalesSum,
+    })
+    .from(order)
+    .leftJoin(payment, eq(order.paymentId, payment.id))
+    .where(and(gte(order.createdAt, start), lt(order.createdAt, end), orderCountsAsSale))
+    .groupBy(periodKey)
+    .orderBy(periodKey)
+}
 
 const orderAtFulfillmentStatuses = (fulfillmentStatuses: readonly Order["select"]["fulfillmentStatus"][]): SQL =>
   and(notInArray(order.status, ["pending", "cancelled"]), inArray(order.fulfillmentStatus, [...fulfillmentStatuses]))!
@@ -741,3 +759,33 @@ export const customerOrderItemThumbnail = sql<string | null>`coalesce(${orderIte
 export const customerOrderItemVariantTitle = sql<string | null>`coalesce(${orderItem.variantTitle}, ${productVariant.title})`.as(
   "variant_title",
 )
+
+const prepareFullOrderRefund = (orderId: string): BatchItem<"sqlite"> =>
+  db
+    .update(order)
+    .set({
+      status: "refunded",
+    })
+    .where(and(eq(order.id, orderId), notInArray(order.status, [...CANCELLED_ORDER_STATUSES])))
+
+export const prepareRefundBatch = (settled: Order["settled"], { fullyRefunded, refundedAmount }: Order["refundInput"]) =>
+  [
+    db
+      .select({
+        orderStatus: order.status,
+        paymentStatus: sql<(typeof payment.$inferSelect)["status"]>`${payment.status}`.as("payment_status"),
+        refundedAmount: payment.refundedAmount,
+      })
+      .from(payment)
+      .leftJoin(order, eq(order.paymentId, payment.id))
+      .where(eq(payment.id, settled.paymentId)),
+    db
+      .update(payment)
+      .set({
+        refundedAmount: sql`max(${payment.refundedAmount}, ${refundedAmount})`,
+        refundedAt: new Date(),
+        status: fullyRefunded ? "refunded" : "succeeded",
+      })
+      .where(and(eq(payment.id, settled.paymentId), ne(payment.status, "refunded"))),
+    ...(fullyRefunded && settled.orderId !== undefined ? [prepareFullOrderRefund(settled.orderId)] : []),
+  ] as const

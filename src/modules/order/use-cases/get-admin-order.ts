@@ -8,6 +8,7 @@ import { isInpostShipxConfigured } from "~/src/integrations/inpost/inpost.shipx.
 import { parseInpostLockerPoint } from "~/src/integrations/inpost/inpost.utils"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
+import { type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
 import { getOrderWithdrawals } from "~/src/modules/order-withdrawal/order-withdrawal.accessors"
 import {
   type AdminOrderCustomerStats,
@@ -16,26 +17,30 @@ import {
   getAdminOrderItemRows,
   getAdminOrderTimelineRows,
 } from "~/src/modules/order/order.accessors"
-import { canRestockAdminOrder } from "~/src/modules/order/order.admin-actions.utils"
-import { ORDER_QUERY_KEYS, ORDER_QUERY_STALE_MS } from "~/src/modules/order/order.constants"
 import {
-  buildAdminOrderDetailCustomer,
-  buildAdminOrderFulfillmentSteps,
+  ADMIN_ORDER_DETAIL_RETURNING_MIN_ORDERS,
+  ADMIN_ORDER_DETAIL_TAG,
+  ADMIN_ORDER_FULFILLMENT_STEPS,
+  type AdminOrderDetailTag,
+  type AdminOrderFulfillmentStepKey,
+  ORDER_QUERY_KEYS,
+  ORDER_QUERY_STALE_MS,
+} from "~/src/modules/order/order.constants"
+import { type Order } from "~/src/modules/order/order.types"
+import {
+  canRestockAdminOrder,
   mapAdminOrderDetailItem,
   mapAdminOrderTimeline,
   resolveAdminOrderDetailAddresses,
-  resolveAdminOrderDetailTags,
-} from "~/src/modules/order/order.detail.utils"
-import {
   resolveAdminOrderDispute,
   resolveAdminOrderEmailedSteps,
   resolveAdminOrderFulfillmentUiKey,
   resolveAdminOrderPaymentUiKey,
   resolveOrderTrackingUrl,
-} from "~/src/modules/order/order.display.utils"
-import { type Order } from "~/src/modules/order/order.types"
+} from "~/src/modules/order/order.utils"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 import { resolveLocalizedString } from "~/src/modules/product-attribute/product-attribute.utils"
+import { resolveAdminCustomerInitials } from "~/src/modules/user/user.utils"
 
 type AdminOrderDetailRow = NonNullable<Awaited<ReturnType<typeof getAdminOrderDetailRow>>>
 
@@ -44,6 +49,136 @@ type AdminOrderTimelineRows = Awaited<ReturnType<typeof getAdminOrderTimelineRow
 const GUEST_CUSTOMER_STATS: AdminOrderCustomerStats = {
   orderCount: 0,
   totalSpent: 0,
+}
+
+const resolveFulfillmentStepAt = (key: AdminOrderFulfillmentStepKey, snapshot: AdminOrderFulfillmentSnapshot): Date | undefined => {
+  if (key === "confirmed") {
+    return snapshot.createdAt
+  }
+
+  if (key === "processing") {
+    return snapshot.fulfillmentStartedAt ?? undefined
+  }
+
+  if (key === "shipped") {
+    return snapshot.shippedAt ?? undefined
+  }
+
+  return snapshot.deliveredAt ?? undefined
+}
+
+export const buildAdminOrderFulfillmentSteps = (snapshot: AdminOrderFulfillmentSnapshot): Order["adminOrderDetail"]["fulfillmentSteps"] => {
+  if (snapshot.canceledAt !== null) {
+    return []
+  }
+
+  const reached = (ADMIN_ORDER_FULFILLMENT_STEPS as readonly string[]).indexOf(
+    resolveAdminOrderFulfillmentUiKey(snapshot.status, snapshot.fulfillmentStatus),
+  )
+
+  return ADMIN_ORDER_FULFILLMENT_STEPS.map((key, index) => ({
+    at: index <= reached ? resolveFulfillmentStepAt(key, snapshot) : undefined,
+    done: index <= reached,
+    key,
+  }))
+}
+
+export const resolveAdminOrderDetailTags = (snapshot: AdminOrderTagSnapshot): readonly AdminOrderDetailTag[] => {
+  const tags: AdminOrderDetailTag[] = []
+
+  if (snapshot.userId === null) {
+    tags.push(ADMIN_ORDER_DETAIL_TAG.GUEST)
+  } else if (snapshot.customerOrderCount >= ADMIN_ORDER_DETAIL_RETURNING_MIN_ORDERS) {
+    tags.push(ADMIN_ORDER_DETAIL_TAG.RETURNING)
+  }
+
+  if (snapshot.deliveryType === "locker") {
+    tags.push(ADMIN_ORDER_DETAIL_TAG.LOCKER)
+  } else if (snapshot.deliveryType === "in_store") {
+    tags.push(ADMIN_ORDER_DETAIL_TAG.IN_STORE)
+  }
+
+  if (snapshot.lockerUnconfirmed) {
+    tags.push(ADMIN_ORDER_DETAIL_TAG.LOCKER_UNCONFIRMED)
+  }
+
+  if (snapshot.hasDispute) {
+    tags.push(ADMIN_ORDER_DETAIL_TAG.DISPUTED)
+  }
+
+  if (snapshot.paymentStatus === "refunded") {
+    tags.push(ADMIN_ORDER_DETAIL_TAG.REFUNDED)
+  } else if (snapshot.refundedAmount > 0) {
+    tags.push(ADMIN_ORDER_DETAIL_TAG.PARTIALLY_REFUNDED)
+  }
+
+  if (snapshot.awaitsRestock) {
+    tags.push(ADMIN_ORDER_DETAIL_TAG.NOT_RESTOCKED)
+  }
+
+  if (snapshot.hasCustomerNote) {
+    tags.push(ADMIN_ORDER_DETAIL_TAG.NOTE)
+  }
+
+  return tags
+}
+
+export const resolveAdminOrderCustomerName = (name: string | null | undefined, email: string): string => {
+  const trimmed = name?.trim()
+
+  return trimmed === undefined || trimmed === "" ? email : trimmed
+}
+
+const differentAddress = (address: string | undefined, orderEmail: string): string | undefined =>
+  address === undefined || address.toLowerCase() === orderEmail.toLowerCase() ? undefined : address
+
+export const buildAdminOrderDetailCustomer = (snapshot: AdminOrderCustomerSnapshot): Order["adminOrderDetail"]["customer"] => {
+  const name = resolveAdminOrderCustomerName(snapshot.name, snapshot.email)
+
+  return {
+    accountEmail: differentAddress(snapshot.accountEmail, snapshot.email),
+    email: snapshot.email,
+    initials: resolveAdminCustomerInitials(name),
+    name,
+    orderCount: snapshot.orderCount,
+    phone: snapshot.phone ?? undefined,
+    recipientEmail: differentAddress(snapshot.recipient, snapshot.email),
+    totalSpentMinorUnits: snapshot.totalSpent,
+    userId: snapshot.userId ?? undefined,
+  }
+}
+
+export interface AdminOrderFulfillmentSnapshot {
+  readonly canceledAt: Date | null
+  readonly createdAt: Date
+  readonly deliveredAt: Date | null
+  readonly fulfillmentStartedAt: Date | null
+  readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
+  readonly shippedAt: Date | null
+  readonly status: Order["select"]["status"]
+}
+
+interface AdminOrderTagSnapshot {
+  readonly awaitsRestock: boolean
+  readonly customerOrderCount: number
+  readonly deliveryType: DeliveryMethodType | undefined
+  readonly hasCustomerNote: boolean
+  readonly hasDispute: boolean
+  readonly lockerUnconfirmed: boolean
+  readonly paymentStatus: string | undefined
+  readonly refundedAmount: number
+  readonly userId: string | null
+}
+
+interface AdminOrderCustomerSnapshot {
+  readonly accountEmail: string | undefined
+  readonly email: string
+  readonly name: string | null | undefined
+  readonly orderCount: number
+  readonly phone: string | null | undefined
+  readonly recipient: string
+  readonly totalSpent: number
+  readonly userId: string | null
 }
 
 const buildAdminOrderDetail = ({

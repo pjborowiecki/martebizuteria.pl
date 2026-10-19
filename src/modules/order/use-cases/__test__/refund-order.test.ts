@@ -34,15 +34,13 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderRefundAudit: calls.audit }))
 vi.mock("~/src/modules/order/order.accessors", () => ({
   getOrderByCheckoutId: () => Promise.resolve(state.orderRow),
-}))
-vi.mock("~/src/modules/order/order.settled.server", () => ({ findSettledOrder: () => Promise.resolve(state.settled) }))
-vi.mock("~/src/modules/order/order.utils", () => ({
   prepareRefundBatch: (_settled: Order["settled"], input: Order["refundInput"]) => {
     calls.prepared.push(input)
 
     return ["refund-snapshot", "payment-update"]
   },
 }))
+vi.mock("~/src/modules/order/use-cases/find-settled-order.server", () => ({ findSettledOrder: () => Promise.resolve(state.settled) }))
 vi.mock("~/src/modules/payment/payment.accessors", () => ({ getPaymentByTransactionId: () => Promise.resolve(state.paymentRow) }))
 
 const input = (overrides: Partial<Order["refundInput"]> = {}): Order["refundInput"] => ({

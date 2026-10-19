@@ -67,7 +67,7 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
   },
 }))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getAdminOrderRefundTarget: () => Promise.resolve(target.current) }))
-vi.mock("~/src/modules/order/order.restock.server", () => ({ returnOrderToStock }))
+vi.mock("~/src/modules/order/use-cases/return-order-to-stock.server", () => ({ returnOrderToStock }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audit)
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {

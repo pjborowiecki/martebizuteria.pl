@@ -4,7 +4,7 @@ import { ROLES } from "~/src/integrations/better-auth/auth.access"
 
 import { formatShortDate } from "~/src/modules/_core/utils/datetime"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
-import { resolveAdminDashboardMonths } from "~/src/modules/order/order.dashboard.utils"
+import { resolveAdminDashboardMonths } from "~/src/modules/order/order.utils"
 import { ADMIN_CUSTOMER_DETAIL_TAGS, ADMIN_CUSTOMER_STAT_FILTER } from "~/src/modules/user/user.constants"
 import { type User } from "~/src/modules/user/user.types"
 import {

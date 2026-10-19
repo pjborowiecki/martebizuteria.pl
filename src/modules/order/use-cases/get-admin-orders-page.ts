@@ -9,10 +9,10 @@ import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 import { LIST_PAGE_FIRST, buildListPaginationResult, listPaginationParamsFromPage } from "~/src/modules/_core/utils/pagination"
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { getAdminOrdersPage as orderGetAdminOrdersPage } from "~/src/modules/order/order.accessors"
-import { loadAdminOrderListItems } from "~/src/modules/order/order.admin-list.server"
 import { ADMIN_ORDERS_PAGE_SIZE, ORDER_QUERY_KEYS, ORDER_QUERY_STALE_MS } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
+import { loadAdminOrderListItems } from "~/src/modules/order/use-cases/load-admin-order-list-items.server"
 
 const buildAdminOrdersListParams = (input: zod.output<typeof orderZodSchemas.adminOrdersPageInput>, timeZone: string) => {
   const pageSize = input.pageSize ?? ADMIN_ORDERS_PAGE_SIZE

@@ -7,11 +7,15 @@ import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { getOrderForShippedEmail } from "~/src/modules/order/order.accessors"
 import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
-import { resolveOrderLocale } from "~/src/modules/order/order.display.utils"
-import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
-import { buildOrderShippedAccountCta, resolveOrderTracking, toOrderShipmentEmailSource } from "~/src/modules/order/order.email.utils"
+import { resolveOrderLocale } from "~/src/modules/order/order.utils"
+import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/use-cases/deliver-order-email.server"
 
 import type orderTrackingMessages from "~/messages/en-US/emails.order-tracking.json"
+import {
+  buildOrderShippedAccountCta,
+  resolveOrderTracking,
+  toOrderShipmentEmailSource,
+} from "~/src/presentation/emails/order-email-content"
 import { ORDER_TRACKING_NAMESPACE, OrderTrackingUpdate } from "~/src/presentation/emails/order-tracking"
 
 const ORDER_TRACKING_LABEL = "Tracking number"

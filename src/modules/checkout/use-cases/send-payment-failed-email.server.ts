@@ -9,13 +9,13 @@ import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 import { resolveCheckoutSessionLocale } from "~/src/modules/checkout/checkout-metadata.zod"
 import { getCheckoutEmailContext } from "~/src/modules/checkout/checkout.accessors"
 import { readCheckoutSessionLines } from "~/src/modules/checkout/checkout.session-lines.server"
-import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
-import { buildOrderConfirmationItems } from "~/src/modules/order/order.email.utils"
+import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/use-cases/deliver-order-email.server"
 
 import { resolveDeploymentOrigin } from "~/src/lib/request"
 import { buildLocalizedUrl } from "~/src/lib/seo"
 
 import type paymentFailedMessages from "~/messages/en-US/emails.payment-failed.json"
+import { buildOrderConfirmationItems } from "~/src/presentation/emails/order-email-content"
 import { PAYMENT_FAILED_NAMESPACE, PaymentFailed } from "~/src/presentation/emails/payment-failed"
 import { ROUTES } from "~/src/routes"
 

@@ -4,7 +4,7 @@ import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 
 import { getAdminOrdersPage } from "~/src/modules/order/order.accessors"
 import { ADMIN_ORDER_FULFILLMENT_UI_KEY, ADMIN_ORDER_TAB, type AdminOrderFulfillmentUiKey } from "~/src/modules/order/order.constants"
-import { toAdminOrderListItem } from "~/src/modules/order/order.display.utils"
+import { toAdminOrderListItem } from "~/src/modules/order/order.utils"
 
 const { sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")

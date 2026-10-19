@@ -10,8 +10,8 @@ import { scheduleAdminOrdersInvalidation } from "~/src/integrations/realtime-inv
 import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
 import { tryParseJsonRecord } from "~/src/modules/_core/utils/json"
 import { getOrderByInpostShipmentId } from "~/src/modules/order/order.accessors"
-import { syncOrderInpostShipment } from "~/src/modules/order/order.shipment.server"
 import { announceOrderShipment } from "~/src/modules/order/use-cases/announce-order-shipment.server"
+import { syncOrderInpostShipment } from "~/src/modules/order/use-cases/sync-order-inpost-shipment.server"
 import { RATE_LIMIT_WINDOW_SECONDS } from "~/src/modules/rate-limit/rate-limit.constants"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"

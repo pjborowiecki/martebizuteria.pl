@@ -7,7 +7,7 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
-import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
+import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/use-cases/deliver-order-email.server"
 import { readSellerDetails } from "~/src/modules/store-setting/store-setting.accessors"
 
 import type orderWithdrawalMessages from "~/messages/en-US/emails.order-withdrawal.json"

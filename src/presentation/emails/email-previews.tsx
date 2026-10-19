@@ -6,7 +6,7 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
-import { describeOrderFulfillmentTime } from "~/src/modules/order/order.fulfillment-time.utils"
+import { describeOrderFulfillmentTime } from "~/src/modules/order/order.utils"
 import { readSellerDetails } from "~/src/modules/store-setting/store-setting.accessors"
 import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
 

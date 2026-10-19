@@ -5,7 +5,6 @@ import { type ColumnFiltersState, type ColumnPinningState, type PaginationState 
 import { useTranslations } from "use-intl/react"
 
 import { LIST_PAGE_STEP } from "~/src/modules/_core/utils/pagination"
-import { parseAdminOrdersListFilters } from "~/src/modules/order/order.admin-list-filters"
 import {
   ADMIN_ORDERS_PAGE_SIZE,
   ADMIN_ORDER_TABLE_COLUMN_PINNING,
@@ -13,6 +12,7 @@ import {
   type AdminOrderStatFilter,
 } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
+import { parseAdminOrdersListFilters } from "~/src/modules/order/order.utils"
 import { getAdminOrdersPageQuery } from "~/src/modules/order/use-cases/get-admin-orders-page"
 
 import { useAdminDebouncedTableSearch } from "~/src/presentation/components/custom/datagrid/hooks/use-admin-debounced-table-search"

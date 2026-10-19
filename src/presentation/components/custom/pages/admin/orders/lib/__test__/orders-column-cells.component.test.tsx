@@ -13,8 +13,8 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { ADMIN_ORDER_FULFILLMENT_UI_KEY } from "~/src/modules/order/order.constants"
-import { formatAdminOrderDate } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
+import { formatAdminOrderDate } from "~/src/modules/order/order.utils"
 
 import { stubResizeObserver } from "~/src/presentation/components/custom/datagrid/components/__test__/data-grid-harness"
 import { DataGridTable } from "~/src/presentation/components/custom/datagrid/components/data-grid-table"
