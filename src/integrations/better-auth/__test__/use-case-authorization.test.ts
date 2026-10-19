@@ -8,7 +8,6 @@ const PUBLIC_USE_CASES = new Set([
   "cart/use-cases/check-cart-availability.ts",
   "checkout/use-cases/get-checkout-session-status.ts",
   "content-page/use-cases/get-content-page.ts",
-  "customer-activity/use-cases/record-customer-activity.ts",
   "delivery-method/use-cases/list-delivery-methods.ts",
   "discount/use-cases/validate-discount-code.ts",
   "order/use-cases/get-order-confirmation.ts",
@@ -29,6 +28,7 @@ const PUBLIC_USE_CASES = new Set([
   "store-setting/use-cases/get-seller-details.ts",
   "storefront-search/use-cases/get-trending-searches.ts",
   "storefront-search/use-cases/search-storefront.ts",
+  "user/use-cases/record-customer-activity.ts",
 ])
 
 const listUseCaseFiles = (dir: string, prefix = ""): string[] =>

@@ -2,19 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 const record = vi.hoisted(() => vi.fn())
 
-vi.mock("~/src/modules/customer-activity/use-cases/record-customer-activity", () => ({ recordCustomerActivity: record }))
+vi.mock("~/src/modules/user/use-cases/record-customer-activity", () => ({ recordCustomerActivity: record }))
 
-import {
-  CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY,
-  CUSTOMER_ACTIVITY_PAGE_VIEW_STORAGE_PREFIX,
-} from "~/src/modules/customer-activity/customer-activity.constants"
+import { CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY, CUSTOMER_ACTIVITY_PAGE_VIEW_STORAGE_PREFIX } from "~/src/modules/user/user.constants"
 import {
   resetCartAbandonedTracking,
   shouldTrackStorefrontPath,
   trackCartAbandoned,
   trackCartItemAdded,
   trackPageViewed,
-} from "~/src/modules/customer-activity/customer-activity.tracking"
+} from "~/src/modules/user/user.tracking"
 
 describe("shouldTrackStorefrontPath", () => {
   it("tracks storefront paths", () => {

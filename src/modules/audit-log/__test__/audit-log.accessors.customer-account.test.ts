@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { getCustomerActivityAuditRows, getCustomerLoginAuditPage } from "~/src/modules/audit-log/audit-log.accessors"
-import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/customer-activity/customer-activity.constants"
+import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/user/user.constants"
 
 const database = vi.hoisted(() => {
   const state: { joins: number; limits: number[]; offsets: number[]; rows: unknown[]; tables: string[] } = {

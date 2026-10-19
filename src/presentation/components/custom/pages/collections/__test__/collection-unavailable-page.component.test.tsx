@@ -42,7 +42,7 @@ vi.mock("~/src/lib/url", () => ({
 vi.mock("~/src/hooks/use-wishlist", () => ({
   useWishlist: () => ({ isWishlisted: () => false, signedIn: false, toggle: vi.fn() }),
 }))
-vi.mock("~/src/modules/customer-activity/customer-activity.tracking", () => ({ trackCartItemAdded: vi.fn() }))
+vi.mock("~/src/modules/user/user.tracking", () => ({ trackCartItemAdded: vi.fn() }))
 vi.mock("~/src/modules/product-collection/use-cases/get-collections", () => ({
   getCollectionsQuery: () => ({ queryFn: () => Promise.resolve(catalogue.collections), queryKey: ["product-collection", "all"] }),
 }))

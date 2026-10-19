@@ -40,7 +40,7 @@ vi.mock("~/src/lib/url", () => ({
 vi.mock("~/src/hooks/use-wishlist", () => ({
   useWishlist: () => ({ isWishlisted: () => false, signedIn: false, toggle: vi.fn() }),
 }))
-vi.mock("~/src/modules/customer-activity/use-cases/record-customer-activity", () => ({
+vi.mock("~/src/modules/user/use-cases/record-customer-activity", () => ({
   recordCustomerActivity: () => Promise.resolve({ ok: true, recorded: false }),
 }))
 

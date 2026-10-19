@@ -13,7 +13,7 @@ const tracking = vi.hoisted(() => ({
 }))
 
 vi.mock("~/src/lib/image", () => ({ getProductImageUrl: (path: string | null) => `https://cdn.example.com/${path ?? "placeholder"}` }))
-vi.mock("~/src/modules/customer-activity/customer-activity.tracking", () => tracking)
+vi.mock("~/src/modules/user/user.tracking", () => tracking)
 
 const PRODUCT = storefrontProduct({ handle: "silver-ring", title: "Silver ring" })
 

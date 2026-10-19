@@ -13,7 +13,6 @@ import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 import { collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema"
-import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/customer-activity/customer-activity.constants"
 import { orderAddress } from "~/src/modules/order-address/order-address.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import { netSalesAverage, netSalesSum, orderCountsAsSale } from "~/src/modules/order/order.accessors"
@@ -28,6 +27,7 @@ import {
   ADMIN_CUSTOMER_MIN_REPEAT_ORDERS,
   ADMIN_CUSTOMER_STAT_FILTER,
   type AdminCustomerStatFilter,
+  CUSTOMER_AUDIT_TIMELINE_LIMIT,
 } from "~/src/modules/user/user.constants"
 import { user } from "~/src/modules/user/user.schema"
 import { type User } from "~/src/modules/user/user.types"

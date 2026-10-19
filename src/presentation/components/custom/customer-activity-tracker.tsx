@@ -11,7 +11,7 @@ import {
   shouldTrackStorefrontPath,
   trackCartAbandoned,
   trackPageViewed,
-} from "~/src/modules/customer-activity/customer-activity.tracking"
+} from "~/src/modules/user/user.tracking"
 
 export const CustomerActivityTracker = (): JSX.Element | undefined => {
   const { data: session } = useQuery(getCurrentSessionQuery)

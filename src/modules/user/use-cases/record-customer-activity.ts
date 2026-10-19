@@ -11,11 +11,13 @@ import {
   resolveAuthAuditActor,
 } from "~/src/modules/audit-log/audit-log.events.server"
 import { resolveRequestAuditIp } from "~/src/modules/audit-log/audit-log.record.server"
-import { customerActivityZodSchemas } from "~/src/modules/customer-activity/customer-activity.zod"
+import { userZodSchemas } from "~/src/modules/user/user.zod"
 
 export const recordCustomerActivity = createServerFn({ method: "POST" })
   .middleware([withRateLimit("record-customer-activity", RATE_LIMITS.BROWSING)])
-  .validator((input: zod.input<typeof customerActivityZodSchemas.recordInput>) => customerActivityZodSchemas.recordInput.parse(input))
+  .validator((input: zod.input<typeof userZodSchemas.customerActivityRecordInput>) =>
+    userZodSchemas.customerActivityRecordInput.parse(input),
+  )
   .handler(async ({ data: input }): Promise<{ ok: true; recorded: boolean }> => {
     const session = await getRequestSession()
     const user = session?.user

@@ -16,7 +16,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
 import { getCustomerActivityAuditRows, getCustomerLoginAuditPage } from "~/src/modules/audit-log/audit-log.accessors"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
-import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/customer-activity/customer-activity.constants"
+import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/user/user.constants"
 
 const CUSTOMER = "user-1"
 

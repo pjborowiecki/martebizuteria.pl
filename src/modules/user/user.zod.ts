@@ -12,6 +12,10 @@ import {
   ADMIN_CUSTOMER_STAT_FILTER,
   CUSTOMER_ACCOUNT_NAME_MAX_LENGTH,
   CUSTOMER_ACCOUNT_PHONE_MAX_LENGTH,
+  CUSTOMER_ACTIVITY_PAGE_PATH_MAX_LENGTH,
+  CUSTOMER_ACTIVITY_PRODUCT_TITLE_MAX_LENGTH,
+  CUSTOMER_ACTIVITY_VARIANT_ID_MAX_LENGTH,
+  CUSTOMER_ACTIVITY_VARIANT_TITLE_MAX_LENGTH,
   TEAM_CANDIDATE_SEARCH_MAX_LENGTH,
   TEAM_CANDIDATE_SEARCH_MIN_LENGTH,
 } from "~/src/modules/user/user.constants"
@@ -232,6 +236,25 @@ const teamCandidateSearchInputSchema = zod.object({
   search: zod.string().trim().min(TEAM_CANDIDATE_SEARCH_MIN_LENGTH).max(TEAM_CANDIDATE_SEARCH_MAX_LENGTH),
 })
 
+const cartItemAddedPayloadSchema = zod.object({
+  kind: zod.literal("cart_item_added"),
+  productTitle: zod.string().max(CUSTOMER_ACTIVITY_PRODUCT_TITLE_MAX_LENGTH),
+  quantity: zod.number().int().positive(),
+  variantId: zod.string().max(CUSTOMER_ACTIVITY_VARIANT_ID_MAX_LENGTH),
+  variantTitle: zod.string().max(CUSTOMER_ACTIVITY_VARIANT_TITLE_MAX_LENGTH).optional(),
+})
+
+const cartAbandonedPayloadSchema = zod.object({
+  itemCount: zod.number().int().nonnegative(),
+  kind: zod.literal("cart_abandoned"),
+  lineCount: zod.number().int().nonnegative(),
+})
+
+const pageViewedPayloadSchema = zod.object({
+  kind: zod.literal("page_viewed"),
+  path: zod.string().max(CUSTOMER_ACTIVITY_PAGE_PATH_MAX_LENGTH),
+})
+
 const CLOSE_ACCOUNT_CONFIRMATION = "delete"
 
 export const closeAccountFormSchema = (hasPassword: boolean) =>
@@ -254,6 +277,11 @@ export const userZodSchemas = {
   adminCustomersExportInput: adminCustomersFiltersSchema,
   adminCustomersPageInput: adminCustomersPageInputSchema,
   adminUserMetadata: adminUserMetadataSchema,
+  customerActivityRecordInput: zod.discriminatedUnion("kind", [
+    cartItemAddedPayloadSchema,
+    cartAbandonedPayloadSchema,
+    pageViewedPayloadSchema,
+  ]),
   customerEmailChangeForm: customerEmailChangeFormSchema,
   customerEmailChangeInput: customerEmailChangeInputSchema,
   customerPhoneInput: zod.object({

@@ -7,7 +7,7 @@ const { getOrderConfirmation } = vi.hoisted(() => ({
   getOrderConfirmation: vi.fn<() => Promise<Order["confirmation"] | undefined>>(),
 }))
 
-vi.mock("~/src/modules/customer-activity/use-cases/record-customer-activity", () => ({ recordCustomerActivity: vi.fn() }))
+vi.mock("~/src/modules/user/use-cases/record-customer-activity", () => ({ recordCustomerActivity: vi.fn() }))
 vi.mock("~/src/modules/order/use-cases/get-order-confirmation", async () => {
   const { queryOptions } = await import("@tanstack/react-query")
 
@@ -26,7 +26,7 @@ vi.mock("~/src/presentation/components/custom/image", () => ({
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { useCartStore } from "~/src/modules/cart/cart.store"
-import { CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY } from "~/src/modules/customer-activity/customer-activity.constants"
+import { CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY } from "~/src/modules/user/user.constants"
 
 import { CheckoutSuccess } from "~/src/presentation/components/custom/checkout/components/checkout-success"
 import {
