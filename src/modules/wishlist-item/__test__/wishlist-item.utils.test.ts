@@ -7,7 +7,7 @@ vi.mock("~/src/lib/url", () => ({
 }))
 
 import { PRODUCT_STATUS } from "~/src/modules/product/product.constants"
-import { toWishlistProduct } from "~/src/modules/wishlist/wishlist.utils"
+import { toWishlistProduct } from "~/src/modules/wishlist-item/wishlist-item.utils"
 
 const ADDED_AT = new Date("2026-09-14T10:00:00.000Z")
 

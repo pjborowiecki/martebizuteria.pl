@@ -31,16 +31,16 @@ vi.mock("~/src/lib/url", () => ({
   isAssetCdnUrl: () => false,
   resolveAssetURL: (path: string) => path,
 }))
-vi.mock("~/src/modules/wishlist/use-cases/toggle-wishlist-item", () => ({ toggleWishlistItemMutation: { mutationFn: vi.fn() } }))
-vi.mock("~/src/modules/wishlist/use-cases/list-wishlist-items", async () => {
-  const { WISHLIST_QUERY_KEYS } = await import("~/src/modules/wishlist/wishlist.constants")
+vi.mock("~/src/modules/wishlist-item/use-cases/toggle-wishlist-item", () => ({ toggleWishlistItemMutation: { mutationFn: vi.fn() } }))
+vi.mock("~/src/modules/wishlist-item/use-cases/list-wishlist-items", async () => {
+  const { WISHLIST_QUERY_KEYS } = await import("~/src/modules/wishlist-item/wishlist-item.constants")
 
   return {
     listWishlistItemsQuery: (locale: string) => ({ queryFn: () => Promise.resolve([]), queryKey: [...WISHLIST_QUERY_KEYS.ITEMS, locale] }),
   }
 })
 
-import { WISHLIST_QUERY_KEYS } from "~/src/modules/wishlist/wishlist.constants"
+import { WISHLIST_QUERY_KEYS } from "~/src/modules/wishlist-item/wishlist-item.constants"
 
 await import("~/src/routes/account.wishlist")
 

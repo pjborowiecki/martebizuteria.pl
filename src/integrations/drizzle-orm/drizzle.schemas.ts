@@ -13,7 +13,7 @@ export { user, userRelations } from "~/src/modules/user/user.schema"
 export { userEmailHistory } from "~/src/modules/user-email-history/user-email-history.schema"
 
 export { verification } from "~/src/modules/verification/verification.schema"
-export { wishlistItem, wishlistItemRelations } from "~/src/modules/wishlist/wishlist.schema"
+export { wishlistItem, wishlistItemRelations } from "~/src/modules/wishlist-item/wishlist-item.schema"
 
 export { address, addressRelations } from "~/src/modules/address/address.schema"
 

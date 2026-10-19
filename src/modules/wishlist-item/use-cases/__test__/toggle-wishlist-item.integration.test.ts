@@ -48,8 +48,8 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
 const { applyMigrationHistory } = await import("~/src/platform/testing/mocks/migrations")
 const { ERROR_CODES } = await import("~/src/modules/_core/constants/errors")
-const { WISHLIST_ERROR_CODES, WISHLIST_MAX_ITEMS } = await import("~/src/modules/wishlist/wishlist.constants")
-const { toggleWishlistItem } = await import("~/src/modules/wishlist/use-cases/toggle-wishlist-item")
+const { WISHLIST_ERROR_CODES, WISHLIST_MAX_ITEMS } = await import("~/src/modules/wishlist-item/wishlist-item.constants")
+const { toggleWishlistItem } = await import("~/src/modules/wishlist-item/use-cases/toggle-wishlist-item")
 
 const OTHER_CUSTOMER = "user-grace"
 

@@ -1,6 +1,6 @@
 import { PRODUCT_STATUS } from "~/src/modules/product/product.constants"
 import { resolveProductTitle } from "~/src/modules/product/product.utils"
-import { type Wishlist } from "~/src/modules/wishlist/wishlist.types"
+import { type Wishlist } from "~/src/modules/wishlist-item/wishlist-item.types"
 
 import { getProductImageUrl } from "~/src/lib/image"
 

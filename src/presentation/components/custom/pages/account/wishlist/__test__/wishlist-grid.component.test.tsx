@@ -7,8 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { useCartStore } from "~/src/modules/cart/cart.store"
-import { WISHLIST_QUERY_KEYS } from "~/src/modules/wishlist/wishlist.constants"
-import { type Wishlist } from "~/src/modules/wishlist/wishlist.types"
+import { WISHLIST_QUERY_KEYS } from "~/src/modules/wishlist-item/wishlist-item.constants"
+import { type Wishlist } from "~/src/modules/wishlist-item/wishlist-item.types"
 
 const calls = vi.hoisted(() => ({
   toastError: vi.fn<(message: string) => void>(),
@@ -17,8 +17,8 @@ const calls = vi.hoisted(() => ({
 }))
 
 vi.mock("sonner", () => ({ toast: { error: calls.toastError, success: calls.toastSuccess } }))
-vi.mock("~/src/modules/wishlist/use-cases/toggle-wishlist-item", async () => {
-  const { WISHLIST_MUTATION_KEYS } = await import("~/src/modules/wishlist/wishlist.constants")
+vi.mock("~/src/modules/wishlist-item/use-cases/toggle-wishlist-item", async () => {
+  const { WISHLIST_MUTATION_KEYS } = await import("~/src/modules/wishlist-item/wishlist-item.constants")
 
   return { toggleWishlistItemMutation: { mutationFn: calls.toggle, mutationKey: WISHLIST_MUTATION_KEYS.TOGGLE } }
 })

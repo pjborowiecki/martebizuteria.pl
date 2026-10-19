@@ -6,8 +6,8 @@ import { productVariant } from "~/src/modules/product-variant/product-variant.sc
 import { PRODUCT_STATUS } from "~/src/modules/product/product.constants"
 import { product } from "~/src/modules/product/product.schema"
 import { totalStockSubquery } from "~/src/modules/product/product.stock.server"
-import { WISHLIST_MAX_ITEMS } from "~/src/modules/wishlist/wishlist.constants"
-import { wishlistItem } from "~/src/modules/wishlist/wishlist.schema"
+import { WISHLIST_MAX_ITEMS } from "~/src/modules/wishlist-item/wishlist-item.constants"
+import { wishlistItem } from "~/src/modules/wishlist-item/wishlist-item.schema"
 
 const NO_ROWS = 0
 

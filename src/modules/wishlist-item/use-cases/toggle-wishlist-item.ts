@@ -6,10 +6,14 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { deleteWishlistItemQuery, getPublishedProductForCustomerQuery, insertWishlistItem } from "~/src/modules/wishlist/wishlist.accessors"
-import { WISHLIST_ERROR_CODES, WISHLIST_MAX_ITEMS, WISHLIST_MUTATION_KEYS } from "~/src/modules/wishlist/wishlist.constants"
-import { type Wishlist } from "~/src/modules/wishlist/wishlist.types"
-import { wishlistZodSchemas } from "~/src/modules/wishlist/wishlist.zod"
+import {
+  deleteWishlistItemQuery,
+  getPublishedProductForCustomerQuery,
+  insertWishlistItem,
+} from "~/src/modules/wishlist-item/wishlist-item.accessors"
+import { WISHLIST_ERROR_CODES, WISHLIST_MAX_ITEMS, WISHLIST_MUTATION_KEYS } from "~/src/modules/wishlist-item/wishlist-item.constants"
+import { type Wishlist } from "~/src/modules/wishlist-item/wishlist-item.types"
+import { wishlistZodSchemas } from "~/src/modules/wishlist-item/wishlist-item.zod"
 
 export const toggleWishlistItem = createServerFn({ method: "POST" })
   .middleware([authorized()])

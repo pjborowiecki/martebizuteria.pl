@@ -6,14 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { type Wishlist } from "~/src/modules/wishlist/wishlist.types"
+import { type Wishlist } from "~/src/modules/wishlist-item/wishlist-item.types"
 
 const toggleWishlistItem = vi.hoisted(() => vi.fn<() => Promise<{ wishlisted: boolean }>>(() => Promise.resolve({ wishlisted: false })))
 
-vi.mock("~/src/modules/wishlist/use-cases/toggle-wishlist-item", () => ({
+vi.mock("~/src/modules/wishlist-item/use-cases/toggle-wishlist-item", () => ({
   toggleWishlistItemMutation: { mutationFn: toggleWishlistItem, mutationKey: ["wishlist", "toggleItem"] },
 }))
-vi.mock("~/src/modules/wishlist/use-cases/list-wishlist-items", () => ({
+vi.mock("~/src/modules/wishlist-item/use-cases/list-wishlist-items", () => ({
   listWishlistItemsQuery: (locale: string) => ({ queryFn: () => Promise.resolve([]), queryKey: ["wishlist", "items", locale] }),
 }))
 vi.mock("~/src/presentation/components/custom/image", () => ({
