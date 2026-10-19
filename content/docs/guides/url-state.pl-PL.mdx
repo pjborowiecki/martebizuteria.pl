@@ -24,7 +24,7 @@ Nie ma tu osobnej biblioteki do stanu w adresie. `nuqs` występuje w `package.js
 | `admin.catalog.attributes.index.tsx`     | Wbudowany `attributesIndexSearchSchema`         | `create`                                                      |
 | `admin.marketing.subscribers.tsx`        | Wbudowany `subscribersSearchSchema`             | `status`                                                      |
 
-Schematy katalogu witryny sklepowej są wspólne, więc mieszkają w module: `src/modules/product/product.storefront-catalog.ts`. Schematy jednorazowego użytku zostają w pliku trasy.
+Schematy katalogu witryny sklepowej są wspólne, więc mieszkają w module: `src/modules/storefront-search/storefront-search.zod.ts`. Schematy jednorazowego użytku zostają w pliku trasy.
 
 Co niosą te mniej oczywiste:
 
@@ -157,7 +157,7 @@ const handleSearchChange = useCallback(
 )
 ```
 
-`applyStorefrontProductsSearchPatch` w `product.storefront-catalog.ts` ma jedno zachowanie, które warto znać: rozróżnia klucz **nieobecny** w łatce od klucza obecnego z wartością `undefined`.
+`applyStorefrontProductsSearchPatch` w `storefront-search.utils.ts` ma jedno zachowanie, które warto znać: rozróżnia klucz **nieobecny** w łatce od klucza obecnego z wartością `undefined`.
 
 ```ts
 if ("category" in patch) {

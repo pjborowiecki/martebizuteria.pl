@@ -34,7 +34,7 @@ Ograniczenie `inventory_quantity_available_non_negative` (`INVENTORY_NON_NEGATIV
 
 Nie ma magazynów, lokalizacji ani księgi ruchów — dwa liczniki to cały model. Tabela ma jeszcze kolumnę `version integer DEFAULT 1 NOT NULL`, która została po dawnym warunku rezerwacji (zobacz [Rezerwacja stanu](#rezerwacja-stanu)), ale schemat Drizzle już jej nie deklaruje, więc żadne zapytanie jej nie odczytuje ani nie zapisuje, a nowy wiersz dostaje wartość domyślną. Usunie ją osobna migracja, zastosowana dopiero po wdrożeniu tego kodu, bo Worker z wcześniejszym kodem odczytuje ją z każdym wczytywanym wierszem stanu; żadna migracja w repozytorium jeszcze jej nie usuwa.
 
-Wiersze powstają razem z wariantami: `prepareProductCatalogBatch` w `product.mutations.ts` wstawia wiersz stanu na podstawie pola `quantity` z formularza produktu, w tym samym wsadzie D1, który wstawia warianty, dla każdego wariantu, który jeszcze go nie ma, a istniejący wiersz zostawia w spokoju (`onConflictDoNothing` po `variant_id`). Każdy wariant jest zapisywany z `manageInventory: true` (`MANAGE_INVENTORY_ALWAYS` w `product.utils.ts`), więc kolumna `product_variant.manage_inventory` istnieje, ale w praktyce nigdy nie jest `false`.
+Wiersze powstają razem z wariantami: `prepareProductCatalogBatch` w `product.accessors.ts` wstawia wiersz stanu na podstawie pola `quantity` z formularza produktu, w tym samym wsadzie D1, który wstawia warianty, dla każdego wariantu, który jeszcze go nie ma, a istniejący wiersz zostawia w spokoju (`onConflictDoNothing` po `variant_id`). Każdy wariant jest zapisywany z `manageInventory: true` (`MANAGE_INVENTORY_ALWAYS` w `use-cases/save-complete-product.server.ts`), więc kolumna `product_variant.manage_inventory` istnieje, ale w praktyce nigdy nie jest `false`.
 
 ## Odczyt dostępności
 
@@ -135,7 +135,7 @@ Lokalna obsługa błędów w `stripe.actions.server.ts` zawsze kompensuje: pora�
 
 ## Stan decyduje o widoczności
 
-`publishedInStockWhere` w `src/modules/product/product.stock.server.ts` warunkuje każdy odczyt witryny stanem magazynowym:
+`publishedInStockWhere` w `src/modules/product/product.accessors.ts` warunkuje każdy odczyt witryny stanem magazynowym:
 
 ```ts
 export const totalStockSubquery = () =>

@@ -24,7 +24,7 @@ There is no separate query-state library in play. `nuqs` appears in `package.jso
 | `admin.catalog.attributes.index.tsx`     | Inline `attributesIndexSearchSchema`            | `create`                                                      |
 | `admin.marketing.subscribers.tsx`        | Inline `subscribersSearchSchema`                | `status`                                                      |
 
-Storefront catalog schemas are shared, so they live in the module: `src/modules/product/product.storefront-catalog.ts`. Single-purpose schemas stay inline in the route file.
+Storefront catalog schemas are shared, so they live in a module: `src/modules/storefront-search/storefront-search.zod.ts`. Single-purpose schemas stay inline in the route file.
 
 What the less obvious ones carry:
 
@@ -157,7 +157,7 @@ const handleSearchChange = useCallback(
 )
 ```
 
-`applyStorefrontProductsSearchPatch` in `product.storefront-catalog.ts` has one behaviour worth knowing: it distinguishes a key that is **absent** from the patch from a key that is present with the value `undefined`.
+`applyStorefrontProductsSearchPatch` in `storefront-search.utils.ts` has one behaviour worth knowing: it distinguishes a key that is **absent** from the patch from a key that is present with the value `undefined`.
 
 ```ts
 if ("category" in patch) {

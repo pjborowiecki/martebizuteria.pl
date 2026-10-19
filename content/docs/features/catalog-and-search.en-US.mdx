@@ -19,7 +19,7 @@ The paths themselves come from `ROUTES.PRODUCTS`, `ROUTES.CATEGORIES`, `ROUTES.C
 
 ## Filter state lives in the URL
 
-`src/modules/product/product.storefront-catalog.ts` owns the search-param contract. It is the single place to change if you add a filter.
+The `storefront-search` module owns the search-param contract: `storefront-search.zod.ts` holds the schemas, `storefront-search.constants.ts` the sort options and `storefront-search.utils.ts` the helpers that normalize, merge, count and patch the filters. Those three files are the place to change if you add a filter. They stay apart from `product.zod.ts` because the storefront routes validate their search with them on every page, and the product form schema would come along.
 
 ```ts
 export const storefrontProductsSearchSchema = z.object({
@@ -78,9 +78,9 @@ Before hitting the product table the handler resolves the scope handles into ids
 
 ## The SQL
 
-`src/modules/product/product.storefront-catalog.accessors.ts` builds the statement. Two pieces are worth knowing.
+`src/modules/product/use-cases/get-storefront-products-page.server.ts` builds the statement. Two pieces are worth knowing.
 
-**Only published products with stock are ever listed.** `publishedInStockWhere` in `src/modules/product/product.stock.server.ts` is the shared gate:
+**Only published products with stock are ever listed.** `publishedInStockWhere` in `src/modules/product/product.accessors.ts` is the shared gate:
 
 ```ts
 export const publishedInStockWhere = (...extraConditions: (SQL | undefined)[]): SQL => {
@@ -100,7 +100,7 @@ Scope filters are `inArray(product.id, <subquery>)` against `category_on_product
 
 ## Product search term
 
-The `q` parameter searches the `storefront_search` FTS5 index through `storefrontProductMatches(term)` in `src/modules/storefront-search/storefront-search.accessors.server.ts`. `buildStorefrontSearchExpression` folds `ł` to `l`, splits the term into words and turns each word into a prefix query, so `zlo pier` finds "Złoty pierścionek". A term with no letters or digits has nothing to search for, and the page comes back empty.
+The `q` parameter searches the `storefront_search` FTS5 index through `storefrontProductMatches(term)` in `src/modules/storefront-search/storefront-search.accessors.ts`. `buildStorefrontSearchExpression` folds `ł` to `l`, splits the term into words and turns each word into a prefix query, so `zlo pier` finds "Złoty pierścionek". A term with no letters or digits has nothing to search for, and the page comes back empty.
 
 `storefront_search` is an FTS5 virtual table that `20261002100000_storefront_search.sql` creates with the `unicode61 remove_diacritics 2` tokenizer. Insert, update and delete triggers on `product`, `product_category` and `product_collection` keep one entry per row, marked `product`, `category` or `collection` in its `kind` column. Each indexed column holds the row's Polish and English values side by side, with `ł` folded to `l`, because the tokenizer strips the other Polish diacritics but not that one. A product's entry holds its titles, subtitles, tags, descriptions and handle. A category's holds its titles, subtitles and handle, with its short descriptions and descriptions together in the description column. A collection's holds its titles, its short descriptions as the subtitle, its descriptions and its handle. The triggers name `pl-PL` and `en-US` themselves, so a new locale needs a migration that recreates them and refills the index.
 
@@ -146,7 +146,7 @@ Below `lg` the sidebar is hidden. `ProductsCatalogMobileFilters` puts a full-wid
 
 ## Reduced prices on cards
 
-`storefrontListVariantColumns` in `product.stock.server.ts` also reads each variant's `compare_at_price`. `getStorefrontPublishedProductsPage` hands the page's products to `withPriceReductions` (`src/modules/price-history/price-history.accessors.ts`) before it returns them, and `getPublishedProductsAmong` in `product.accessors.ts` does the same for the new arrivals, the related products and the account recommendations. When one of the listed variants is reduced, `withPriceReductions` reads the price history of the reduced variants in one more statement and gives every variant its `priceReduction`, which stays `undefined` unless the price is below the lowest price of the 30 days before the reduction; when none is reduced, it reads nothing, so a listing without reductions costs the statements described above. The catalog grid, the new arrivals, the related products and the unavailable-collection page pass the reduction of the variant each card shows to `ProductCard`, whose `ProductPrice` strikes that lowest price through next to the price and adds "Najniższa cena z 30 dni przed obniżką: …" ("Lowest price in the 30 days before the reduction: …") under it. [Product page](/docs/features/product-page#reduced-prices-and-the-lowest-price-of-the-30-days-before) explains how that lowest price is found. The price filter and the price sorts still work on `price`.
+`storefrontListVariantColumns` in `product.accessors.ts` also reads each variant's `compare_at_price`. `getStorefrontPublishedProductsPage` hands the page's products to `withPriceReductions` (`src/modules/price-history/price-history.accessors.ts`) before it returns them, and `getPublishedProductsAmong` in `product.accessors.ts` does the same for the new arrivals, the related products and the account recommendations. When one of the listed variants is reduced, `withPriceReductions` reads the price history of the reduced variants in one more statement and gives every variant its `priceReduction`, which stays `undefined` unless the price is below the lowest price of the 30 days before the reduction; when none is reduced, it reads nothing, so a listing without reductions costs the statements described above. The catalog grid, the new arrivals, the related products and the unavailable-collection page pass the reduction of the variant each card shows to `ProductCard`, whose `ProductPrice` strikes that lowest price through next to the price and adds "Najniższa cena z 30 dni przed obniżką: …" ("Lowest price in the 30 days before the reduction: …") under it. [Product page](/docs/features/product-page#reduced-prices-and-the-lowest-price-of-the-30-days-before) explains how that lowest price is found. The price filter and the price sorts still work on `price`.
 
 A catalog card shows the price of the first variant the listing returns for its product. The grid formats it with `useFormatter()` from `src/hooks/use-display-format.ts`, and `ProductPrice` formats the lowest price the same way, so both follow the shopper's format locale rather than the page's language (see [Internationalization](/docs/features/internationalization)).
 
@@ -154,7 +154,7 @@ A catalog card shows the price of the first variant the listing returns for its 
 
 The header search is a separate feature backed by `src/modules/storefront-search`.
 
-`searchStorefront` (`use-cases/search-storefront.ts`) is public, takes `{ locale, query }` and fans out to three accessors in `storefront-search.server.ts`:
+`searchStorefront` (`use-cases/search-storefront.ts`) is public, takes `{ locale, query }` and fans out to three accessors in `storefront-search.accessors.ts`:
 
 | Accessor                      | Table                | Matched columns                                                                            |
 | ----------------------------- | -------------------- | ------------------------------------------------------------------------------------------ |
@@ -162,7 +162,7 @@ The header search is a separate feature backed by `src/modules/storefront-search
 | `searchStorefrontCategories`  | `product_category`   | `titles`, `subtitles`, `short_descriptions`, `descriptions` and `handle`, status active    |
 | `searchStorefrontCollections` | `product_collection` | `titles`, `short_descriptions`, `descriptions` and `handle`, status active                 |
 
-All three match through the `storefront_search` index: each joins `storefrontSearchMatches(kind, expression)` from `storefront-search.accessors.server.ts`, which searches the entries of its kind, and orders by `bm25` relevance, weighting a match in the title 10, the subtitle 5, the tags 3, the handle 2 and the description 1, then by `rank`. A product's second line is its subtitle or, without one, the title of its primary category.
+All three match through the `storefront_search` index: each joins `storefrontSearchMatches(kind, expression)` from the same file, which searches the entries of its kind, and orders by `bm25` relevance, weighting a match in the title 10, the subtitle 5, the tags 3, the handle 2 and the description 1, then by `rank`. A product's second line is its subtitle or, without one, the title of its primary category.
 
 The overlay's product group matches a product's own text only. Unlike the `q` parameter, it does not reach products through their categories, collections or SKUs.
 
