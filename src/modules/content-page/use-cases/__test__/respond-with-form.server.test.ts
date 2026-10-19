@@ -15,7 +15,7 @@ const { assetsFetch, readSellerDetails } = vi.hoisted(() => ({
 vi.mock("cloudflare:workers", () => ({ env: { ASSETS: { fetch: assetsFetch } } }))
 vi.mock("~/src/modules/store-setting/store-setting.accessors", () => ({ readSellerDetails }))
 
-const { loadFormFonts, respondWithForm } = await import("~/src/modules/content-page/content-page.forms.server")
+const { loadFormFonts, respondWithForm } = await import("~/src/modules/content-page/use-cases/respond-with-form.server")
 const { WITHDRAWAL_FORM } = await import("~/src/presentation/pdf/withdrawal-form")
 
 const ORIGIN = "https://preview.martebizuteria.pl"

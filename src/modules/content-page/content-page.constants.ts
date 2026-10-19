@@ -61,3 +61,21 @@ export const CONTENT_PAGE_VALIDATION_KEYS = {
   titleRequired: "editor.validation.titleRequired",
   titleTooLong: "editor.validation.titleTooLong",
 } as const
+
+export const SELLER_PLACEHOLDER_DIRECTIVE = "seller"
+
+export const SELLER_PLACEHOLDERS = [
+  "legalName",
+  "street",
+  "postalCode",
+  "city",
+  "country",
+  "nip",
+  "regon",
+  "email",
+  "emailLink",
+  "phone",
+  "phoneLink",
+] as const
+
+export type SellerPlaceholder = (typeof SELLER_PLACEHOLDERS)[number]

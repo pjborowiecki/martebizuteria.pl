@@ -5,7 +5,7 @@ export const Route = createFileRoute("/forms/formularz_zwrotu.pdf")({
     handlers: {
       GET: async ({ request }) => {
         const [{ respondWithForm }, { WITHDRAWAL_FORM }] = await Promise.all([
-          import("~/src/modules/content-page/content-page.forms.server"),
+          import("~/src/modules/content-page/use-cases/respond-with-form.server"),
           import("~/src/presentation/pdf/withdrawal-form"),
         ])
 

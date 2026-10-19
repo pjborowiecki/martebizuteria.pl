@@ -5,7 +5,7 @@ import { type StoreSetting } from "~/src/modules/store-setting/store-setting.typ
 
 export const loadWithdrawalFormAttachment = async (seller: StoreSetting["storedSellerDetails"], origin: string): Promise<Attachment> => {
   const [{ loadFormFonts }, { WITHDRAWAL_FORM }] = await Promise.all([
-    import("~/src/modules/content-page/content-page.forms.server"),
+    import("~/src/modules/content-page/use-cases/respond-with-form.server"),
     import("~/src/presentation/pdf/withdrawal-form"),
   ])
 

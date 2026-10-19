@@ -1,12 +1,9 @@
 import { type Nodes, type Parent, type PhrasingContent, type Root, type RootContent } from "mdast"
 import { type VFile } from "vfile"
 
-import {
-  type Directive,
-  type SellerPlaceholder,
-  formatSellerPlaceholder,
-  readSellerPlaceholder,
-} from "~/src/modules/content-page/content-page.seller-placeholders"
+import { type SellerPlaceholder } from "~/src/modules/content-page/content-page.constants"
+import { type Directive } from "~/src/modules/content-page/content-page.types"
+import { formatSellerPlaceholder, readSellerPlaceholder } from "~/src/modules/content-page/content-page.utils"
 import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
 import { toSellerPhoneHref } from "~/src/modules/store-setting/store-setting.utils"
 

@@ -5,7 +5,7 @@ import { z } from "zod"
 import { MIGRATION, applyMigration } from "~/src/platform/testing/mocks/migrations"
 
 import { CONTENT_PAGE_HANDLE } from "~/src/modules/content-page/content-page.constants"
-import { findSellerPlaceholders } from "~/src/modules/content-page/content-page.seller-placeholders"
+import { findSellerPlaceholders } from "~/src/modules/content-page/content-page.utils"
 import { contentPageZodSchemas } from "~/src/modules/content-page/content-page.zod"
 
 const sqlite = new DatabaseSync(":memory:")

@@ -1,3 +1,4 @@
+import { type Nodes } from "mdast"
 import { type z } from "zod/v4"
 
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
@@ -22,3 +23,5 @@ export interface ContentPage {
   updateInput: z.infer<(typeof contentPageZodSchemas)["updateInput"]>
   view: ContentPageView
 }
+
+export type Directive = Extract<Nodes, { readonly type: "containerDirective" | "leafDirective" | "textDirective" }>

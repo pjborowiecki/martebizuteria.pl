@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { hasOnlyMarkdownLinksMatching, hasOnlyPublishableMarkdown } from "~/src/modules/content-page/content-page.validation.utils"
+import { hasOnlyMarkdownLinksMatching, hasOnlyPublishableMarkdown } from "~/src/modules/content-page/content-page.utils"
 
 describe("hasOnlyPublishableMarkdown", () => {
   it.each([
