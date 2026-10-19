@@ -42,7 +42,7 @@ vi.mock("~/src/integrations/better-auth/auth.server", () => ({ auth }))
 vi.mock("~/src/modules/user/use-cases/send-account-deleted-email.server", () => ({ sendAccountDeletedEmail }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
 vi.mock("~/src/modules/user/user.accessors", () => ({ getUserById }))
-vi.mock("~/src/modules/user/user.erasure.server", () => ({ eraseAccountData }))
+vi.mock("~/src/modules/user/use-cases/erase-account-data.server", () => ({ eraseAccountData }))
 
 import { deleteCustomer, deleteCustomerMutation } from "~/src/modules/user/use-cases/delete-customer"
 

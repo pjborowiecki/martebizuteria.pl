@@ -4,8 +4,8 @@ import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
+import { searchTeamCandidateRows } from "~/src/modules/user/user.accessors"
 import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
-import { searchTeamCandidateRows } from "~/src/modules/user/user.team.server"
 import { type User } from "~/src/modules/user/user.types"
 import { userZodSchemas } from "~/src/modules/user/user.zod"
 

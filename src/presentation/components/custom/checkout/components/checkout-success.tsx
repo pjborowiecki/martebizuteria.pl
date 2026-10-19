@@ -11,7 +11,6 @@ import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 import { getOrderConfirmationQuery } from "~/src/modules/order/use-cases/get-order-confirmation"
-import { resetCartAbandonedTracking } from "~/src/modules/user/user.tracking"
 
 import { useCartStore } from "~/src/hooks/use-cart-store"
 import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
@@ -19,6 +18,7 @@ import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
 import { clearCheckoutDraft, isCheckoutSessionHeldForCart } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
+import { resetCartAbandonedTracking } from "~/src/presentation/components/custom/customer-activity-tracking"
 import { Image } from "~/src/presentation/components/custom/image"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 

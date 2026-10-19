@@ -3,8 +3,8 @@ import { createServerFn } from "@tanstack/react-start"
 
 import { authorized, isRecentSignIn } from "~/src/integrations/better-auth/auth.middleware"
 
+import { listAdminTeamRows } from "~/src/modules/user/user.accessors"
 import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
-import { listAdminTeamRows } from "~/src/modules/user/user.team.server"
 import { type User } from "~/src/modules/user/user.types"
 
 export const listAdminTeam = createServerFn({ method: "GET" })

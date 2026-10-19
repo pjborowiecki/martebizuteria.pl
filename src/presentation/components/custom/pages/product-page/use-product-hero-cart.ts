@@ -3,11 +3,12 @@ import { useCallback, useEffect, useState } from "react"
 import { getVariantQuantityAvailable, isVariantPurchasable } from "~/src/modules/inventory/inventory.utils"
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils"
 import { type Product } from "~/src/modules/product/product.types"
-import { trackCartItemAdded } from "~/src/modules/user/user.tracking"
 
 import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { getProductImageUrl } from "~/src/lib/image"
+
+import { trackCartItemAdded } from "~/src/presentation/components/custom/customer-activity-tracking"
 
 export const useProductHeroCart = ({ heroImage, price, product, selectedVariant, variantPrice }: UseProductHeroCartInput) => {
   const [quantity, setQuantity] = useState(MIN_QUANTITY)
