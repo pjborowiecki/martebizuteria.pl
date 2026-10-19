@@ -3,8 +3,11 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { type TestD1Query } from "~/src/platform/testing/mocks/d1"
 
 import { setProductAttributeRanks } from "~/src/modules/product-attribute/product-attribute.accessors"
-import { getProductVariantSkuRowsQuery, getProductVariantStatsQuery } from "~/src/modules/product/product.accessors"
-import { getPublishedProductCountsByRootCategory } from "~/src/modules/product/product.storefront-catalog.accessors"
+import {
+  getProductVariantSkuRowsQuery,
+  getProductVariantStatsQuery,
+  getPublishedProductCountsByRootCategory,
+} from "~/src/modules/product/product.accessors"
 
 const { sqlite, queries } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
@@ -15,7 +18,6 @@ const { sqlite, queries } = await vi.hoisted(async () => {
   }
 })
 
-vi.mock("cloudflare:workers", () => ({ env: {} }))
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const { drizzle } = await import("drizzle-orm/d1")
   const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")

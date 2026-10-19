@@ -20,17 +20,19 @@ import {
   PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE,
   PRODUCT_STOREFRONT_FILTERED_MAX,
 } from "~/src/modules/product/product.constants"
+import { getStorefrontPublishedProductsPage } from "~/src/modules/product/use-cases/get-storefront-products-page.server"
+import { type StorefrontProductsRequest } from "~/src/modules/storefront-search/storefront-search.types"
 import {
-  type StorefrontCatalogScope,
-  type StorefrontProductsRequest,
-  type StorefrontProductsSearch,
   buildEffectiveStorefrontProductsSearch,
   hasActiveStorefrontProductFilters,
   storefrontCatalogFilterOptions,
+} from "~/src/modules/storefront-search/storefront-search.utils"
+import {
+  type StorefrontCatalogScope,
+  type StorefrontProductsSearch,
   storefrontCatalogScopeSchema,
   storefrontProductsSearchSchema,
-} from "~/src/modules/product/product.storefront-catalog"
-import { getStorefrontPublishedProductsPage } from "~/src/modules/product/product.storefront-catalog.accessors"
+} from "~/src/modules/storefront-search/storefront-search.zod"
 
 import { catalogDebugLog } from "~/src/lib/catalog-debug-log"
 

@@ -10,7 +10,7 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
-import { type StorefrontProductsSearch } from "~/src/modules/product/product.storefront-catalog"
+import { type StorefrontProductsSearch } from "~/src/modules/storefront-search/storefront-search.zod"
 
 import { buildBreadcrumbStructuredData } from "~/src/lib/seo"
 

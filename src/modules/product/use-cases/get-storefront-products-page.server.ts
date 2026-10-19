@@ -8,16 +8,10 @@ import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-condi
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 import { collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema"
 import { withPriceReductions } from "~/src/modules/price-history/price-history.accessors"
-import { CATEGORY_STATUS } from "~/src/modules/product-category/product-category.constants"
-import { productCategory } from "~/src/modules/product-category/product-category.schema"
+import { productVariantStatsSubquery, publishedInStockWhere, storefrontListVariantColumns } from "~/src/modules/product/product.accessors"
 import { product } from "~/src/modules/product/product.schema"
-import {
-  productVariantStatsSubquery,
-  publishedInStockWhere,
-  storefrontListVariantColumns,
-} from "~/src/modules/product/product.stock.server"
-import { STOREFRONT_PRODUCTS_SORT, type StorefrontProductsSort } from "~/src/modules/product/product.storefront-catalog"
 import { storefrontProductMatches } from "~/src/modules/storefront-search/storefront-search.accessors"
+import { STOREFRONT_PRODUCTS_SORT, type StorefrontProductsSort } from "~/src/modules/storefront-search/storefront-search.constants"
 
 export interface StorefrontPublishedProductsParams extends ListPaginationParams {
   readonly categoryIds?: readonly string[] | undefined
@@ -207,25 +201,3 @@ export const getStorefrontPublishedProductsPage = async (params: StorefrontPubli
     total: countRow?.count ?? 0,
   }
 }
-
-export const getPublishedProductCountsByRootCategory = () =>
-  db.all<{
-    categoryId: string
-    count: number
-  }>(sql`
-    with recursive category_tree(root_id, id) as (
-      select ${productCategory.id}, ${productCategory.id}
-      from ${productCategory}
-      where ${productCategory.parentId} is null and ${productCategory.status} = ${CATEGORY_STATUS.ACTIVE}
-      union all
-      select category_tree.root_id, ${productCategory.id}
-      from ${productCategory}
-      inner join category_tree on ${productCategory.parentId} = category_tree.id
-    )
-    select category_tree.root_id as "categoryId", count(distinct ${product.id}) as "count"
-    from category_tree
-    inner join ${categoryOnProduct} on ${categoryOnProduct.categoryId} = category_tree.id
-    inner join ${product} on ${product.id} = ${categoryOnProduct.productId}
-    where ${publishedInStockWhere()}
-    group by category_tree.root_id
-  `)

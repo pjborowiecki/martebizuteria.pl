@@ -7,6 +7,7 @@ const database = vi.hoisted(() => ({ rows: [] as unknown[] }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: { select: () => ({ from: () => ({ where: () => Promise.resolve(database.rows) }) }) },
 }))
+vi.mock("~/src/modules/product/product.accessors", () => ({}))
 
 beforeEach(() => {
   database.rows = []

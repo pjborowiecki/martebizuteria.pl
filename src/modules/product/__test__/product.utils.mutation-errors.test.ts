@@ -11,7 +11,7 @@ import {
   isStockChangedWhileEditingMutationError,
   resolveProductMutationErrorMessage,
   rethrowProductMutationError,
-} from "~/src/modules/product/product.mutation-errors"
+} from "~/src/modules/product/product.utils"
 
 const nested = (outer: string, inner: string): Error => new Error(outer, { cause: new Error(inner) })
 

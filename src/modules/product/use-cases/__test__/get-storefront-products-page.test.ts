@@ -30,7 +30,7 @@ vi.mock("~/src/modules/product-collection/product-collection.accessors", () => (
   getStorefrontCollectionByHandleQuery: { execute: access.collectionByHandle },
 }))
 
-vi.mock("~/src/modules/product/product.storefront-catalog.accessors", () => ({
+vi.mock("~/src/modules/product/use-cases/get-storefront-products-page.server", () => ({
   getStorefrontPublishedProductsPage: access.page,
 }))
 

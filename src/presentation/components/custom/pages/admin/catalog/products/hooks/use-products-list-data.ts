@@ -4,10 +4,8 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { type PaginationState } from "@tanstack/react-table"
 
 import { LIST_PAGE_STEP } from "~/src/modules/_core/utils/pagination"
-import { type AdminProductsListColumnFilters } from "~/src/modules/product/product.admin-list-filters"
-import { type AdminProductsListSort } from "~/src/modules/product/product.admin-list-sort"
 import { ADMIN_PRODUCTS_PAGE_SIZE } from "~/src/modules/product/product.constants"
-import { type Product } from "~/src/modules/product/product.types"
+import { type AdminProductsListColumnFilters, type AdminProductsListSort, type Product } from "~/src/modules/product/product.types"
 import { getAdminProductsQuery } from "~/src/modules/product/use-cases/get-admin-products"
 import { getAdminProductsPageQuery } from "~/src/modules/product/use-cases/get-admin-products-page"
 

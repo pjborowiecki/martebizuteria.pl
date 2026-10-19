@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vite-plus/test"
 
 import { DATE_COLUMN_FILTER_OPERATOR, NUMERIC_COLUMN_FILTER_OPERATOR } from "~/src/modules/_core/utils/column-filters"
-import { hasAdminProductsListColumnFilters, parseAdminProductsListColumnFilters } from "~/src/modules/product/product.admin-list-filters"
-import { adminProductsListSortRequiresVariantStats, parseAdminProductsListSort } from "~/src/modules/product/product.admin-list-sort"
+import {
+  adminProductsListSortRequiresVariantStats,
+  hasAdminProductsListColumnFilters,
+  parseAdminProductsListColumnFilters,
+  parseAdminProductsListSort,
+} from "~/src/modules/product/product.utils"
 
 const numeric = { amountMinorUnits: 10_000, operator: NUMERIC_COLUMN_FILTER_OPERATOR.GT }
 

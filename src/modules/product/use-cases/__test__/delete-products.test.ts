@@ -18,8 +18,7 @@ const {
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({ scheduleProductCatalogInvalidation }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordCatalogProductDeletedAudit }))
-vi.mock("~/src/modules/product/product.mutations", () => ({ deleteProducts: deleteProductRows }))
-vi.mock("~/src/modules/product/product.catalog.server", () => ({ assertVariantsNotHeldByOpenCheckouts }))
+vi.mock("~/src/modules/product/product.accessors", () => ({ assertVariantsNotHeldByOpenCheckouts, deleteProducts: deleteProductRows }))
 vi.mock("~/src/modules/product-variant/product-variant.accessors", () => ({ getVariantIdsByProductIds }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {

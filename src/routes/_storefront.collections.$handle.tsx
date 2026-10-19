@@ -8,13 +8,15 @@ import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 import { resolveCollectionDescription, resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
 import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
 import { getStorefrontCollectionQuery } from "~/src/modules/product-collection/use-cases/get-storefront-collection"
+import { getNewArrivalsQuery } from "~/src/modules/product/use-cases/get-new-arrivals"
 import {
-  type StorefrontScopedCollectionCatalogSearch,
   applyStorefrontProductsSearchPatch,
   normalizeStorefrontProductsSearch,
+} from "~/src/modules/storefront-search/storefront-search.utils"
+import {
+  type StorefrontScopedCollectionCatalogSearch,
   storefrontScopedCollectionCatalogSearchSchema,
-} from "~/src/modules/product/product.storefront-catalog"
-import { getNewArrivalsQuery } from "~/src/modules/product/use-cases/get-new-arrivals"
+} from "~/src/modules/storefront-search/storefront-search.zod"
 
 import { catalogDebugLog } from "~/src/lib/catalog-debug-log"
 import { buildBreadcrumbStructuredData } from "~/src/lib/seo"

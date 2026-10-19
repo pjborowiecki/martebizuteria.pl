@@ -1,9 +1,12 @@
 import { sql } from "drizzle-orm"
 import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core"
-import { describe, expect, it } from "vite-plus/test"
+import { describe, expect, it, vi } from "vite-plus/test"
 
-import { buildAdminVariantKindFilterSql } from "~/src/modules/product/product.admin-list-variant-filters.server"
 import { PRODUCT_VARIANT_KIND } from "~/src/modules/product/product.constants"
+import { buildAdminVariantKindFilterSql } from "~/src/modules/product/use-cases/list-admin-products.server"
+
+vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: {} }))
+vi.mock("~/src/modules/product/product.accessors", () => ({}))
 
 const dialect = new SQLiteSyncDialect()
 

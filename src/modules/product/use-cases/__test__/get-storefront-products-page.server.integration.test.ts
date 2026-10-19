@@ -28,11 +28,11 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
 import { MIGRATION, applyMigration } from "~/src/platform/testing/mocks/migrations"
 
-import { STOREFRONT_PRODUCTS_SORT } from "~/src/modules/product/product.storefront-catalog"
 import {
   type StorefrontPublishedProductsParams,
   getStorefrontPublishedProductsPage,
-} from "~/src/modules/product/product.storefront-catalog.accessors"
+} from "~/src/modules/product/use-cases/get-storefront-products-page.server"
+import { STOREFRONT_PRODUCTS_SORT } from "~/src/modules/storefront-search/storefront-search.constants"
 
 const JANUARY = Date.UTC(2024, 0, 1)
 

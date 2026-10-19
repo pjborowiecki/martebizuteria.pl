@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import {
-  buildAllProductImageRows,
-  buildProductLevelAttributeRows,
-  buildVariantAttributeGroups,
-} from "~/src/modules/product/product-admin-persist.utils"
 import { PRODUCT_ADMIN_STATUS } from "~/src/modules/product/product.constants"
+import { buildAllProductImageRows, buildProductLevelAttributeRows, buildVariantAttributeGroups } from "~/src/modules/product/product.utils"
 import { type ProductFormValues } from "~/src/modules/product/product.zod"
 
 const locales = (pl: string, en = pl): { "en-US": string; "pl-PL": string } => ({ "en-US": en, "pl-PL": pl })

@@ -41,13 +41,15 @@ vi.mock("~/src/modules/checkout/use-cases/expire-checkouts-holding-variants.serv
   expireCheckoutsHoldingVariants: operations.expireCheckouts,
 }))
 vi.mock("~/src/modules/product-image/product-image.accessors", () => ({ prepareProductImagesBatch: operations.images }))
+vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: {} }))
 vi.mock("~/src/modules/product/product.accessors", () => ({
+  assertVariantsNotHeldByOpenCheckouts: operations.assertNotHeld,
   getAdminProductDetailByIdQuery: { execute: operations.detailById },
   getProductByHandleQuery: { execute: operations.productByHandle },
 }))
-vi.mock("~/src/modules/product/product.catalog.server", () => ({
+vi.mock("~/src/modules/product/use-cases/save-complete-product.server", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   assertCatalogSkusAvailable: operations.assertSkus,
-  assertVariantsNotHeldByOpenCheckouts: operations.assertNotHeld,
   prepareProductUpdateBatch: operations.update,
 }))
 vi.mock("@tanstack/react-start", () => ({

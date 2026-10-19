@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import {
-  collectProductFormSkuEntries,
-  collectSkusFromCatalogInput,
-  formPathToZodPath,
-} from "~/src/modules/product/product-sku.validation.utils"
 import { PRODUCT_ADMIN_STATUS } from "~/src/modules/product/product.constants"
+import { collectProductFormSkuEntries, collectSkusFromCatalogInput, formPathToZodPath } from "~/src/modules/product/product.utils"
 import { type CatalogUpsertInput, type ProductFormValues } from "~/src/modules/product/product.zod"
 
 const locales = { "en-US": "", "pl-PL": "" }

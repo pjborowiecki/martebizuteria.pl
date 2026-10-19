@@ -20,7 +20,6 @@ import {
   buildVariantCombinationKey,
   buildVariantCombinations,
 } from "~/src/modules/product-variant/product-variant.utils"
-import { collectProductFormSkuEntries, formPathToZodPath } from "~/src/modules/product/product-sku.validation.utils"
 import {
   PRODUCT_ADMIN_STATUS,
   PRODUCT_COLUMN_LENGTH,
@@ -32,6 +31,7 @@ import {
   PRODUCT_VARIANT_KIND,
 } from "~/src/modules/product/product.constants"
 import { product } from "~/src/modules/product/product.schema"
+import { collectProductFormSkuEntries, formPathToZodPath } from "~/src/modules/product/product.utils"
 
 const { createSelectSchema } = createSchemaFactory({
   zodInstance: zod,

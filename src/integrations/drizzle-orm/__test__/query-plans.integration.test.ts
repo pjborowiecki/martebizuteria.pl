@@ -45,8 +45,8 @@ const { claimGuestOrdersForUser } = await import("~/src/modules/order/use-cases/
 const { getPriceReductions } = await import("~/src/modules/price-history/price-history.accessors")
 const { getPublishedProductsByCategoryIds, getPublishedProductsByCollectionHandle, getPublishedRelatedProducts } =
   await import("~/src/modules/product/product.accessors")
-const { STOREFRONT_PRODUCTS_SORT } = await import("~/src/modules/product/product.storefront-catalog")
-const { getStorefrontPublishedProductsPage } = await import("~/src/modules/product/product.storefront-catalog.accessors")
+const { getStorefrontPublishedProductsPage } = await import("~/src/modules/product/use-cases/get-storefront-products-page.server")
+const { STOREFRONT_PRODUCTS_SORT } = await import("~/src/modules/storefront-search/storefront-search.constants")
 const { getCustomerAuditTimelineQuery, getLatestOrderShippingAddressesQuery } = await import("~/src/modules/user/user.accessors")
 
 applyMigrationHistory(sqlite)

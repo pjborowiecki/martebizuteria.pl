@@ -19,7 +19,7 @@ import {
   buildAdminProductsFilterParams,
   getAdminProductsCatalogList,
   loadAdminListAggregates,
-} from "~/src/modules/product/product.admin-list.server"
+} from "~/src/modules/product/use-cases/list-admin-products.server"
 
 const JANUARY = Date.UTC(2026, 0, 10)
 

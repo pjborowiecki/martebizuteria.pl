@@ -7,7 +7,7 @@ import { cleanup, screen } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { type StorefrontProductsSearch } from "~/src/modules/product/product.storefront-catalog"
+import { type StorefrontProductsSearch } from "~/src/modules/storefront-search/storefront-search.zod"
 
 interface CatalogHeader {
   readonly eyebrow: string

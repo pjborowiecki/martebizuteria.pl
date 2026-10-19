@@ -12,14 +12,14 @@ import {
 } from "~/src/modules/attribute-on-product/attribute-on-product.accessors"
 import { recordCatalogProductCreatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { prepareProductImagesBatch } from "~/src/modules/product-image/product-image.accessors"
+import { rethrowProductMutationError } from "~/src/modules/product/product.utils"
+import { productZodSchemas } from "~/src/modules/product/product.zod"
 import {
   assertCatalogSkusAvailable,
   deleteOrphanProductByHandle,
   getNextProductRank,
   prepareProductInsertBatch,
-} from "~/src/modules/product/product.catalog.server"
-import { rethrowProductMutationError } from "~/src/modules/product/product.mutation-errors"
-import { productZodSchemas } from "~/src/modules/product/product.zod"
+} from "~/src/modules/product/use-cases/save-complete-product.server"
 
 const persistProduct = async (productId: string, data: zod.infer<(typeof productZodSchemas)["createCompleteInput"]>): Promise<void> => {
   const [rank, attributeRows] = await Promise.all([
