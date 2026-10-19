@@ -3,16 +3,11 @@ import { and, count, desc, eq, gte, isNotNull, lt, sql } from "drizzle-orm"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { calendarPeriodKey } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import {
-  ADMIN_DASHBOARD_RECENT_ORDERS_LIMIT,
-  ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT,
-} from "~/src/modules/admin-dashboard/admin-dashboard.constants"
-import { type AdminDashboardChartWindow } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
-import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
-import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import { netSalesAverage, netSalesSum, orderCountsAsSale } from "~/src/modules/order/order.accessors"
+import { ADMIN_DASHBOARD_RECENT_ORDERS_LIMIT, ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT } from "~/src/modules/order/order.constants"
+import { type AdminDashboardChartWindow } from "~/src/modules/order/order.dashboard.utils"
 import { order } from "~/src/modules/order/order.schema"
 import { payment } from "~/src/modules/payment/payment.schema"
 import { productCategory } from "~/src/modules/product-category/product-category.schema"
@@ -51,34 +46,6 @@ export const salesTotalsQuery = (since: Date, until?: Date) => {
     })
     .from(order)
     .leftJoin(payment, eq(order.paymentId, payment.id))
-    .where(and(...conditions))
-}
-
-export const newCustomersQuery = (since: Date, until?: Date) => {
-  const conditions = [gte(user.createdAt, since)]
-  if (until !== undefined) {
-    conditions.push(lt(user.createdAt, until))
-  }
-
-  return db
-    .select({
-      count: count(),
-    })
-    .from(user)
-    .where(and(...conditions))
-}
-
-export const pageViewsQuery = (since: Date, until?: Date) => {
-  const conditions = [eq(auditLog.action, AUDIT_LOG_ACTION.CUSTOMER_PAGE_VIEWED), gte(auditLog.createdAt, since)]
-  if (until !== undefined) {
-    conditions.push(lt(auditLog.createdAt, until))
-  }
-
-  return db
-    .select({
-      count: count(),
-    })
-    .from(auditLog)
     .where(and(...conditions))
 }
 

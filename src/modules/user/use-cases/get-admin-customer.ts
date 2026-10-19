@@ -11,8 +11,8 @@ import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i1
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { type CalendarPeriod, formatShortDate } from "~/src/modules/_core/utils/datetime"
-import { type AdminDashboardChartWindow, resolveAdminDashboardMonths } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
 import { getOrdersPlacedWhileSignedIn } from "~/src/modules/order/order.accessors"
+import { type AdminDashboardChartWindow, resolveAdminDashboardMonths } from "~/src/modules/order/order.dashboard.utils"
 import { resolveCategoryTitle } from "~/src/modules/product-category/product-category.utils"
 import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
 import { getUserEmailHistory } from "~/src/modules/user-email-history/user-email-history.accessors"

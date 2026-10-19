@@ -14,19 +14,9 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
-import {
-  newCustomersQuery,
-  orderAggregatesQuery,
-  pageViewsQuery,
-  recentOrdersQuery,
-  salesTotalsQuery,
-  topProductsQuery,
-} from "~/src/modules/admin-dashboard/admin-dashboard.accessors"
-import {
-  ADMIN_DASHBOARD_RECENT_ORDERS_LIMIT,
-  ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT,
-} from "~/src/modules/admin-dashboard/admin-dashboard.constants"
-import { resolveAdminDashboardDateRange, resolveAdminDashboardMonths } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
+import { ADMIN_DASHBOARD_RECENT_ORDERS_LIMIT, ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT } from "~/src/modules/order/order.constants"
+import { orderAggregatesQuery, recentOrdersQuery, salesTotalsQuery, topProductsQuery } from "~/src/modules/order/order.dashboard.accessors"
+import { resolveAdminDashboardDateRange, resolveAdminDashboardMonths } from "~/src/modules/order/order.dashboard.utils"
 
 const JANUARY = Date.UTC(2024, 0, 10)
 
@@ -55,7 +45,6 @@ beforeEach(() => {
     drop table if exists order_item;
     drop table if exists payment;
     drop table if exists user;
-    drop table if exists audit_log;
     drop table if exists product;
     drop table if exists product_category;
     drop table if exists category_on_product;
@@ -76,7 +65,6 @@ beforeEach(() => {
       thumbnail text, title text not null, total integer not null default 0,
       created_at integer not null, updated_at integer not null
     );
-    create table audit_log (id text primary key, action text not null, created_at integer not null);
     create table product (id text primary key, titles text not null, created_at integer not null, updated_at integer not null);
     create table product_category (id text primary key, handle text not null, titles text not null, created_at integer not null, updated_at integer not null);
     create table category_on_product (product_id text not null, category_id text not null, is_primary integer not null default 0);
@@ -102,12 +90,6 @@ beforeEach(() => {
       ('o-apr-completed', null, null, 'guest@example.com', 'completed', 'delivered', 1000, ${APRIL}, ${APRIL});
 
     update "order" set order_number = 'MRT-' || id;
-
-    insert into audit_log (id, action, created_at) values
-      ('a-1', 'customer.page_viewed', ${JANUARY}),
-      ('a-2', 'customer.page_viewed', ${FEBRUARY}),
-      ('a-3', 'auth.login', ${FEBRUARY}),
-      ('a-4', 'customer.page_viewed', ${MARCH});
 
     insert into product (id, titles, created_at, updated_at) values
       ('p-ring', '{"en-US":"Silver ring","pl-PL":"Srebrny pierscionek"}', ${JANUARY}, ${JANUARY}),
@@ -182,34 +164,6 @@ describe("salesTotalsQuery", () => {
     const afterEveryOrder = new Date(Date.UTC(2030, 0, 1))
 
     await expect(salesTotalsQuery(afterEveryOrder)).resolves.toStrictEqual([{ averageOrderValue: 0, orders: 0, revenue: 0 }])
-  })
-})
-
-describe("newCustomersQuery", () => {
-  it("counts every account created since the window start", async () => {
-    const rows = await newCustomersQuery(WINDOW_START)
-
-    expect(rows[0]?.count).toBe(3)
-  })
-
-  it("counts only the accounts created before the window end", async () => {
-    const rows = await newCustomersQuery(WINDOW_START, WINDOW_END)
-
-    expect(rows[0]?.count).toBe(2)
-  })
-})
-
-describe("pageViewsQuery", () => {
-  it("counts page view audit rows and ignores other actions", async () => {
-    const rows = await pageViewsQuery(WINDOW_START)
-
-    expect(rows[0]?.count).toBe(3)
-  })
-
-  it("counts only the page views inside the window", async () => {
-    const rows = await pageViewsQuery(WINDOW_START, WINDOW_END)
-
-    expect(rows[0]?.count).toBe(2)
   })
 })
 

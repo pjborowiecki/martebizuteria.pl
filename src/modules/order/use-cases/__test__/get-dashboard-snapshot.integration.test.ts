@@ -49,9 +49,9 @@ import {
   ADMIN_DASHBOARD_QUERY_STALE_MS,
   ADMIN_DASHBOARD_RECENT_ORDERS_LIMIT,
   ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT,
-} from "~/src/modules/admin-dashboard/admin-dashboard.constants"
-import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
-import { getDashboardSnapshot, getDashboardSnapshotQuery } from "~/src/modules/admin-dashboard/use-cases/get-dashboard-snapshot"
+} from "~/src/modules/order/order.constants"
+import { type AdminDashboard } from "~/src/modules/order/order.types"
+import { getDashboardSnapshot, getDashboardSnapshotQuery } from "~/src/modules/order/use-cases/get-dashboard-snapshot"
 
 const NOW = new Date("2026-06-15T12:00:00.000Z")
 

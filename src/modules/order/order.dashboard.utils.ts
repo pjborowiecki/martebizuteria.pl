@@ -10,8 +10,8 @@ import {
   ADMIN_DASHBOARD_COMPARISON_PERIOD_DAYS,
   ADMIN_DASHBOARD_MS_PER_DAY,
   ADMIN_DASHBOARD_TREND_PERCENT_SCALE,
-} from "~/src/modules/admin-dashboard/admin-dashboard.constants"
-import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
+} from "~/src/modules/order/order.constants"
+import { type AdminDashboard } from "~/src/modules/order/order.types"
 
 export const resolveAdminDashboardComparisonPeriod = (
   referenceDate: Date = new Date(),

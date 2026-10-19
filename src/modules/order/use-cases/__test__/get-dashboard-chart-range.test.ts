@@ -1,9 +1,9 @@
 import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { ADMIN_DASHBOARD_QUERY_KEYS, ADMIN_DASHBOARD_QUERY_STALE_MS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
-import { type AdminDashboardChartWindow } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
-import { getDashboardChartRange, getDashboardChartRangeQuery } from "~/src/modules/admin-dashboard/use-cases/get-dashboard-chart-range"
+import { ADMIN_DASHBOARD_QUERY_KEYS, ADMIN_DASHBOARD_QUERY_STALE_MS } from "~/src/modules/order/order.constants"
+import { type AdminDashboardChartWindow } from "~/src/modules/order/order.dashboard.utils"
+import { getDashboardChartRange, getDashboardChartRangeQuery } from "~/src/modules/order/use-cases/get-dashboard-chart-range"
 
 interface OrderAggregateRow {
   readonly orders: number
@@ -20,7 +20,7 @@ const accessors = vi.hoisted(() => ({
 const viewer = vi.hoisted(() => ({ preferences: { formatLocale: "en-US", timeZone: "Europe/Warsaw" } }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
-vi.mock("~/src/modules/admin-dashboard/admin-dashboard.accessors", () => accessors)
+vi.mock("~/src/modules/order/order.dashboard.accessors", () => accessors)
 vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => ({
   resolveRequestDisplayPreferences: () => Promise.resolve(viewer.preferences),
 }))

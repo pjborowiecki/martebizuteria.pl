@@ -129,3 +129,13 @@ export const orderZodSchemas = {
   select: createSelectSchema(order),
   update: createUpdateSchema(order),
 }
+
+export const adminDashboardZodSchemas = {
+  chartRangeInput: zod.object({
+    endDate: zod.string(),
+    startDate: zod.string(),
+  }),
+  snapshotInput: zod.object({
+    locale: zod.string(),
+  }),
+}

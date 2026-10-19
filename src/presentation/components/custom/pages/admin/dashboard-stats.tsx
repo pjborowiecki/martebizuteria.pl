@@ -5,7 +5,7 @@ import { DollarSign, Eye, ShoppingCart, Users } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
-import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
+import { type AdminDashboard } from "~/src/modules/order/order.types"
 
 import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
 

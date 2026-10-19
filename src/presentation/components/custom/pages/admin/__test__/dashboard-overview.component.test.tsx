@@ -5,8 +5,7 @@ import { type Mock, afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
-import { type Order } from "~/src/modules/order/order.types"
+import { type AdminDashboard, type Order } from "~/src/modules/order/order.types"
 
 import { suppressNextDataGridRowClick } from "~/src/presentation/components/custom/datagrid/lib/data-grid-row-click"
 import { DashboardRecentOrders } from "~/src/presentation/components/custom/pages/admin/dashboard-recent-orders"

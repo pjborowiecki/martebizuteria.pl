@@ -7,8 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { TestProviders, createTestRouter } from "~/src/platform/testing/lib/render"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { ADMIN_DASHBOARD_QUERY_KEYS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
-import { ORDER_ERROR_CODES, ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
+import { ADMIN_DASHBOARD_QUERY_KEYS, ORDER_ERROR_CODES, ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 import {

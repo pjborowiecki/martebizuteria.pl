@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vite-plus/test"
 
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: {} }))
 
-const { resolveTopProductCategoryLabel, resolveTopProductName } = await import("~/src/modules/admin-dashboard/admin-dashboard.accessors")
+const { resolveTopProductCategoryLabel, resolveTopProductName } = await import("~/src/modules/order/order.dashboard.accessors")
 
 describe("resolveTopProductName", () => {
   it("falls back to the order item title when the product row is gone", () => {

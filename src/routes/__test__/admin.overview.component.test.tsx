@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
-import { ADMIN_DASHBOARD_QUERY_STALE_MS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
+import { ADMIN_DASHBOARD_QUERY_STALE_MS } from "~/src/modules/order/order.constants"
 import { STORE_SETTING_QUERY_KEYS } from "~/src/modules/store-setting/store-setting.constants"
 
 const snapshot = vi.hoisted(() => ({ fetch: vi.fn<(locale: string) => Promise<{ locale: string }>>() }))
@@ -35,7 +35,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
     },
   }
 })
-vi.mock("~/src/modules/admin-dashboard/use-cases/get-dashboard-snapshot", () => ({
+vi.mock("~/src/modules/order/use-cases/get-dashboard-snapshot", () => ({
   getDashboardSnapshotQuery: ({ locale }: Readonly<{ locale: string }>) => ({
     queryFn: () => snapshot.fetch(locale),
     queryKey: ["admin", "dashboard", "snapshot", locale],

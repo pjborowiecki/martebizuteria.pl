@@ -8,7 +8,6 @@ import { buildAdminDateTimeFilterSql } from "~/src/modules/_core/utils/datetime-
 import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
 import { buildAdminSearchOrCondition, normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { address } from "~/src/modules/address/address.schema"
-import { type AdminDashboardChartWindow } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
@@ -16,6 +15,7 @@ import { collectionOnProduct } from "~/src/modules/collection-on-product/collect
 import { orderAddress } from "~/src/modules/order-address/order-address.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import { netSalesAverage, netSalesSum, orderCountsAsSale } from "~/src/modules/order/order.accessors"
+import { type AdminDashboardChartWindow } from "~/src/modules/order/order.dashboard.utils"
 import { order } from "~/src/modules/order/order.schema"
 import { payment } from "~/src/modules/payment/payment.schema"
 import { productCategory } from "~/src/modules/product-category/product-category.schema"
@@ -509,3 +509,17 @@ const CUSTOMER_AUDIT_TIMELINE_ACTIONS = [
   AUDIT_LOG_ACTION.CUSTOMER_CART_ITEM_ADDED,
   AUDIT_LOG_ACTION.CUSTOMER_PAGE_VIEWED,
 ] as const
+
+export const newCustomersQuery = (since: Date, until?: Date) => {
+  const conditions = [gte(user.createdAt, since)]
+  if (until !== undefined) {
+    conditions.push(lt(user.createdAt, until))
+  }
+
+  return db
+    .select({
+      count: count(),
+    })
+    .from(user)
+    .where(and(...conditions))
+}

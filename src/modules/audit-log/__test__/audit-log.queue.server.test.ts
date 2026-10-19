@@ -1,9 +1,8 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { ADMIN_DASHBOARD_QUERY_KEYS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
 import { AUDIT_LOG_ACTION, AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 import { type AuditLogQueueMessage, processAuditLogQueueBatch } from "~/src/modules/audit-log/audit-log.queue.server"
-import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
+import { ADMIN_DASHBOARD_QUERY_KEYS, ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 
 const queue = vi.hoisted(() => ({
   insertAuditLogs: vi.fn(() => Promise.resolve(undefined)),

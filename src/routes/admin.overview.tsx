@@ -4,8 +4,8 @@ import { createFileRoute } from "@tanstack/react-router"
 import { cn } from "cn"
 import { useTranslations } from "use-intl/react"
 
-import { ADMIN_DASHBOARD_QUERY_STALE_MS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
-import { getDashboardSnapshotQuery } from "~/src/modules/admin-dashboard/use-cases/get-dashboard-snapshot"
+import { ADMIN_DASHBOARD_QUERY_STALE_MS } from "~/src/modules/order/order.constants"
+import { getDashboardSnapshotQuery } from "~/src/modules/order/use-cases/get-dashboard-snapshot"
 import { getAdminSalesStatusQuery } from "~/src/modules/store-setting/use-cases/get-sales-status"
 
 import { ADMIN_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"

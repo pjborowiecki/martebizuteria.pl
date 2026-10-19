@@ -2,9 +2,9 @@ import { useMemo, useState } from "react"
 
 import { useQuery } from "@tanstack/react-query"
 
-import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
-import { isAdminDashboardCustomChartRangeValid } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
-import { getDashboardChartRangeQuery } from "~/src/modules/admin-dashboard/use-cases/get-dashboard-chart-range"
+import { isAdminDashboardCustomChartRangeValid } from "~/src/modules/order/order.dashboard.utils"
+import { type AdminDashboard } from "~/src/modules/order/order.types"
+import { getDashboardChartRangeQuery } from "~/src/modules/order/use-cases/get-dashboard-chart-range"
 
 import { useAdminDashboardSnapshot } from "~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-admin-dashboard-snapshot"
 
