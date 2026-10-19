@@ -24,7 +24,10 @@ const batched = vi.hoisted(() => ({ run: vi.fn<(statements: readonly PreparedSta
 
 const context = vi.hoisted(() => ({ getCheckoutById: vi.fn() }))
 
-vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutById: context.getCheckoutById }))
+vi.mock("~/src/modules/checkout/checkout.accessors", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  getCheckoutById: context.getCheckoutById,
+}))
 
 const { updateCheckoutDelivery } = await import("~/src/modules/checkout/use-cases/update-checkout-delivery.server")
 

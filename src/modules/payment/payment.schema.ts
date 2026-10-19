@@ -3,9 +3,9 @@ import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqli
 
 import { timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { type CheckoutFulfillmentLine } from "~/src/modules/checkout/checkout-metadata.zod"
 import { checkout } from "~/src/modules/checkout/checkout.schema"
-import { type ReleaseLine } from "~/src/modules/checkout/checkout.utils"
+import { type ReleaseLine } from "~/src/modules/checkout/checkout.types"
+import { type CheckoutFulfillmentLine } from "~/src/modules/checkout/checkout.zod"
 
 export const payment = sqliteTable(
   "payment",

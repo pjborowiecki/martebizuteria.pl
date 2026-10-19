@@ -1,6 +1,7 @@
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
-import { type ReleaseCheckoutInput, prepareReleaseCheckoutBatch } from "~/src/modules/checkout/checkout.utils"
+import { prepareReleaseCheckoutBatch } from "~/src/modules/checkout/checkout.accessors"
+import { type ReleaseCheckoutInput } from "~/src/modules/checkout/checkout.types"
 
 export const releaseCheckout = async (input: ReleaseCheckoutInput): Promise<boolean> => {
   const [first, ...rest] = prepareReleaseCheckoutBatch(input)

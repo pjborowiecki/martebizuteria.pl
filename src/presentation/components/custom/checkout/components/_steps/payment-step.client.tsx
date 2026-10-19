@@ -37,8 +37,7 @@ import { CHECKOUT_PAYMENT_METHOD_ORDER } from "~/src/integrations/stripe/stripe.
 import { CHECKOUT_ERROR_CODES, getCheckoutErrorKey } from "~/src/integrations/stripe/stripe.errors"
 
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
-import { toInternationalCheckoutPhone } from "~/src/modules/checkout/checkout.validation.utils"
-import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
+import { type CheckoutFormSchema, toInternationalCheckoutPhone } from "~/src/modules/checkout/checkout.zod"
 import { type CheckoutSessionStatus, checkoutSessionStatusQuery } from "~/src/modules/checkout/use-cases/get-checkout-session-status"
 import { DELIVERY_METHOD_QUERY_KEYS } from "~/src/modules/delivery-method/delivery-method.constants"
 import { STORE_SETTING_QUERY_KEYS } from "~/src/modules/store-setting/store-setting.constants"

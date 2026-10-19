@@ -5,13 +5,9 @@ import { type TestD1Query } from "~/src/platform/testing/mocks/d1"
 
 import { runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 
-import {
-  type CheckoutFulfillmentSnapshot,
-  type FulfillCheckoutInput,
-  type PendingCheckout,
-  prepareFulfillCheckoutBatch,
-  resolvePendingCheckout,
-} from "~/src/modules/checkout/checkout.utils"
+import { prepareFulfillCheckoutBatch } from "~/src/modules/checkout/checkout.accessors"
+import { type CheckoutFulfillmentSnapshot, type FulfillCheckoutInput, type PendingCheckout } from "~/src/modules/checkout/checkout.types"
+import { resolvePendingCheckout } from "~/src/modules/checkout/checkout.utils"
 import { computeOrderTotals } from "~/src/modules/order/order.utils"
 import { currentOrderNumberPeriod } from "~/src/modules/order/use-cases/allocate-order-number.server"
 

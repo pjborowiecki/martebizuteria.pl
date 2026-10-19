@@ -14,9 +14,9 @@ import {
   resolveCheckoutSessionDiscountTotal,
   resolveCheckoutSessionLocale,
   resolveCheckoutSessionShippingTotal,
-} from "~/src/modules/checkout/checkout-metadata.zod"
-import { readCheckoutSessionLines } from "~/src/modules/checkout/checkout.session-lines.server"
+} from "~/src/modules/checkout/checkout.utils"
 import { fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
+import { readCheckoutSessionLines } from "~/src/modules/checkout/use-cases/read-checkout-session-lines.server"
 import { sendNewOrderEmail } from "~/src/modules/order/use-cases/send-new-order-email.server"
 import { sendOrderConfirmationEmail } from "~/src/modules/order/use-cases/send-order-confirmation-email.server"
 

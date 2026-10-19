@@ -2,9 +2,9 @@ import { and, eq, exists, inArray, isNull, ne } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
-import { type CheckoutFulfillmentLine } from "~/src/modules/checkout/checkout-metadata.zod"
 import { checkout } from "~/src/modules/checkout/checkout.schema"
-import { type ReleaseLine } from "~/src/modules/checkout/checkout.utils"
+import { type ReleaseLine } from "~/src/modules/checkout/checkout.types"
+import { type CheckoutFulfillmentLine } from "~/src/modules/checkout/checkout.zod"
 import { discountClaim } from "~/src/modules/discount/discount.schema"
 import { inventoryReleaseValues } from "~/src/modules/inventory/inventory.accessors"
 import { inventory } from "~/src/modules/inventory/inventory.schema"

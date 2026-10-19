@@ -14,7 +14,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
-import { findPendingCheckoutByTransaction } from "~/src/modules/checkout/checkout.pending.server"
+import { findPendingCheckoutByTransaction } from "~/src/modules/checkout/use-cases/find-pending-checkout.server"
 import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checkout.server"
 
 const AT = Date.UTC(2026, 0, 1)

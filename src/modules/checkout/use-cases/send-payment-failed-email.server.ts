@@ -6,9 +6,9 @@ import { createTranslator } from "use-intl"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
-import { resolveCheckoutSessionLocale } from "~/src/modules/checkout/checkout-metadata.zod"
 import { getCheckoutEmailContext } from "~/src/modules/checkout/checkout.accessors"
-import { readCheckoutSessionLines } from "~/src/modules/checkout/checkout.session-lines.server"
+import { resolveCheckoutSessionLocale } from "~/src/modules/checkout/checkout.utils"
+import { readCheckoutSessionLines } from "~/src/modules/checkout/use-cases/read-checkout-session-lines.server"
 import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/use-cases/deliver-order-email.server"
 
 import { resolveDeploymentOrigin } from "~/src/lib/request"

@@ -26,10 +26,13 @@ import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { isSellPriceCentsValid } from "~/src/modules/_core/utils/currency"
-import { type CheckoutFulfillmentLine, type CheckoutPaymentMetadata } from "~/src/modules/checkout/checkout-metadata.zod"
-import { OPEN_CHECKOUTS_PER_CLIENT_ADDRESS_MAX, OPEN_CHECKOUTS_PER_EMAIL_MAX } from "~/src/modules/checkout/checkout.constants"
-import { type ReleaseLine } from "~/src/modules/checkout/checkout.utils"
-import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
+import {
+  type CheckoutPaymentMetadata,
+  OPEN_CHECKOUTS_PER_CLIENT_ADDRESS_MAX,
+  OPEN_CHECKOUTS_PER_EMAIL_MAX,
+} from "~/src/modules/checkout/checkout.constants"
+import { type ReleaseLine } from "~/src/modules/checkout/checkout.types"
+import { type CheckoutFormSchema, type CheckoutFulfillmentLine } from "~/src/modules/checkout/checkout.zod"
 import { countOpenCheckouts } from "~/src/modules/checkout/use-cases/count-open-checkouts.server"
 import { createCheckout } from "~/src/modules/checkout/use-cases/create-checkout.server"
 import { forgetCheckoutClientAddress } from "~/src/modules/checkout/use-cases/forget-checkout-client-address.server"

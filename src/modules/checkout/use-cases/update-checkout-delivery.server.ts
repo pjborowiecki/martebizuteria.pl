@@ -1,8 +1,8 @@
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { getCheckoutById } from "~/src/modules/checkout/checkout.accessors"
-import { type PrepareCreateCheckoutInput, prepareUpdateCheckoutDeliveryBatch } from "~/src/modules/checkout/checkout.utils"
+import { getCheckoutById, prepareUpdateCheckoutDeliveryBatch } from "~/src/modules/checkout/checkout.accessors"
+import { type PrepareCreateCheckoutInput } from "~/src/modules/checkout/checkout.types"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 
 export const updateCheckoutDelivery = async (

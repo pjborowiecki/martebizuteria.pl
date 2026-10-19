@@ -66,8 +66,8 @@ const { getHeldLinesByTransactionId } = vi.hoisted(() => ({
 }))
 
 vi.mock("~/src/modules/payment/payment.accessors", () => ({ getHeldLinesByTransactionId }))
-vi.mock("~/src/modules/checkout/checkout.session-lines.server", async () => {
-  const { parseCheckoutSessionFulfillmentLines } = await import("~/src/modules/checkout/checkout-metadata.zod")
+vi.mock("~/src/modules/checkout/use-cases/read-checkout-session-lines.server", async () => {
+  const { parseCheckoutSessionFulfillmentLines } = await import("~/src/modules/checkout/checkout.utils")
 
   return {
     readCheckoutSessionLines: (session: Parameters<typeof parseCheckoutSessionFulfillmentLines>[0]) =>

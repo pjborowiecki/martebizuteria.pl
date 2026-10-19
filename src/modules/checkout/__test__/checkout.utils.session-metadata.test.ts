@@ -3,11 +3,11 @@ import { describe, expect, it } from "vite-plus/test"
 import { checkoutSession } from "~/src/integrations/stripe/__test__/fixtures/stripe-webhook-events"
 
 import {
-  checkoutFulfillmentLinesSchema,
   parseCheckoutSessionFulfillmentLines,
   resolveCheckoutSessionDiscountTotal,
   resolveCheckoutSessionShippingTotal,
-} from "~/src/modules/checkout/checkout-metadata.zod"
+} from "~/src/modules/checkout/checkout.utils"
+import { checkoutFulfillmentLinesSchema } from "~/src/modules/checkout/checkout.zod"
 
 const SHIRT = { handle: "linen-shirt", imageUrl: "https://cdn.test/1.jpg", price: 19_900, qty: 2, title: "Linen shirt", variantId: "var_1" }
 

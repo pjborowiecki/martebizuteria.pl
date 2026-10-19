@@ -16,7 +16,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
 import { runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 
-import { prepareReleaseCheckoutBatch } from "~/src/modules/checkout/checkout.utils"
+import { prepareReleaseCheckoutBatch } from "~/src/modules/checkout/checkout.accessors"
 import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checkout.server"
 import { supersedeCheckoutSession } from "~/src/modules/checkout/use-cases/supersede-checkout-session.server"
 

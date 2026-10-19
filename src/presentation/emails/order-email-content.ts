@@ -1,6 +1,6 @@
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
-import { type FulfillmentLine } from "~/src/modules/checkout/checkout.utils"
+import { type FulfillmentLine } from "~/src/modules/checkout/checkout.types"
 import { DELIVERY_METHOD } from "~/src/modules/delivery-method/delivery-method.constants"
 import { type DeliveryMethod } from "~/src/modules/delivery-method/delivery-method.types"
 import { type OrderLineFulfillmentTime } from "~/src/modules/order/order.types"
