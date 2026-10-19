@@ -7,10 +7,10 @@ import {
   NUMERIC_COLUMN_FILTER_OPERATOR,
   type NumericColumnFilterValue,
 } from "~/src/modules/_core/utils/column-filters"
-import { type TableExportDocument, type TableExportFilter } from "~/src/modules/_core/utils/table-export"
 
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 import { getDataGridColumnLabel, getDataGridLayoutColumns } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
+import { type TableExportDocument, type TableExportFilter } from "~/src/presentation/components/custom/datagrid/lib/table-export"
 
 export interface DataGridExportSource<TData extends RowData> {
   readonly filters: readonly TableExportFilter[]

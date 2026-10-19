@@ -37,7 +37,7 @@ const loadPage = (input: PageInput) => {
   })
 }
 
-vi.mock("~/src/modules/_core/utils/download", () => ({ downloadTextFile: mocks.download }))
+vi.mock("~/src/presentation/components/custom/datagrid/lib/download", () => ({ downloadTextFile: mocks.download }))
 vi.mock("~/src/modules/audit-log/use-cases/get-customer-login-history-page", () => ({
   getCustomerLoginHistoryPage: ({ data }: { data: PageInput }) => loadPage(data),
   getCustomerLoginHistoryPageQuery: (input: PageInput) => ({

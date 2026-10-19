@@ -6,7 +6,6 @@ import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
 import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/_core/constants/customer-account"
-import { accountPageMeta } from "~/src/modules/_core/utils/account-page-meta"
 import { LIST_PAGE_FIRST } from "~/src/modules/_core/utils/pagination"
 import { CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE } from "~/src/modules/audit-log/audit-log.constants"
 import { getCustomerLoginHistoryPageQuery } from "~/src/modules/audit-log/use-cases/get-customer-login-history-page"
@@ -14,7 +13,7 @@ import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
 import { listCustomerSessionsQuery } from "~/src/modules/session/use-cases/list-customer-sessions"
 import { revokeOtherCustomerSessionsMutation } from "~/src/modules/session/use-cases/revoke-other-customer-sessions"
 
-import { pageHead } from "~/src/lib/seo"
+import { accountPageMeta, pageHead } from "~/src/lib/seo"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Separator } from "~/src/presentation/components/shadcn/separator"

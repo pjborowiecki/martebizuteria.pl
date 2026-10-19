@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { downloadTextFile } from "~/src/modules/_core/utils/download"
+import { downloadTextFile } from "~/src/presentation/components/custom/datagrid/lib/download"
 
 describe("downloadTextFile", () => {
   afterEach(() => {

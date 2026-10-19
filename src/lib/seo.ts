@@ -1,4 +1,7 @@
+import { type QueryClient } from "@tanstack/react-query"
+
 import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
+import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 import { deLocalizePathname, localeLinks, localizePathname } from "~/src/integrations/use-intl/i18n.paths"
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
@@ -10,7 +13,11 @@ import { type StoreSetting } from "~/src/modules/store-setting/store-setting.typ
 import { APP_NAME, APP_URL, OG_IMAGE_PATH } from "~/src/presentation/branding/app"
 import { SOCIALS } from "~/src/presentation/branding/socials"
 
+import type accountMessages from "~/messages/en-US/pages.account.json"
+import type accountMetaMessages from "~/messages/en-US/pages.account.meta.json"
 import { ROUTES } from "~/src/routes"
+
+export type AccountSection = keyof (typeof accountMessages)["sidebar"]
 
 const TITLE_SEPARATORS: Record<SupportedLocale, string> = {
   "en-US": " — ",
@@ -387,3 +394,15 @@ export const generateSitemapXml = (appUrl: string, pages: readonly SitemapPage[]
     ...pages.flatMap((page) => I18N.SUPPORTED_LOCALES.map((locale) => sitemapUrlEntry(appUrl, page, locale))),
     `</urlset>`,
   ].join("\n")
+
+export const accountPageMeta = async (queryClient: QueryClient, locale: SupportedLocale, section: AccountSection): Promise<PageMeta> => {
+  const [sections, meta] = await Promise.all([
+    queryClient.query(messagesQueryOptions<typeof accountMessages>({ locale, namespace: "pages.account" })),
+    queryClient.query(messagesQueryOptions<typeof accountMetaMessages>({ locale, namespace: "pages.account.meta" })),
+  ])
+
+  return {
+    description: meta.description,
+    title: `${sections.sidebar[section]} | ${APP_NAME}`,
+  }
+}

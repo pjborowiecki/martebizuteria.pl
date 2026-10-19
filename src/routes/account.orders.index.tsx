@@ -6,11 +6,10 @@ import { useTranslations } from "use-intl/react"
 import zod from "zod/v4"
 
 import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/_core/constants/customer-account"
-import { accountPageMeta } from "~/src/modules/_core/utils/account-page-meta"
 import { CUSTOMER_ACCOUNT_ORDER_FILTERS } from "~/src/modules/order/order.constants"
 import { listCustomerOrdersQuery } from "~/src/modules/order/use-cases/list-customer-orders"
 
-import { pageHead } from "~/src/lib/seo"
+import { accountPageMeta, pageHead } from "~/src/lib/seo"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 

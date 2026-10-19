@@ -3,7 +3,7 @@ import { describe, expect, it } from "vite-plus/test"
 
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
-import { accountPageMeta } from "~/src/modules/_core/utils/account-page-meta"
+import { accountPageMeta } from "~/src/lib/seo"
 
 import type accountMessages from "~/messages/en-US/pages.account.json"
 
