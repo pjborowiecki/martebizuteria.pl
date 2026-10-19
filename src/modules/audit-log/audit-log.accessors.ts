@@ -22,11 +22,11 @@ import {
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import { buildAuditLogDayFilter } from "~/src/modules/audit-log/audit-log.utils"
-import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/customer-activity/customer-activity.constants"
 import {
   accountsWithAddressContaining,
   addressesOfAccountsWithAddressContaining,
 } from "~/src/modules/user-email-history/user-email-history.accessors"
+import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/user/user.constants"
 
 export interface AdminAuditLogsFilterParams {
   readonly category?: AuditLogCategory | undefined

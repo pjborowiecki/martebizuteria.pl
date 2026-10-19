@@ -23,7 +23,7 @@ const wishlist = vi.hoisted(() => ({ saved: new Set<string>(), toggle: vi.fn<(pr
 vi.mock("~/src/hooks/use-wishlist", () => ({
   useWishlist: () => ({ isWishlisted: (productId: string) => wishlist.saved.has(productId), signedIn: true, toggle: wishlist.toggle }),
 }))
-vi.mock("~/src/modules/customer-activity/customer-activity.tracking", () => ({ trackCartItemAdded: vi.fn() }))
+vi.mock("~/src/modules/user/user.tracking", () => ({ trackCartItemAdded: vi.fn() }))
 
 class ObserverStub {
   disconnect(): void {

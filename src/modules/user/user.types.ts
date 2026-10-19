@@ -122,6 +122,7 @@ export interface User {
   adminTeam: AdminTeam
   adminTeamMember: AdminTeamMember
   adminUserMetadata: z.infer<(typeof userZodSchemas)["adminUserMetadata"]>
+  customerActivityRecordInput: z.infer<(typeof userZodSchemas)["customerActivityRecordInput"]>
   customerAddressRow: CustomerAddressRow
   customerEmailChangeForm: z.infer<(typeof userZodSchemas)["customerEmailChangeForm"]>
   customerLocationRow: CustomerLocationRow

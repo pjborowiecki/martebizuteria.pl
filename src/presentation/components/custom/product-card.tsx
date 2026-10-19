@@ -6,9 +6,9 @@ import { Heart, Share2, ShoppingBag } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { useCartStore } from "~/src/modules/cart/cart.store"
-import { trackCartItemAdded } from "~/src/modules/customer-activity/customer-activity.tracking"
 import { type PriceReduction } from "~/src/modules/price-history/price-history.types"
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils"
+import { trackCartItemAdded } from "~/src/modules/user/user.tracking"
 
 import { useProductCardImageHover } from "~/src/hooks/use-product-card-image-hover"
 import { useWishlist } from "~/src/hooks/use-wishlist"

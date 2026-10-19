@@ -11,7 +11,7 @@ const { recordCustomerActivity, routeState, sessionState } = vi.hoisted(() => ({
   sessionState: { email: undefined as string | undefined },
 }))
 
-vi.mock("~/src/modules/customer-activity/use-cases/record-customer-activity", () => ({ recordCustomerActivity }))
+vi.mock("~/src/modules/user/use-cases/record-customer-activity", () => ({ recordCustomerActivity }))
 vi.mock("~/src/integrations/better-auth/auth.session", async () => {
   const { queryOptions } = await import("@tanstack/react-query")
 
@@ -33,7 +33,7 @@ vi.mock("@tanstack/react-router", async () => {
 })
 
 import { type CartItem, useCartStore } from "~/src/modules/cart/cart.store"
-import { CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY } from "~/src/modules/customer-activity/customer-activity.constants"
+import { CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY } from "~/src/modules/user/user.constants"
 
 import { CustomerActivityTracker } from "~/src/presentation/components/custom/customer-activity-tracker"
 

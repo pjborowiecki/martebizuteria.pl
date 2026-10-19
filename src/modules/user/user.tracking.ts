@@ -1,13 +1,10 @@
 import { createClientOnlyFn } from "@tanstack/react-start"
 
-import {
-  CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY,
-  CUSTOMER_ACTIVITY_PAGE_VIEW_STORAGE_PREFIX,
-} from "~/src/modules/customer-activity/customer-activity.constants"
-import { type CustomerActivity } from "~/src/modules/customer-activity/customer-activity.types"
-import { recordCustomerActivity } from "~/src/modules/customer-activity/use-cases/record-customer-activity"
+import { recordCustomerActivity } from "~/src/modules/user/use-cases/record-customer-activity"
+import { CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY, CUSTOMER_ACTIVITY_PAGE_VIEW_STORAGE_PREFIX } from "~/src/modules/user/user.constants"
+import { type User } from "~/src/modules/user/user.types"
 
-const fireAndForget = (input: CustomerActivity["recordInput"]): void => {
+const fireAndForget = (input: User["customerActivityRecordInput"]): void => {
   void (async () => {
     try {
       await recordCustomerActivity({
@@ -29,7 +26,7 @@ export const trackCartItemAdded = createClientOnlyFn(
   (
     input: Omit<
       Extract<
-        CustomerActivity["recordInput"],
+        User["customerActivityRecordInput"],
         {
           kind: "cart_item_added"
         }
@@ -48,7 +45,7 @@ export const trackCartAbandoned = createClientOnlyFn(
   (
     input: Omit<
       Extract<
-        CustomerActivity["recordInput"],
+        User["customerActivityRecordInput"],
         {
           kind: "cart_abandoned"
         }

@@ -5,10 +5,10 @@ import {
   CUSTOMER_ACTIVITY_PRODUCT_TITLE_MAX_LENGTH,
   CUSTOMER_ACTIVITY_VARIANT_ID_MAX_LENGTH,
   CUSTOMER_ACTIVITY_VARIANT_TITLE_MAX_LENGTH,
-} from "~/src/modules/customer-activity/customer-activity.constants"
-import { customerActivityZodSchemas } from "~/src/modules/customer-activity/customer-activity.zod"
+} from "~/src/modules/user/user.constants"
+import { userZodSchemas } from "~/src/modules/user/user.zod"
 
-const { recordInput } = customerActivityZodSchemas
+const { customerActivityRecordInput: recordInput } = userZodSchemas
 
 describe("cart_item_added payload", () => {
   it("accepts a minimal payload without a variant title", () => {

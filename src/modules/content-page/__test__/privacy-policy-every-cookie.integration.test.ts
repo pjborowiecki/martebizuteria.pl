@@ -8,10 +8,7 @@ import { I18N } from "~/src/integrations/use-intl/i18n.config"
 import { TIME_ZONE_COOKIE_NAME } from "~/src/integrations/use-intl/i18n.display"
 
 import { CONTENT_PAGE_HANDLE } from "~/src/modules/content-page/content-page.constants"
-import {
-  CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY,
-  CUSTOMER_ACTIVITY_PAGE_VIEW_STORAGE_PREFIX,
-} from "~/src/modules/customer-activity/customer-activity.constants"
+import { CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY, CUSTOMER_ACTIVITY_PAGE_VIEW_STORAGE_PREFIX } from "~/src/modules/user/user.constants"
 
 const database = { sqlite: new DatabaseSync(":memory:") }
 
