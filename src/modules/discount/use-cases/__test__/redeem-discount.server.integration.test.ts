@@ -17,7 +17,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
 const { runDrizzleBatch } = await import("~/src/integrations/drizzle-orm/drizzle.batch")
 const { applyMigrationHistory } = await import("~/src/platform/testing/mocks/migrations")
-const { prepareDiscountRedemption } = await import("~/src/modules/discount/discount.redeem.server")
+const { prepareDiscountRedemption } = await import("~/src/modules/discount/use-cases/redeem-discount.server")
 
 const EPOCH = Date.UTC(2026, 0, 1)
 

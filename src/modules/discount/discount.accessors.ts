@@ -10,6 +10,7 @@ import { checkout } from "~/src/modules/checkout/checkout.schema"
 import { DISCOUNT_STATUS, type DiscountStatus, type DiscountType } from "~/src/modules/discount/discount.constants"
 import { discount, discountClaim, discountRedemption } from "~/src/modules/discount/discount.schema"
 import { type Discount } from "~/src/modules/discount/discount.types"
+import { normalizeDiscountCode, parseOptionalDate, percentageCap, trimmedOrUndefined } from "~/src/modules/discount/discount.utils"
 import { payment } from "~/src/modules/payment/payment.schema"
 import { user } from "~/src/modules/user/user.schema"
 
@@ -182,6 +183,38 @@ export const getAdminDiscountStats = async (now: Date): Promise<Discount["adminS
 
 export const insertDiscount = async (values: Discount["insert"]): Promise<void> => {
   await db.insert(discount).values(values)
+}
+
+export const toDiscountUpdateValues = (values: Discount["adminFormValues"]): DiscountUpdateValues => ({
+  code: normalizeDiscountCode(values.code),
+  description: trimmedOrUndefined(values.description) ?? CLEARED,
+  endsAt: parseOptionalDate(values.endsAt) ?? CLEARED,
+  isActive: values.isActive,
+  maxDiscountAmount: percentageCap(values) ?? CLEARED,
+  minOrderTotal: values.minOrderTotal ?? CLEARED,
+  perCustomerLimit: values.perCustomerLimit ?? CLEARED,
+  startsAt: parseOptionalDate(values.startsAt) ?? CLEARED,
+  type: values.type,
+  updatedAt: new Date(),
+  usageLimit: values.usageLimit ?? CLEARED,
+  value: values.value,
+})
+
+const CLEARED: SQL = sql`null`
+
+interface DiscountUpdateValues {
+  readonly code: string
+  readonly description: SQL | string
+  readonly endsAt: Date | SQL
+  readonly isActive: boolean
+  readonly maxDiscountAmount: SQL | number
+  readonly minOrderTotal: SQL | number
+  readonly perCustomerLimit: SQL | number
+  readonly startsAt: Date | SQL
+  readonly type: Discount["adminFormValues"]["type"]
+  readonly updatedAt: Date
+  readonly usageLimit: SQL | number
+  readonly value: number
 }
 
 export const updateDiscountById = async (id: string, values: DiscountUpdateSet): Promise<void> => {

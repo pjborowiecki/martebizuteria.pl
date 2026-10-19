@@ -19,7 +19,7 @@ const { applyMigrationHistory } = await import("~/src/platform/testing/mocks/mig
 const { getDiscountByCodeForPreviewQuery } = await import("~/src/modules/discount/discount.accessors")
 const { DISCOUNT_TYPE } = await import("~/src/modules/discount/discount.constants")
 const { claimCheckoutDiscount, keepClaimedDiscount, prepareDiscountClaim, releaseDiscountClaims, releaseUnappliedDiscountClaims } =
-  await import("~/src/modules/discount/discount.claim.server")
+  await import("~/src/modules/discount/use-cases/claim-checkout-discount.server")
 
 const AT = Date.UTC(2026, 9, 5)
 

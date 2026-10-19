@@ -37,7 +37,9 @@ vi.mock("~/src/lib/rate-limit", () => ({}))
 vi.mock("~/src/modules/audit-log/use-cases/record-settings-audit.server", () => ({
   recordDiscountUpdatedAudit: stubs.recordDiscountUpdatedAudit,
 }))
-vi.mock("~/src/modules/discount/discount.accessors", () => ({
+vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: {} }))
+vi.mock("~/src/modules/discount/discount.accessors", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   getDiscountByCode: stubs.getDiscountByCode,
   getDiscountById: stubs.getDiscountById,
   updateDiscountById: stubs.updateDiscountById,

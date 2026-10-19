@@ -40,7 +40,7 @@ const { deleteExpiredAuditLogs } = await import("~/src/modules/audit-log/use-cas
 const { getCustomerActivityAuditRows, getCustomerLoginAuditRows, pageViewsQuery } =
   await import("~/src/modules/audit-log/audit-log.accessors")
 const { getDiscountByCodeForCustomerQuery, getDiscountByCodeForPreviewQuery } = await import("~/src/modules/discount/discount.accessors")
-const { prepareDiscountClaim } = await import("~/src/modules/discount/discount.claim.server")
+const { prepareDiscountClaim } = await import("~/src/modules/discount/use-cases/claim-checkout-discount.server")
 const { getAdminSubscribersPage } = await import("~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors")
 const { getAdminOrderTimelineRows, getOrderByTransactionId } = await import("~/src/modules/order/order.accessors")
 const { claimGuestOrdersForUser } = await import("~/src/modules/order/use-cases/claim-guest-orders.server")

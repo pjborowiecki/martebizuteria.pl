@@ -12,7 +12,7 @@ vi.mock("~/src/modules/discount/discount.accessors", () => ({
   getDiscountByCodeForCustomerQuery: stubs.getDiscountByCodeForCustomerQuery,
 }))
 
-const { resolveCheckoutDiscount } = await import("~/src/modules/discount/discount.checkout.server")
+const { resolveCheckoutDiscount } = await import("~/src/modules/discount/use-cases/resolve-checkout-discount.server")
 
 const NOW = new Date("2026-06-01T12:00:00.000Z")
 

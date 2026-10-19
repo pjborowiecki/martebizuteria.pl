@@ -49,7 +49,7 @@ vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => ({
   recordDiscountRedeemedAudit,
   recordOrderPlacedAudit,
 }))
-vi.mock("~/src/modules/discount/discount.redeem.server", () => ({ prepareDiscountRedemption }))
+vi.mock("~/src/modules/discount/use-cases/redeem-discount.server", () => ({ prepareDiscountRedemption }))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderByCheckoutId }))
 
 import { type FulfillCheckoutFromSessionInput, fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
