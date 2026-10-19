@@ -5,8 +5,8 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleCollectionCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
+import { setCollectionRanks } from "~/src/modules/product-collection/product-collection.accessors"
 import { COLLECTION_MUTATION_KEYS } from "~/src/modules/product-collection/product-collection.constants"
-import { setCollectionRanks } from "~/src/modules/product-collection/product-collection.server"
 import { productCollectionZodSchemas } from "~/src/modules/product-collection/product-collection.zod"
 
 export const reorderCollections = createServerFn({ method: "POST" })

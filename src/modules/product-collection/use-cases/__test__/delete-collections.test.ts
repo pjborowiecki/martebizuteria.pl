@@ -22,7 +22,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
 vi.mock("~/src/modules/collection-on-product/collection-on-product.accessors", () => ({
   countProductsForCollections: operations.countProducts,
 }))
-vi.mock("~/src/modules/product-collection/product-collection.server", () => ({
+vi.mock("~/src/modules/product-collection/product-collection.accessors", () => ({
   deleteCollections: operations.removeRows,
 }))
 vi.mock("@tanstack/react-start", () => ({

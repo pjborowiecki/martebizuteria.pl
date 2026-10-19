@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { deleteCollections, setCollectionRanks } from "~/src/modules/product-collection/product-collection.server"
+import { deleteCollections, setCollectionRanks } from "~/src/modules/product-collection/product-collection.accessors"
 
 interface Chain extends Promise<unknown> {
   from: () => Chain

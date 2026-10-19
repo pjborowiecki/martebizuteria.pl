@@ -4,8 +4,8 @@ import type * as zod from "zod"
 
 import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
 
+import { getStorefrontCollectionByHandleQuery } from "~/src/modules/product-collection/product-collection.accessors"
 import { COLLECTION_QUERY_KEYS, COLLECTION_QUERY_STALE_MS } from "~/src/modules/product-collection/product-collection.constants"
-import { getStorefrontCollectionByHandleQuery } from "~/src/modules/product-collection/product-collection.server"
 import { productCollectionZodSchemas } from "~/src/modules/product-collection/product-collection.zod"
 
 export const getStorefrontCollection = createServerFn({ method: "GET" })

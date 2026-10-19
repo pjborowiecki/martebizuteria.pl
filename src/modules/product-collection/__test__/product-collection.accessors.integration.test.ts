@@ -26,7 +26,7 @@ const {
   getStorefrontCollectionByHandleQuery,
   getStorefrontCollectionsQuery,
   setCollectionRanks,
-} = await import("~/src/modules/product-collection/product-collection.server")
+} = await import("~/src/modules/product-collection/product-collection.accessors")
 
 const { createTables } = await import("~/src/modules/product/__test__/product-sqlite-schema")
 

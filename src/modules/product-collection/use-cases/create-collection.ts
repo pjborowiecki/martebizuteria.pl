@@ -8,9 +8,9 @@ import { scheduleCollectionCatalogInvalidation } from "~/src/integrations/realti
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordCatalogCollectionCreatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { getCollectionByHandleQuery, getMaxRankQuery } from "~/src/modules/product-collection/product-collection.accessors"
 import { COLLECTION_ERROR_CODES } from "~/src/modules/product-collection/product-collection.constants"
 import { productCollection } from "~/src/modules/product-collection/product-collection.schema"
-import { getCollectionByHandleQuery, getMaxRankQuery } from "~/src/modules/product-collection/product-collection.server"
 import { toCollectionRow } from "~/src/modules/product-collection/product-collection.utils"
 import { productCollectionZodSchemas } from "~/src/modules/product-collection/product-collection.zod"
 

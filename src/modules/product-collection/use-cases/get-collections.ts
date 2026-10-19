@@ -3,8 +3,8 @@ import { createServerFn } from "@tanstack/react-start"
 
 import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
 
+import { getStorefrontCollectionsQuery } from "~/src/modules/product-collection/product-collection.accessors"
 import { COLLECTION_QUERY_KEYS, COLLECTION_QUERY_STALE_MS } from "~/src/modules/product-collection/product-collection.constants"
-import { getStorefrontCollectionsQuery } from "~/src/modules/product-collection/product-collection.server"
 
 export const getCollections = createServerFn({ method: "GET" })
   .middleware([withRequest])
