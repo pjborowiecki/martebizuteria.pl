@@ -29,7 +29,7 @@ const {
   getStorefrontCategoryByHandleQuery,
   getStorefrontRootCategoriesQuery,
   setCategoryRanks,
-} = await import("~/src/modules/product-category/product-category.server")
+} = await import("~/src/modules/product-category/product-category.accessors")
 
 const { createTables } = await import("~/src/modules/product/__test__/product-sqlite-schema")
 

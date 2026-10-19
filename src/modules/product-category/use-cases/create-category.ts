@@ -8,9 +8,13 @@ import { scheduleCategoryCatalogInvalidation } from "~/src/integrations/realtime
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordCatalogCategoryCreatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import {
+  getCategoriesByIds,
+  getCategoryByHandleQuery,
+  getNextRankForParent,
+} from "~/src/modules/product-category/product-category.accessors"
 import { CATEGORY_ERROR_CODES } from "~/src/modules/product-category/product-category.constants"
 import { productCategory } from "~/src/modules/product-category/product-category.schema"
-import { getCategoriesByIds, getCategoryByHandleQuery, getNextRankForParent } from "~/src/modules/product-category/product-category.server"
 import { normalizeCategoryParentIdForMutation, toCategoryRow } from "~/src/modules/product-category/product-category.utils"
 import { productCategoryZodSchemas } from "~/src/modules/product-category/product-category.zod"
 

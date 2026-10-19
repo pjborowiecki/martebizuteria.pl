@@ -10,7 +10,7 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: v
 vi.mock("~/src/modules/category-on-product/category-on-product.accessors", () => ({
   getProductCountsQuery: { execute: accessors.productCounts },
 }))
-vi.mock("~/src/modules/product-category/product-category.server", () => ({
+vi.mock("~/src/modules/product-category/product-category.accessors", () => ({
   getAdminCategoriesQuery: { execute: accessors.categories },
 }))
 vi.mock("@tanstack/react-start", () => ({

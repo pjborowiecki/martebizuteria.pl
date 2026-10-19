@@ -73,7 +73,7 @@ vi.mock("~/src/modules/category-on-product/category-on-product.accessors", () =>
   getCategoryProductTotalQuery: { execute: server.categoryProductTotal },
   getProductCountsQuery: { execute: server.productCounts },
 }))
-vi.mock("~/src/modules/product-category/product-category.server", () => ({
+vi.mock("~/src/modules/product-category/product-category.accessors", () => ({
   countChildCategories: server.countChildCategories,
   deleteCategories: server.deleteCategories,
   getAdminCategoriesQuery: { execute: server.adminCategories },

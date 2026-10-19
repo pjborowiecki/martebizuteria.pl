@@ -8,11 +8,11 @@ import { scheduleCategoryCatalogInvalidation } from "~/src/integrations/realtime
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordCatalogCategoryDeletedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { countProductsForCategories } from "~/src/modules/category-on-product/category-on-product.accessors"
-import { CATEGORY_ERROR_CODES, CATEGORY_MUTATION_KEYS } from "~/src/modules/product-category/product-category.constants"
 import {
   countChildCategories,
   deleteCategories as productCategoryDeleteCategories,
-} from "~/src/modules/product-category/product-category.server"
+} from "~/src/modules/product-category/product-category.accessors"
+import { CATEGORY_ERROR_CODES, CATEGORY_MUTATION_KEYS } from "~/src/modules/product-category/product-category.constants"
 import { productCategoryZodSchemas } from "~/src/modules/product-category/product-category.zod"
 
 export const deleteCategories = createServerFn({ method: "POST" })
