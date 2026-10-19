@@ -23,7 +23,7 @@ vi.mock("@tanstack/react-router", () => ({
     return options
   },
 }))
-vi.mock("~/src/modules/newsletter-subscriber/newsletter-subscriber.unsubscribe.server", () => ({ unsubscribeByToken }))
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/unsubscribe-subscriber.server", () => ({ unsubscribeByToken }))
 
 await import("~/src/routes/api/newsletter.unsubscribe")
 
