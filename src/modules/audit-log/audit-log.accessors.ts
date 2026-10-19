@@ -1,4 +1,4 @@
-import { type SQL, and, count, desc, eq, inArray, lte, or } from "drizzle-orm"
+import { type SQL, and, count, desc, eq, gte, inArray, lt, lte, or } from "drizzle-orm"
 
 import { insertRowChunks, runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
@@ -274,3 +274,17 @@ const CUSTOMER_ACCOUNT_ACTIVITY_ACTIONS = [
   AUDIT_LOG_ACTION.ORDER_RELEASED,
   AUDIT_LOG_ACTION.ORDER_SHIPPED,
 ] as const
+
+export const pageViewsQuery = (since: Date, until?: Date) => {
+  const conditions = [eq(auditLog.action, AUDIT_LOG_ACTION.CUSTOMER_PAGE_VIEWED), gte(auditLog.createdAt, since)]
+  if (until !== undefined) {
+    conditions.push(lt(auditLog.createdAt, until))
+  }
+
+  return db
+    .select({
+      count: count(),
+    })
+    .from(auditLog)
+    .where(and(...conditions))
+}

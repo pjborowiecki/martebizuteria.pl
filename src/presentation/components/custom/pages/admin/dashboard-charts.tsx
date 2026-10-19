@@ -6,8 +6,8 @@ import { useTranslations } from "use-intl/react"
 
 import { formatMinorUnitsAsCompactNumber, formatPrice } from "~/src/modules/_core/utils/currency"
 import { ISO_DATE_TIME_ZONE, parseIsoDateToUtcDate } from "~/src/modules/_core/utils/iso-date"
-import { ADMIN_DASHBOARD_CHART_DAYS_30, ADMIN_DASHBOARD_CHART_DAYS_7 } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
-import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
+import { ADMIN_DASHBOARD_CHART_DAYS_30, ADMIN_DASHBOARD_CHART_DAYS_7 } from "~/src/modules/order/order.constants"
+import { type AdminDashboard } from "~/src/modules/order/order.types"
 
 import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
 

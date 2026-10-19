@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
 
 import { formatShortDate } from "~/src/modules/_core/utils/datetime"
-import { resolveAdminDashboardMonths } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
+import { resolveAdminDashboardMonths } from "~/src/modules/order/order.dashboard.utils"
 import { ADMIN_CUSTOMER_DETAIL_TAGS, ADMIN_CUSTOMER_STAT_FILTER } from "~/src/modules/user/user.constants"
 import { type User } from "~/src/modules/user/user.types"
 import {

@@ -32,10 +32,10 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordCustom
 
 const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
 const { applyMigrationHistory } = await import("~/src/platform/testing/mocks/migrations")
-const { pageViewsQuery } = await import("~/src/modules/admin-dashboard/admin-dashboard.accessors")
 const { countOpenCheckouts } = await import("~/src/modules/checkout/use-cases/count-open-checkouts.server")
 const { deleteExpiredAuditLogs } = await import("~/src/modules/audit-log/use-cases/delete-expired-audit-logs.server")
-const { getCustomerActivityAuditRows, getCustomerLoginAuditRows } = await import("~/src/modules/audit-log/audit-log.accessors")
+const { getCustomerActivityAuditRows, getCustomerLoginAuditRows, pageViewsQuery } =
+  await import("~/src/modules/audit-log/audit-log.accessors")
 const { getDiscountByCodeForCustomerQuery, getDiscountByCodeForPreviewQuery } = await import("~/src/modules/discount/discount.accessors")
 const { prepareDiscountClaim } = await import("~/src/modules/discount/discount.claim.server")
 const { getAdminSubscribersPage } = await import("~/src/modules/newsletter/newsletter.accessors")

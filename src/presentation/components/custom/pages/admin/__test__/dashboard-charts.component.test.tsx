@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
+import { type AdminDashboard } from "~/src/modules/order/order.types"
 
 import { DashboardCharts } from "~/src/presentation/components/custom/pages/admin/dashboard-charts"
 import {

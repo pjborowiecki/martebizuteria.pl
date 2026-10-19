@@ -9,7 +9,7 @@ import { TEST_LOCALE, TEST_MESSAGES } from "~/src/platform/testing/lib/messages"
 
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
-import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
+import { type AdminDashboard } from "~/src/modules/order/order.types"
 
 import { useDashboardChartRange } from "~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-dashboard-chart-range"
 
@@ -30,7 +30,7 @@ const custom = vi.hoisted(() => ({
 vi.mock("~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-admin-dashboard-snapshot", () => ({
   useAdminDashboardSnapshot: () => ({ data: snapshot }),
 }))
-vi.mock("~/src/modules/admin-dashboard/use-cases/get-dashboard-chart-range", () => ({
+vi.mock("~/src/modules/order/use-cases/get-dashboard-chart-range", () => ({
   getDashboardChartRangeQuery: (input: { endDate: string; locale: string; startDate: string }) =>
     queryOptions({
       queryFn: () => custom.fetch(input),

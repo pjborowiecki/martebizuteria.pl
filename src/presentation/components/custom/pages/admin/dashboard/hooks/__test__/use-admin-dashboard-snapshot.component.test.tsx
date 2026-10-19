@@ -15,7 +15,7 @@ const snapshot = vi.hoisted(() => ({
   fetch: vi.fn((input: { locale: string }) => Promise.resolve({ currencyCode: `PLN-${input.locale}` })),
 }))
 
-vi.mock("~/src/modules/admin-dashboard/use-cases/get-dashboard-snapshot", () => ({
+vi.mock("~/src/modules/order/use-cases/get-dashboard-snapshot", () => ({
   getDashboardSnapshotQuery: (input: { locale: string }) =>
     queryOptions({ queryFn: () => snapshot.fetch(input), queryKey: ["admin-dashboard", "snapshot", input.locale] as const }),
 }))

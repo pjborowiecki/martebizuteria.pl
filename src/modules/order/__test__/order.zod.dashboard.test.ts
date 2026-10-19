@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { adminDashboardZodSchemas } from "~/src/modules/admin-dashboard/admin-dashboard.zod"
+import { adminDashboardZodSchemas } from "~/src/modules/order/order.zod"
 
 describe("snapshotInput", () => {
   it("requires the locale the snapshot should be localized in", () => {

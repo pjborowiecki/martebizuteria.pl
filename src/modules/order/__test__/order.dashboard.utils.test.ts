@@ -5,7 +5,7 @@ import {
   ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
   ADMIN_DASHBOARD_MONTH_LABEL_FORMAT,
   ADMIN_DASHBOARD_MS_PER_DAY,
-} from "~/src/modules/admin-dashboard/admin-dashboard.constants"
+} from "~/src/modules/order/order.constants"
 import {
   type AdminDashboardChartWindow,
   buildAdminDashboardChartPoints,
@@ -18,7 +18,7 @@ import {
   resolveAdminDashboardDays,
   resolveAdminDashboardMonths,
   resolveAdminDashboardYearStart,
-} from "~/src/modules/admin-dashboard/admin-dashboard.utils"
+} from "~/src/modules/order/order.dashboard.utils"
 
 const POLAND = "Europe/Warsaw"
 

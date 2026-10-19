@@ -7,16 +7,7 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
-import {
-  newCustomersQuery,
-  orderAggregatesQuery,
-  pageViewsQuery,
-  recentOrdersQuery,
-  resolveTopProductCategoryLabel,
-  resolveTopProductName,
-  salesTotalsQuery,
-  topProductsQuery,
-} from "~/src/modules/admin-dashboard/admin-dashboard.accessors"
+import { pageViewsQuery } from "~/src/modules/audit-log/audit-log.accessors"
 import {
   ADMIN_DASHBOARD_CHART_DAYS_30,
   ADMIN_DASHBOARD_CHART_DAYS_7,
@@ -25,8 +16,15 @@ import {
   ADMIN_DASHBOARD_MONTH_LABEL_FORMAT,
   ADMIN_DASHBOARD_QUERY_KEYS,
   ADMIN_DASHBOARD_QUERY_STALE_MS,
-} from "~/src/modules/admin-dashboard/admin-dashboard.constants"
-import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
+} from "~/src/modules/order/order.constants"
+import {
+  orderAggregatesQuery,
+  recentOrdersQuery,
+  resolveTopProductCategoryLabel,
+  resolveTopProductName,
+  salesTotalsQuery,
+  topProductsQuery,
+} from "~/src/modules/order/order.dashboard.accessors"
 import {
   buildAdminDashboardChartPoints,
   buildAdminDashboardKpiStat,
@@ -35,9 +33,11 @@ import {
   resolveAdminDashboardDays,
   resolveAdminDashboardMonths,
   resolveAdminDashboardYearStart,
-} from "~/src/modules/admin-dashboard/admin-dashboard.utils"
-import { adminDashboardZodSchemas } from "~/src/modules/admin-dashboard/admin-dashboard.zod"
+} from "~/src/modules/order/order.dashboard.utils"
 import { toAdminOrderListItem } from "~/src/modules/order/order.display.utils"
+import { type AdminDashboard } from "~/src/modules/order/order.types"
+import { adminDashboardZodSchemas } from "~/src/modules/order/order.zod"
+import { newCustomersQuery } from "~/src/modules/user/user.accessors"
 
 export const getDashboardSnapshot = createServerFn({ method: "GET" })
   .middleware([authorized({ settings: ["manage"] })])

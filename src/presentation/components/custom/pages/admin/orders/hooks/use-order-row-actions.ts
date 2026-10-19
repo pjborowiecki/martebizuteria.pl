@@ -7,8 +7,8 @@ import { useTranslations } from "use-intl/react"
 import { syncQueryInvalidation } from "~/src/integrations/tanstack-query/query.sync"
 
 import { ERROR_CODES, errorCode } from "~/src/modules/_core/constants/errors"
-import { ADMIN_DASHBOARD_QUERY_KEYS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
 import {
+  ADMIN_DASHBOARD_QUERY_KEYS,
   type AdminOrderAdvancedStep,
   ORDER_EMAIL_KIND,
   ORDER_EMAIL_NOTICE_STATUS,

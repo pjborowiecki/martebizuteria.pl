@@ -10,15 +10,15 @@ vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => ({
 }))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: { batch: reads.batch } }))
-vi.mock("~/src/modules/admin-dashboard/admin-dashboard.accessors", async (importOriginal) => ({
+vi.mock("~/src/modules/order/order.dashboard.accessors", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
-  newCustomersQuery: reads.query,
   orderAggregatesQuery: reads.query,
-  pageViewsQuery: reads.query,
   recentOrdersQuery: reads.query,
   salesTotalsQuery: reads.query,
   topProductsQuery: reads.query,
 }))
+vi.mock("~/src/modules/user/user.accessors", () => ({ newCustomersQuery: reads.query }))
+vi.mock("~/src/modules/audit-log/audit-log.accessors", () => ({ pageViewsQuery: reads.query }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
@@ -44,9 +44,9 @@ import {
   ADMIN_DASHBOARD_CHART_DAYS_30,
   ADMIN_DASHBOARD_CHART_DAYS_7,
   ADMIN_DASHBOARD_CHART_MONTHS_1Y,
-} from "~/src/modules/admin-dashboard/admin-dashboard.constants"
-import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
-import { getDashboardSnapshot } from "~/src/modules/admin-dashboard/use-cases/get-dashboard-snapshot"
+} from "~/src/modules/order/order.constants"
+import { type AdminDashboard } from "~/src/modules/order/order.types"
+import { getDashboardSnapshot } from "~/src/modules/order/use-cases/get-dashboard-snapshot"
 
 const BATCHED_READ_COUNT = 11
 
