@@ -1,4 +1,4 @@
-import { type TableExportDocument, type TableExportTextLabels } from "~/src/modules/_core/utils/table-export"
+import { type TableExportDocument, type TableExportTextLabels } from "~/src/presentation/components/custom/datagrid/lib/table-export"
 
 export const EXPORTED_AT = new Date("2026-10-16T12:34:56.000Z")
 

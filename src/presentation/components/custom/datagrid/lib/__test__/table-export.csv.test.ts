@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { serializeTableExportCsv } from "~/src/modules/_core/utils/table-export"
+import { serializeTableExportCsv } from "~/src/presentation/components/custom/datagrid/lib/table-export"
 
 import { auditExportDocument, singleCellDocument } from "./table-export.fixtures"
 

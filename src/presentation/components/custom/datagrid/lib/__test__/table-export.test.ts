@@ -9,7 +9,7 @@ import {
   serializeTableExportJson,
   serializeTableExportText,
   serializeTableExportXml,
-} from "~/src/modules/_core/utils/table-export"
+} from "~/src/presentation/components/custom/datagrid/lib/table-export"
 
 import { TEXT_LABELS, auditExportDocument } from "./table-export.fixtures"
 

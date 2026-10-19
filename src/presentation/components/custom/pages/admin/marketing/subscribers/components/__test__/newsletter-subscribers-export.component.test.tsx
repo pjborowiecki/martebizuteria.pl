@@ -4,9 +4,10 @@ import { cleanup, screen, waitFor } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { type TextFileDownload } from "~/src/modules/_core/utils/download"
 import { type NewsletterStatus } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
+
+import { type TextFileDownload } from "~/src/presentation/components/custom/datagrid/lib/download"
 
 const calls = vi.hoisted(() => ({
   download: vi.fn<(file: TextFileDownload) => void>(),
@@ -15,7 +16,7 @@ const calls = vi.hoisted(() => ({
   stats: vi.fn<() => Promise<Newsletter["adminStats"]>>(),
 }))
 
-vi.mock("~/src/modules/_core/utils/download", () => ({ downloadTextFile: calls.download }))
+vi.mock("~/src/presentation/components/custom/datagrid/lib/download", () => ({ downloadTextFile: calls.download }))
 vi.mock("~/src/modules/newsletter-subscriber/use-cases/unsubscribe-newsletter-subscriber", () => ({
   unsubscribeNewsletterSubscriberMutation: { mutationFn: vi.fn() },
 }))

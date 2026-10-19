@@ -8,7 +8,6 @@ import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
 import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/_core/constants/customer-account"
-import { accountPageMeta } from "~/src/modules/_core/utils/account-page-meta"
 import { ADDRESS_QUERY_KEYS } from "~/src/modules/address/address.constants"
 import { type Address } from "~/src/modules/address/address.types"
 import { COUNTRY_CODE_LENGTH } from "~/src/modules/address/address.zod"
@@ -18,7 +17,7 @@ import { listUserAddressesQuery } from "~/src/modules/address/use-cases/list-use
 import { setDefaultUserAddressMutation } from "~/src/modules/address/use-cases/set-default-user-address"
 import { updateUserAddress } from "~/src/modules/address/use-cases/update-user-address"
 
-import { pageHead } from "~/src/lib/seo"
+import { accountPageMeta, pageHead } from "~/src/lib/seo"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Input } from "~/src/presentation/components/shadcn/input"

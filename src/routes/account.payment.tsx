@@ -6,11 +6,10 @@ import { Plus } from "lucide-react"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
-import { accountPageMeta } from "~/src/modules/_core/utils/account-page-meta"
 import { createCardSetupIntentMutation } from "~/src/modules/payment/use-cases/create-card-setup-intent"
 import { listSavedPaymentMethodsQuery } from "~/src/modules/payment/use-cases/list-saved-payment-methods"
 
-import { pageHead } from "~/src/lib/seo"
+import { accountPageMeta, pageHead } from "~/src/lib/seo"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Separator } from "~/src/presentation/components/shadcn/separator"

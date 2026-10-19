@@ -4,8 +4,6 @@ import { type RowData, type Table } from "@tanstack/react-table"
 import { Download } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
-import { TABLE_EXPORT_FORMATS, type TableExportFormat } from "~/src/modules/_core/utils/table-export"
-
 import { Button } from "~/src/presentation/components/shadcn/button"
 import {
   DropdownMenu,
@@ -21,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "~/src/presentation/comp
 import { useDataGridExport } from "~/src/presentation/components/custom/datagrid/hooks/use-data-grid-export"
 import { type DataGridExportSource } from "~/src/presentation/components/custom/datagrid/lib/data-grid-export"
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
+import { TABLE_EXPORT_FORMATS, type TableExportFormat } from "~/src/presentation/components/custom/datagrid/lib/table-export"
 
 const DataGridExportFormatItem = ({ description, format, onSelect }: Readonly<DataGridExportFormatItemProps>): JSX.Element => {
   const handleClick = useCallback(() => {

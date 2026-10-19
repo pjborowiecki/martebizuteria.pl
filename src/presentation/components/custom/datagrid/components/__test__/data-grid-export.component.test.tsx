@@ -4,14 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { type TextFileDownload } from "~/src/modules/_core/utils/download"
+import { type TextFileDownload } from "~/src/presentation/components/custom/datagrid/lib/download"
 
 const { download, toastError } = vi.hoisted(() => ({
   download: vi.fn<(file: TextFileDownload) => void>(),
   toastError: vi.fn<(title: string, options: { description: string }) => void>(),
 }))
 
-vi.mock("~/src/modules/_core/utils/download", () => ({ downloadTextFile: download }))
+vi.mock("~/src/presentation/components/custom/datagrid/lib/download", () => ({ downloadTextFile: download }))
 vi.mock("sonner", () => ({ toast: { error: toastError } }))
 
 import { DataGridExport } from "~/src/presentation/components/custom/datagrid/components/data-grid-export"
