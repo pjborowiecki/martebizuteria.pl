@@ -5,7 +5,8 @@ import { and, eq, ne } from "drizzle-orm"
 import { RATE_LIMITS, authorized, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
-import { recordAuthSessionsRevokedAudit, resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.events.server"
+import { resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.utils"
+import { recordAuthSessionsRevokedAudit } from "~/src/modules/audit-log/use-cases/record-auth-audit.server"
 import { SESSION_MUTATION_KEYS } from "~/src/modules/session/session.constants"
 import { session } from "~/src/modules/session/session.schema"
 

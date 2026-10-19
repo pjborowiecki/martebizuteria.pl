@@ -50,13 +50,16 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleProductAttributeCatalogInvalidation: audit.scheduleInvalidation,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/audit-log.utils", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  resolveAuthAuditActor: (user: { email: string }) => `actor:${user.email}`,
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-catalog-audit.server", () => ({
   recordCatalogAttributeCreatedAudit: audit.created,
   recordCatalogAttributeDeletedAudit: audit.deleted,
   recordCatalogAttributeUpdatedAudit: audit.updated,
-  resolveAuthAuditActor: (user: { email: string }) => `actor:${user.email}`,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.record.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/schedule-audit-log.server", () => ({
   resolveRequestAuditIp: () => "203.0.113.7",
 }))
 vi.mock("~/src/modules/attribute-on-product/attribute-on-product.accessors", () => ({

@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers"
 import { publishRealtimeInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server"
 
 import { AUDIT_EMAIL_KIND } from "~/src/modules/audit-log/audit-log.constants"
-import { recordEmailFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordEmailFailedAudit } from "~/src/modules/audit-log/use-cases/record-email-audit.server"
 import {
   completeNewsletterCampaign,
   failNewsletterCampaign,

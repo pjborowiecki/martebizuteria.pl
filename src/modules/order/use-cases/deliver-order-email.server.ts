@@ -1,4 +1,4 @@
-import { recordOrderEmailOutcome } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordOrderEmailOutcome } from "~/src/modules/audit-log/use-cases/record-email-audit.server"
 import { ORDER_EMAIL_NOTICE_STATUS } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 

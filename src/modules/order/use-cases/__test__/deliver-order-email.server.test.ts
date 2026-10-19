@@ -6,7 +6,9 @@ const { recordOrderEmailOutcome, sendIncidentAlert } = vi.hoisted(() => ({
 }))
 
 vi.mock("~/src/lib/incident-alert.server", () => ({ sendIncidentAlert }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderEmailOutcome }))
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
+  recordOrderEmailOutcome,
+}))
 
 import {
   ORDER_EMAIL_RETRIES,

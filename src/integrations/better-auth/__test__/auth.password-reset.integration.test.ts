@@ -37,12 +37,19 @@ vi.mock("cloudflare:workers", () => ({
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail: stubs.sendEmail }))
 vi.mock("~/src/integrations/resend/resend.availability.server", () => ({ isEmailSenderUnavailable: () => Promise.resolve(false) }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "en-US" }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/audit-log.utils", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  resolveAuthAuditActor: vi.fn((user: { id: string }) => `actor:${user.id}`),
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-auth-audit.server", () => ({
   recordAuthLoginAudit: vi.fn(),
   recordAuthPasswordResetAudit: stubs.recordAuthPasswordResetAudit,
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-customer-audit.server", () => ({
   recordCustomerRegisteredAudit: vi.fn(),
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
   recordEmailFailedAudit: stubs.recordEmailFailedAudit,
-  resolveAuthAuditActor: vi.fn((user: { id: string }) => `actor:${user.id}`),
 }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminCustomersInvalidation: vi.fn(),

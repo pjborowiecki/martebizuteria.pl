@@ -50,7 +50,9 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
   scheduleContentPageInvalidation: effects.contentPagesInvalidate,
   scheduleSellerDetailsInvalidation: vi.fn(),
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordSettingsUpdatedAudit: vi.fn() }))
+vi.mock("~/src/modules/audit-log/use-cases/record-settings-audit.server", () => ({
+  recordSettingsUpdatedAudit: vi.fn(),
+}))
 
 const SEEDED_AT = Date.UTC(2026, 9, 1, 12)
 

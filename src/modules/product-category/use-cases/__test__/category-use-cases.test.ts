@@ -63,7 +63,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleCategoryCatalogInvalidation: effects.invalidate,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/record-catalog-audit.server", () => ({
   recordCatalogCategoryCreatedAudit: effects.created,
   recordCatalogCategoryDeletedAudit: effects.deleted,
   recordCatalogCategoryUpdatedAudit: effects.updated,

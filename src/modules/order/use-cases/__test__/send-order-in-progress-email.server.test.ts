@@ -25,7 +25,9 @@ vi.mock("cloudflare:workers", () => ({ env: {} }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: {} }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 vi.mock("~/src/integrations/use-intl/i18n.messages", () => ({ loadNamespace }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderEmailOutcome }))
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
+  recordOrderEmailOutcome,
+}))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderForProgressEmail }))
 
 import { sendOrderInProgressEmail } from "~/src/modules/order/use-cases/send-order-in-progress-email.server"

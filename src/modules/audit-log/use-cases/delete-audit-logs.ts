@@ -7,8 +7,8 @@ import { scheduleAdminAuditLogInvalidation } from "~/src/integrations/realtime-i
 
 import { deleteAuditLogs as auditLogDeleteAuditLogs } from "~/src/modules/audit-log/audit-log.accessors"
 import { AUDIT_LOG_MUTATION_KEYS } from "~/src/modules/audit-log/audit-log.constants"
-import { recordAuditLogsDeletedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { auditLogZodSchemas } from "~/src/modules/audit-log/audit-log.zod"
+import { recordAuditLogsDeletedAudit } from "~/src/modules/audit-log/use-cases/record-settings-audit.server"
 
 export const deleteAuditLogs = createServerFn({ method: "POST" })
   .middleware([authorized({ settings: ["manage"] })])

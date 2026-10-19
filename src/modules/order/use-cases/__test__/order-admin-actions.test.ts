@@ -68,7 +68,8 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
 vi.mock("~/src/modules/order/use-cases/announce-order-shipment.server", () => announcement)
 vi.mock("~/src/modules/order/use-cases/send-order-in-progress-email.server", () => progressEmails)
 vi.mock("~/src/modules/order/use-cases/send-order-delivered-email.server", () => progressEmails)
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({}))
+vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => ({
   recordOrderDeliveredAudit: audit.delivered,
   recordOrderFulfillmentStartedAudit: audit.fulfillmentStarted,
   recordOrderShippedAudit: audit.shipped,

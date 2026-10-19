@@ -11,7 +11,7 @@ import {
   recordNewsletterSubscriberErasedAudit,
   recordNewsletterSubscriberUnsubscribedAudit,
   recordOrderEmailOutcome,
-} from "~/src/modules/audit-log/audit-log.events.server"
+} from "~/src/modules/audit-log/use-cases/record-email-audit.server"
 
 const record = vi.hoisted(() => ({
   scheduleAuditLog: vi.fn(),
@@ -19,7 +19,7 @@ const record = vi.hoisted(() => ({
   scheduleSystemAuditLog: vi.fn(),
 }))
 
-vi.mock("~/src/modules/audit-log/audit-log.record.server", () => record)
+vi.mock("~/src/modules/audit-log/use-cases/schedule-audit-log.server", () => record)
 
 beforeEach(() => {
   vi.clearAllMocks()

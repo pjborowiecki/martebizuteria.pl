@@ -8,7 +8,7 @@ import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { AUDIT_EMAIL_KIND } from "~/src/modules/audit-log/audit-log.constants"
-import { recordEmailFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordEmailFailedAudit } from "~/src/modules/audit-log/use-cases/record-email-audit.server"
 import { NEWSLETTER_CAMPAIGN_MUTATION_KEYS } from "~/src/modules/newsletter-campaign/newsletter-campaign.constants"
 import { newsletterCampaignZodSchemas } from "~/src/modules/newsletter-campaign/newsletter-campaign.zod"
 import { sendNewsletterBatch } from "~/src/modules/newsletter-campaign/use-cases/send-newsletter-batch.server"

@@ -33,8 +33,14 @@ vi.mock(import("@tanstack/react-start/server"), async (importOriginal) => {
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: stubs.getRequestSession }))
 vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => import("~/src/platform/testing/mocks/display-preferences"))
 vi.mock("~/src/lib/rate-limit", () => ({}))
-vi.mock("~/src/modules/audit-log/audit-log.accessors", () => ({ getAdminAuditLogsPage: stubs.getAdminAuditLogsPage }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordListExportedAudit: stubs.recordListExportedAudit }))
+vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: {} }))
+vi.mock("~/src/modules/audit-log/audit-log.accessors", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  getAdminAuditLogsPage: stubs.getAdminAuditLogsPage,
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-list-export-audit.server", () => ({
+  recordListExportedAudit: stubs.recordListExportedAudit,
+}))
 
 const CREATED_AT = new Date("2026-10-16T12:30:12.000Z")
 

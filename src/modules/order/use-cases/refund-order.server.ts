@@ -1,6 +1,6 @@
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
-import { recordOrderRefundAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordOrderRefundAudit } from "~/src/modules/audit-log/use-cases/record-order-audit.server"
 import { getOrderByCheckoutId, prepareRefundBatch } from "~/src/modules/order/order.accessors"
 import { type Order } from "~/src/modules/order/order.types"
 import { buildOrderRefundAuditChange } from "~/src/modules/order/order.utils"

@@ -55,7 +55,9 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: { update: () => ({ set: database.updateSet }) },
 }))
 vi.mock("~/src/modules/order/use-cases/announce-order-shipment.server", () => ({ announceOrderShipment }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderTrackingUpdatedAudit }))
+vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => ({
+  recordOrderTrackingUpdatedAudit,
+}))
 vi.mock(import("~/src/modules/order/use-cases/transition-order.server"), async (importOriginal) => {
   const actual = await importOriginal()
 

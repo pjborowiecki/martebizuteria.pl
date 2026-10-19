@@ -4,7 +4,7 @@ import { type BatchItem } from "drizzle-orm/batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
-import { recordOrderRestockedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordOrderRestockedAudit } from "~/src/modules/audit-log/use-cases/record-order-audit.server"
 import { inventory } from "~/src/modules/inventory/inventory.schema"
 import { getRestockLinesForOrder } from "~/src/modules/order/order.accessors"
 import { order } from "~/src/modules/order/order.schema"

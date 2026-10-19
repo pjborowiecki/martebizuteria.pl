@@ -5,7 +5,7 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { recordDiscountCreatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordDiscountCreatedAudit } from "~/src/modules/audit-log/use-cases/record-settings-audit.server"
 import { getDiscountByCode, insertDiscount } from "~/src/modules/discount/discount.accessors"
 import { DISCOUNT_ERROR_CODES, DISCOUNT_MUTATION_KEYS } from "~/src/modules/discount/discount.constants"
 import { refuseTakenDiscountCode, toDiscountInsertValues } from "~/src/modules/discount/discount.persist.utils"

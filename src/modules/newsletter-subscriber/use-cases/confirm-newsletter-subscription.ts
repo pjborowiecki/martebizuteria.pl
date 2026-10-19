@@ -5,7 +5,7 @@ import type * as zod from "zod"
 import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleAdminNewsletterSubscribersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
-import { recordNewsletterSubscriberConfirmedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordNewsletterSubscriberConfirmedAudit } from "~/src/modules/audit-log/use-cases/record-email-audit.server"
 import { getSubscriberByToken, updateSubscriberById } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
 import {
   NEWSLETTER_MUTATION_KEYS,

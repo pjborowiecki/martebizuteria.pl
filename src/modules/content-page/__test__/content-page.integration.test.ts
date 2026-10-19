@@ -15,7 +15,9 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: (
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleContentPageInvalidation: effects.invalidate,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordContentPageUpdatedAudit: effects.audit }))
+vi.mock("~/src/modules/audit-log/use-cases/record-settings-audit.server", () => ({
+  recordContentPageUpdatedAudit: effects.audit,
+}))
 vi.mock("@tanstack/react-start", async (importOriginal) => {
   const actual = await importOriginal<typeof ReactStart>()
 

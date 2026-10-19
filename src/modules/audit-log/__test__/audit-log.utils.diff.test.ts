@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { buildAuditChangeMetadata, toAuditMetadataRecord } from "~/src/modules/audit-log/audit-log.diff.utils"
+import { buildAuditChangeMetadata, toAuditMetadataRecord } from "~/src/modules/audit-log/audit-log.utils"
 
 describe("buildAuditChangeMetadata", () => {
   it("records nothing when no watched field moved", () => {

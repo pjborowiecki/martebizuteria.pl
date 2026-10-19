@@ -69,9 +69,12 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminCustomersInvalidation: effects.invalidate,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
-  recordTeamAccessAudit: effects.audit,
+vi.mock("~/src/modules/audit-log/audit-log.utils", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   resolveAuthAuditActor: (account: { readonly id: string }) => `actor:${account.id}`,
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-settings-audit.server", () => ({
+  recordTeamAccessAudit: effects.audit,
 }))
 
 const HOUR_MS = 3_600_000

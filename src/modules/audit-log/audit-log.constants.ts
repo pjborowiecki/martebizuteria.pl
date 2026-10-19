@@ -1,3 +1,5 @@
+import { type AuditLogActorInput } from "~/src/modules/audit-log/audit-log.types"
+
 export const ADMIN_AUDIT_LOG_PAGE_SIZE = 100
 
 export const AUDIT_LOG_QUERY_STALE_MS = 30_000
@@ -20,6 +22,11 @@ export type AuditLogSeverity = (typeof AUDIT_LOG_SEVERITIES)[number]
 export const AUDIT_LOG_ACTOR_ROLES = ["admin", "customer", "system", "unknown"] as const
 
 export type AuditLogActorRole = (typeof AUDIT_LOG_ACTOR_ROLES)[number]
+
+export const SYSTEM_AUDIT_ACTOR: AuditLogActorInput = {
+  name: "System",
+  role: "system",
+}
 
 export const AUDIT_LOG_ACTION = {
   ATTRIBUTE_CREATED: "attribute.created",

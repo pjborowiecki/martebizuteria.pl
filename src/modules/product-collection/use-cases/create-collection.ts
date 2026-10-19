@@ -7,7 +7,7 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { scheduleCollectionCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { recordCatalogCollectionCreatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordCatalogCollectionCreatedAudit } from "~/src/modules/audit-log/use-cases/record-catalog-audit.server"
 import { getCollectionByHandleQuery, getMaxRankQuery } from "~/src/modules/product-collection/product-collection.accessors"
 import { COLLECTION_ERROR_CODES } from "~/src/modules/product-collection/product-collection.constants"
 import { productCollection } from "~/src/modules/product-collection/product-collection.schema"

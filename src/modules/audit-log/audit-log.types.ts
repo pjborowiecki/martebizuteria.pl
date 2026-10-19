@@ -1,4 +1,11 @@
-import { type AuditEmailKind, type CustomerAccountLoginStatus } from "~/src/modules/audit-log/audit-log.constants"
+import {
+  type AuditEmailKind,
+  type AuditLogAction,
+  type AuditLogActorRole,
+  type AuditLogCategory,
+  type AuditLogSeverity,
+  type CustomerAccountLoginStatus,
+} from "~/src/modules/audit-log/audit-log.constants"
 import { type auditLog } from "~/src/modules/audit-log/audit-log.schema"
 
 interface AuditLogActor {
@@ -124,4 +131,71 @@ export interface AuditLog {
   stats: AuditLogStats
   valueMove: AuditLogValueMove
   variantChange: AuditLogVariantChange
+}
+
+export interface AuditLogActorInput {
+  readonly email?: string | undefined
+  readonly id?: string | undefined
+  readonly name: string
+  readonly role: AuditLogActorRole
+}
+
+export interface AuditLogEventInput {
+  readonly action: AuditLogAction
+  readonly actor: AuditLogActorInput
+  readonly category: AuditLogCategory
+  readonly detail?: string | undefined
+  readonly id?: string | undefined
+  readonly ip?: string | undefined
+  readonly metadata?: Record<string, unknown> | undefined
+  readonly resourceId?: string | undefined
+  readonly severity: AuditLogSeverity
+  readonly target: string
+}
+
+export interface AuditEventOptions {
+  readonly actor?: AuditLogActorInput | undefined
+  readonly detail?: string | undefined
+  readonly ip?: string | undefined
+  readonly metadata?: Record<string, unknown> | undefined
+  readonly resourceId?: string | undefined
+}
+
+export interface AccountAuditEvent {
+  readonly action: AuditLogAction
+  readonly category: AuditLogCategory
+  readonly severity: AuditLogSeverity
+}
+
+export interface AuditLogQueueMessage {
+  readonly action: AuditLogAction
+  readonly actorId?: string | undefined
+  readonly actorName: string
+  readonly actorRole: AuditLogActorRole
+  readonly category: AuditLogCategory
+  readonly createdAt: number
+  readonly detail?: string | undefined
+  readonly id: string
+  readonly ip?: string | undefined
+  readonly metadata?: string | undefined
+  readonly resourceId?: string | undefined
+  readonly severity: AuditLogSeverity
+  readonly target: string
+}
+
+export interface AuditFieldChange<TValue> {
+  readonly from: TValue
+  readonly to: TValue
+}
+
+export interface AuditChangeMetadata<TBefore, TAfter> {
+  readonly changed: readonly string[]
+  readonly new: Partial<TAfter>
+  readonly old: Partial<TBefore>
+}
+
+export interface AuditLogDetailSource {
+  readonly action: string
+  readonly detail: string | null
+  readonly metadata: Record<string, unknown> | undefined
 }

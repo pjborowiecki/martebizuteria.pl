@@ -6,42 +6,12 @@ import { v7 as uuidv7 } from "uuid"
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 
-import {
-  type AuditLogAction,
-  type AuditLogActorRole,
-  type AuditLogCategory,
-  type AuditLogSeverity,
-} from "~/src/modules/audit-log/audit-log.constants"
-import { type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.queue.server"
+import { type AuditLogActorRole, SYSTEM_AUDIT_ACTOR } from "~/src/modules/audit-log/audit-log.constants"
+import { type AuditLogActorInput, type AuditLogEventInput, type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.types"
 import { serializeAuditMetadata } from "~/src/modules/audit-log/audit-log.utils"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
 import { resolveRequestIp } from "~/src/lib/request"
-
-export interface AuditLogActorInput {
-  readonly email?: string | undefined
-  readonly id?: string | undefined
-  readonly name: string
-  readonly role: AuditLogActorRole
-}
-
-export interface AuditLogEventInput {
-  readonly action: AuditLogAction
-  readonly actor: AuditLogActorInput
-  readonly category: AuditLogCategory
-  readonly detail?: string | undefined
-  readonly id?: string | undefined
-  readonly ip?: string | undefined
-  readonly metadata?: Record<string, unknown> | undefined
-  readonly resourceId?: string | undefined
-  readonly severity: AuditLogSeverity
-  readonly target: string
-}
-
-export const SYSTEM_AUDIT_ACTOR: AuditLogActorInput = {
-  name: "System",
-  role: "system",
-}
 
 export const resolveRequestAuditActor = async (): Promise<AuditLogActorInput | undefined> => {
   const session = await getRequestSession()

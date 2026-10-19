@@ -43,7 +43,9 @@ vi.mock("~/src/lib/incident-alert.server", () => ({ sendIncidentAlert: doubles.s
 vi.mock("~/src/modules/newsletter-campaign/use-cases/send-newsletter-batch.server", () => ({
   sendNewsletterBatch: doubles.sendNewsletterBatch,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordEmailFailedAudit: doubles.recordEmailFailedAudit }))
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
+  recordEmailFailedAudit: doubles.recordEmailFailedAudit,
+}))
 
 const { enqueueNewsletterCampaign, processNewsletterQueueBatch } =
   await import("~/src/modules/newsletter-campaign/newsletter-campaign.queue.server")

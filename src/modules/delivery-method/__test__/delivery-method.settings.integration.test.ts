@@ -63,7 +63,9 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleDeliveryMethodsInvalidation: effects.invalidate,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordDeliveryMethodAudit: effects.audit }))
+vi.mock("~/src/modules/audit-log/use-cases/record-settings-audit.server", () => ({
+  recordDeliveryMethodAudit: effects.audit,
+}))
 
 const INPOST_ID = "019f4a10-0000-7000-8000-000000000001"
 

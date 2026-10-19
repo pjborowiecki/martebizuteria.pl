@@ -53,15 +53,21 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
   scheduleAdminCustomersInvalidation: vi.fn(),
   scheduleAdminNewsletterSubscribersInvalidation: vi.fn(),
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", async () => ({
-  ...(await vi.importActual("~/src/modules/audit-log/audit-log.events.server")),
+vi.mock("~/src/modules/audit-log/use-cases/record-auth-audit.server", async () => ({
+  ...(await vi.importActual("~/src/modules/audit-log/use-cases/record-auth-audit.server")),
   recordAuthEmailChangedAudit: vi.fn(),
   recordAuthEmailVerifiedAudit: vi.fn(),
   recordAuthLoginAudit: vi.fn(),
   recordAuthPasswordResetAudit: vi.fn(),
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-customer-audit.server", async () => ({
+  ...(await vi.importActual("~/src/modules/audit-log/use-cases/record-customer-audit.server")),
   recordCustomerOrdersClaimedAudit: vi.fn(),
   recordCustomerRegisteredAudit: vi.fn(),
   recordCustomerStripeEmailFailedAudit: vi.fn(),
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", async () => ({
+  ...(await vi.importActual("~/src/modules/audit-log/use-cases/record-email-audit.server")),
   recordEmailFailedAudit: vi.fn(),
   recordEmailSentAudit: vi.fn(),
 }))
@@ -78,7 +84,11 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
-const audit = await import("~/src/modules/audit-log/audit-log.events.server")
+const authAudit = await import("~/src/modules/audit-log/use-cases/record-auth-audit.server")
+
+const customerAudit = await import("~/src/modules/audit-log/use-cases/record-customer-audit.server")
+
+const emailAudit = await import("~/src/modules/audit-log/use-cases/record-email-audit.server")
 
 const newsletter = await import("~/src/modules/newsletter-subscriber/newsletter-subscriber.address-change.server")
 
@@ -223,7 +233,7 @@ describe("a customer changing their sign-in address", () => {
 
     await changeEmail(browser, "piotr@marte.test", "piotr@new.example")
 
-    expect(audit.recordAuthEmailChangedAudit).toHaveBeenCalledExactlyOnceWith(
+    expect(authAudit.recordAuthEmailChangedAudit).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ email: "piotr@new.example", id: userId }),
       {
         detail: "piotr@marte.test → piotr@new.example",
@@ -241,7 +251,7 @@ describe("a customer changing their sign-in address", () => {
     const notice = await waitForEmail("rafal@marte.test", emailChangedCopy.subject)
     expect(noticeProps.parse(notice.react.props)).toStrictEqual({ maskedEmail: "r***@n***.example", name: "Ada" })
     await vi.waitFor(() => {
-      expect(audit.recordEmailSentAudit).toHaveBeenCalledWith("rafal@marte.test", {
+      expect(emailAudit.recordEmailSentAudit).toHaveBeenCalledWith("rafal@marte.test", {
         metadata: { emailKind: "email-changed" },
         resourceId: userId,
       })
@@ -266,7 +276,7 @@ describe("a customer changing their sign-in address", () => {
     await changeEmail(browser, "tomasz@marte.test", "tomasz@new.example")
 
     expect(stubs.updateCustomer).toHaveBeenCalledExactlyOnceWith("cus_tomasz", { email: "tomasz@new.example" })
-    expect(audit.recordCustomerStripeEmailFailedAudit).not.toHaveBeenCalled()
+    expect(customerAudit.recordCustomerStripeEmailFailedAudit).not.toHaveBeenCalled()
   })
 
   it("still completes the change when Stripe refuses, and records that the next checkout has to set the address", async () => {
@@ -278,7 +288,7 @@ describe("a customer changing their sign-in address", () => {
     await changeEmail(browser, "urszula@marte.test", "urszula@new.example")
 
     expect(currentEmailOf(userId)).toBe("urszula@new.example")
-    expect(audit.recordCustomerStripeEmailFailedAudit).toHaveBeenCalledExactlyOnceWith(
+    expect(customerAudit.recordCustomerStripeEmailFailedAudit).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ email: "urszula@new.example", id: userId }),
       { detail: "Error: Stripe is down", ip: "198.51.100.8" },
     )

@@ -1,6 +1,6 @@
 import { type DrizzleBatchStatement, runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 
-import { recordDiscountRedeemedAudit, recordOrderPlacedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordDiscountRedeemedAudit, recordOrderPlacedAudit } from "~/src/modules/audit-log/use-cases/record-order-audit.server"
 import { getCheckoutForFulfillment } from "~/src/modules/checkout/checkout.accessors"
 import { findPendingCheckoutByTransaction } from "~/src/modules/checkout/checkout.pending.server"
 import { type FulfillCheckoutInput, prepareFulfillCheckoutBatch } from "~/src/modules/checkout/checkout.utils"

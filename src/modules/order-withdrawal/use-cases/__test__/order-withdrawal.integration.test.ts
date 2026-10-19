@@ -85,9 +85,11 @@ vi.mock("~/src/lib/background", () => ({
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminOrdersInvalidation: effects.invalidateAdminOrders,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
   recordEmailFailedAudit: effects.emailFailedAudit,
   recordOrderEmailOutcome: effects.emailOutcome,
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => ({
   recordOrderWithdrawalReceivedAudit: effects.withdrawalReceivedAudit,
 }))
 

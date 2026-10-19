@@ -60,13 +60,20 @@ vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: stu
 
 vi.mock("~/src/lib/seo", () => ({ buildLocalizedUrl: stubs.buildLocalizedUrl }))
 
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/audit-log.utils", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  resolveAuthAuditActor: stubs.resolveAuthAuditActor,
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-auth-audit.server", () => ({
   recordAuthLoginAudit: stubs.recordAuthLoginAudit,
   recordAuthPasswordResetAudit: stubs.recordAuthPasswordResetAudit,
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-customer-audit.server", () => ({
   recordCustomerDeletedAudit: stubs.recordCustomerDeletedAudit,
   recordCustomerRegisteredAudit: stubs.recordCustomerRegisteredAudit,
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
   recordEmailFailedAudit: stubs.recordEmailFailedAudit,
-  resolveAuthAuditActor: stubs.resolveAuthAuditActor,
 }))
 
 vi.mock("~/src/presentation/emails/account-deleted", () => ({

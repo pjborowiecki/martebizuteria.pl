@@ -26,8 +26,7 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.publish.
   publishRealtimeInvalidation: vi.fn(() => Promise.resolve(undefined)),
   scheduleRealtimeInvalidation: vi.fn<() => void>(),
 }))
-vi.mock("~/src/modules/audit-log/audit-log.record.server", () => ({
-  SYSTEM_AUDIT_ACTOR: { id: "system", name: "System", type: "system" },
+vi.mock("~/src/modules/audit-log/use-cases/schedule-audit-log.server", () => ({
   resolveRequestAuditActor: vi.fn(() => Promise.resolve(undefined)),
   resolveRequestAuditIp: vi.fn<() => string | undefined>(),
   scheduleAuditLog: vi.fn<() => void>(),

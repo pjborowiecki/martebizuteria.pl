@@ -8,7 +8,7 @@ import { scheduleRealtimeInvalidation } from "~/src/integrations/realtime-invali
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { recordNewsletterSentAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordNewsletterSentAudit } from "~/src/modules/audit-log/use-cases/record-email-audit.server"
 import { deleteUnsentNewsletterCampaign, insertNewsletterCampaign } from "~/src/modules/newsletter-campaign/newsletter-campaign.accessors"
 import {
   NEWSLETTER_CAMPAIGN_ERROR_CODES,

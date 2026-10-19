@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { handleAuthRequestWithAudit } from "~/src/modules/audit-log/audit-log.auth.server"
+import { handleAuthRequestWithAudit } from "~/src/modules/audit-log/use-cases/handle-auth-request.server"
 
 export const Route = createFileRoute("/api/auth/$")({
   server: {

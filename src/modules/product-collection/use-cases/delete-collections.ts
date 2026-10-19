@@ -6,7 +6,7 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleCollectionCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { recordCatalogCollectionDeletedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordCatalogCollectionDeletedAudit } from "~/src/modules/audit-log/use-cases/record-catalog-audit.server"
 import { countProductsForCollections } from "~/src/modules/collection-on-product/collection-on-product.accessors"
 import { deleteCollections as productCollectionDeleteCollections } from "~/src/modules/product-collection/product-collection.accessors"
 import { COLLECTION_ERROR_CODES, COLLECTION_MUTATION_KEYS } from "~/src/modules/product-collection/product-collection.constants"

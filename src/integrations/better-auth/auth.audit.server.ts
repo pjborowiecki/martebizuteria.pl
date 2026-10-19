@@ -14,8 +14,9 @@ import {
 } from "~/src/integrations/better-auth/auth.constants"
 import { adminAccountChangeSchema, passwordChangeSchema } from "~/src/integrations/better-auth/auth.zod"
 
+import { type AuditEventOptions, type AuditLogActorInput } from "~/src/modules/audit-log/audit-log.types"
+import { resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.utils"
 import {
-  type AuditEventOptions,
   recordAuthLoginAudit,
   recordAuthPasswordChangedAudit,
   recordAuthSessionsRevokedAudit,
@@ -23,9 +24,7 @@ import {
   recordAuthTwoFactorEnabledAudit,
   recordAuthUserBannedAudit,
   recordAuthUserUnbannedAudit,
-  resolveAuthAuditActor,
-} from "~/src/modules/audit-log/audit-log.events.server"
-import { type AuditLogActorInput } from "~/src/modules/audit-log/audit-log.record.server"
+} from "~/src/modules/audit-log/use-cases/record-auth-audit.server"
 import { getUserById } from "~/src/modules/user/user.accessors"
 
 import { auditRequestIp } from "~/src/lib/request"

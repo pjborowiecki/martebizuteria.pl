@@ -12,7 +12,9 @@ const { recordEmailFailedAudit } = vi.hoisted(() => ({
 }))
 
 vi.mock("cloudflare:workers", () => ({ env: { APP_ENV: "production" } }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordEmailFailedAudit }))
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
+  recordEmailFailedAudit,
+}))
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const { drizzle } = await import("drizzle-orm/d1")
   const { createTestD1Database } = await import("~/src/platform/testing/mocks/d1")

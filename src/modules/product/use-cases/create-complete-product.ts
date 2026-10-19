@@ -10,7 +10,7 @@ import {
   loadAttributeOnProductRows,
   prepareAttributeOnProductBatch,
 } from "~/src/modules/attribute-on-product/attribute-on-product.accessors"
-import { recordCatalogProductCreatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordCatalogProductCreatedAudit } from "~/src/modules/audit-log/use-cases/record-catalog-audit.server"
 import { prepareProductImagesBatch } from "~/src/modules/product-image/product-image.accessors"
 import { rethrowProductMutationError } from "~/src/modules/product/product.utils"
 import { productZodSchemas } from "~/src/modules/product/product.zod"

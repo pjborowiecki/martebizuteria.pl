@@ -21,8 +21,8 @@ import { isIsoDateString, parseIsoDateToEndMs, parseIsoDateToStartMs } from "~/s
 import { tryParseJsonRecord } from "~/src/modules/_core/utils/json"
 import { vatFromGross } from "~/src/modules/_core/utils/tax"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
-import { describeAuditLogDetail } from "~/src/modules/audit-log/audit-log.detail.utils"
-import { type AuditChangeMetadata, buildAuditChangeMetadata, toAuditMetadataRecord } from "~/src/modules/audit-log/audit-log.diff.utils"
+import { type AuditChangeMetadata } from "~/src/modules/audit-log/audit-log.types"
+import { buildAuditChangeMetadata, describeAuditLogDetail, toAuditMetadataRecord } from "~/src/modules/audit-log/audit-log.utils"
 import { INPOST_COURIER_CODE } from "~/src/modules/courier/courier.constants"
 import {
   ADMIN_DASHBOARD_MS_PER_DAY,

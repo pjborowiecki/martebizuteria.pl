@@ -39,6 +39,17 @@ export interface AdminAuditLogsFilterParams {
 
 export interface AdminAuditLogsListParams extends AdminAuditLogsFilterParams, ListPaginationParams {}
 
+export const buildAdminAuditLogsFilterParams = (
+  input: Pick<AdminAuditLogsFilterParams, "category" | "createdAt" | "search" | "severity">,
+  timeZone: string,
+): AdminAuditLogsFilterParams => ({
+  category: input.category,
+  createdAt: input.createdAt,
+  search: normalizeAdminSearchTerm(input.search),
+  severity: input.severity,
+  timeZone,
+})
+
 export interface AuditLogInsertRow {
   readonly action: string
   readonly actorId?: string | undefined

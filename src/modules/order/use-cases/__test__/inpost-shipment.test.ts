@@ -54,7 +54,9 @@ vi.mock("~/src/integrations/inpost/inpost.shipx.server", () => ({
   fetchShipxLabelPdfBase64: shipx.fetchShipxLabelPdfBase64,
   postShipxShipment: shipx.postShipxShipment,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderShipmentCreatedAudit: audit.shipmentCreated }))
+vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => ({
+  recordOrderShipmentCreatedAudit: audit.shipmentCreated,
+}))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getAdminOrderDetailRow: orders.getAdminOrderDetailRow }))
 vi.mock(import("~/src/modules/order/use-cases/sync-order-inpost-shipment.server"), async (importOriginal) => ({
   ...(await importOriginal()),

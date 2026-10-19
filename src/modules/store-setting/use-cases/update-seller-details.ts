@@ -9,8 +9,8 @@ import {
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { buildAuditChangeMetadata, toAuditMetadataRecord } from "~/src/modules/audit-log/audit-log.diff.utils"
-import { recordSettingsUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { buildAuditChangeMetadata, toAuditMetadataRecord } from "~/src/modules/audit-log/audit-log.utils"
+import { recordSettingsUpdatedAudit } from "~/src/modules/audit-log/use-cases/record-settings-audit.server"
 import { listContentPageBodies } from "~/src/modules/content-page/content-page.accessors"
 import { findLocalesShowingSellerFields } from "~/src/modules/content-page/content-page.seller-placeholders"
 import { readSellerDetails, saveSellerDetailsIfUnchanged } from "~/src/modules/store-setting/store-setting.accessors"

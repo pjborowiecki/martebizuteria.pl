@@ -2,32 +2,11 @@ import { ORDER_CHANGE_ADMIN_QUERY_KEYS } from "~/src/integrations/realtime-inval
 import { publishRealtimeInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server"
 
 import { type AuditLogInsertRow, insertAuditLogs } from "~/src/modules/audit-log/audit-log.accessors"
-import {
-  AUDIT_LOG_QUERY_KEYS,
-  type AuditLogAction,
-  type AuditLogActorRole,
-  type AuditLogCategory,
-  type AuditLogSeverity,
-} from "~/src/modules/audit-log/audit-log.constants"
+import { AUDIT_LOG_QUERY_KEYS, type AuditLogAction } from "~/src/modules/audit-log/audit-log.constants"
+import { type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.types"
 import { ADMIN_ORDER_TIMELINE_ACTIONS } from "~/src/modules/order/order.constants"
 
 import { sendIncidentAlert } from "~/src/lib/incident-alert.server"
-
-export interface AuditLogQueueMessage {
-  readonly action: AuditLogAction
-  readonly actorId?: string | undefined
-  readonly actorName: string
-  readonly actorRole: AuditLogActorRole
-  readonly category: AuditLogCategory
-  readonly createdAt: number
-  readonly detail?: string | undefined
-  readonly id: string
-  readonly ip?: string | undefined
-  readonly metadata?: string | undefined
-  readonly resourceId?: string | undefined
-  readonly severity: AuditLogSeverity
-  readonly target: string
-}
 
 const ORDER_TIMELINE_ACTIONS: ReadonlySet<AuditLogAction> = new Set(ADMIN_ORDER_TIMELINE_ACTIONS)
 

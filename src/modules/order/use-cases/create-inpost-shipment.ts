@@ -9,7 +9,7 @@ import { INPOST_CANCELED_SHIPMENT_STATUS } from "~/src/integrations/inpost/inpos
 import { type InpostShipmentDraft, postShipxShipment } from "~/src/integrations/inpost/inpost.shipx.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { recordOrderShipmentCreatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordOrderShipmentCreatedAudit } from "~/src/modules/audit-log/use-cases/record-order-audit.server"
 import { getAdminOrderDetailRow } from "~/src/modules/order/order.accessors"
 import { DISPATCHED_FULFILLMENT_STATUSES, ORDER_ERROR_CODES, ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
 import { order } from "~/src/modules/order/order.schema"

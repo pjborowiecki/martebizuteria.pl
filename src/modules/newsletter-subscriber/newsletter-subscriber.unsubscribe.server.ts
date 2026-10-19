@@ -1,6 +1,6 @@
 import { scheduleAdminNewsletterSubscribersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
-import { recordNewsletterSubscriberUnsubscribedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordNewsletterSubscriberUnsubscribedAudit } from "~/src/modules/audit-log/use-cases/record-email-audit.server"
 import { getSubscriberByToken, updateSubscriberById } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
 import { NEWSLETTER_STATUS, NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"

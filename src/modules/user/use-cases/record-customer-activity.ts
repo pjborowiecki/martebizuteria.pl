@@ -4,13 +4,13 @@ import type * as zod from "zod"
 import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 
+import { resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.utils"
 import {
   recordCustomerCartAbandonedAudit,
   recordCustomerCartItemAddedAudit,
   recordCustomerPageViewedAudit,
-  resolveAuthAuditActor,
-} from "~/src/modules/audit-log/audit-log.events.server"
-import { resolveRequestAuditIp } from "~/src/modules/audit-log/audit-log.record.server"
+} from "~/src/modules/audit-log/use-cases/record-customer-audit.server"
+import { resolveRequestAuditIp } from "~/src/modules/audit-log/use-cases/schedule-audit-log.server"
 import { userZodSchemas } from "~/src/modules/user/user.zod"
 
 export const recordCustomerActivity = createServerFn({ method: "POST" })

@@ -8,7 +8,7 @@ import { stripe } from "~/src/integrations/stripe/stripe.server"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { formatMinorUnitsAsDecimal } from "~/src/modules/_core/utils/currency"
-import { recordOrderPaymentCapturedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordOrderPaymentCapturedAudit } from "~/src/modules/audit-log/use-cases/record-order-audit.server"
 import {
   resolveCheckoutSessionCurrency,
   resolveCheckoutSessionDiscountTotal,

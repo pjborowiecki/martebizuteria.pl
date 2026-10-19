@@ -10,7 +10,7 @@ import {
   loadAttributeOnProductRows,
   prepareAttributeOnProductBatch,
 } from "~/src/modules/attribute-on-product/attribute-on-product.accessors"
-import { recordCatalogProductUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordCatalogProductUpdatedAudit } from "~/src/modules/audit-log/use-cases/record-catalog-audit.server"
 import { expireCheckoutsHoldingVariants } from "~/src/modules/checkout/use-cases/expire-checkouts-holding-variants.server"
 import { prepareProductImagesBatch } from "~/src/modules/product-image/product-image.accessors"
 import {

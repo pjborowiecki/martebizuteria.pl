@@ -2,7 +2,7 @@ import { and, eq, inArray, isNull, not, or, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
-import { recordCustomerOrdersClaimedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordCustomerOrdersClaimedAudit } from "~/src/modules/audit-log/use-cases/record-customer-audit.server"
 import { discountRedemption } from "~/src/modules/discount/discount.schema"
 import { order } from "~/src/modules/order/order.schema"
 import { accountHeldAddressAt, anotherAccountHeldAddressAt } from "~/src/modules/user-email-history/user-email-history.accessors"

@@ -16,7 +16,7 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: v
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleCollectionCatalogInvalidation: operations.invalidate,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/record-catalog-audit.server", () => ({
   recordCatalogCollectionDeletedAudit: operations.audit,
 }))
 vi.mock("~/src/modules/collection-on-product/collection-on-product.accessors", () => ({

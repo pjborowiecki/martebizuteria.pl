@@ -7,7 +7,7 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
-import { recordOrderDeliveredAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordOrderDeliveredAudit } from "~/src/modules/audit-log/use-cases/record-order-audit.server"
 import { ORDER_EMAIL_KIND, ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
 import { order } from "~/src/modules/order/order.schema"
 import { canMarkAdminOrderDelivered } from "~/src/modules/order/order.utils"

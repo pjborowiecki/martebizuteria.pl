@@ -61,9 +61,11 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: {} }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
-  recordOrderDeliveredAudit: vi.fn(),
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
   recordOrderEmailOutcome: vi.fn(),
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => ({
+  recordOrderDeliveredAudit: vi.fn(),
   recordOrderFulfillmentStartedAudit: vi.fn(),
 }))
 

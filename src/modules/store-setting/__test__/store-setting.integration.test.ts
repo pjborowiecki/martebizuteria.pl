@@ -67,7 +67,7 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
   scheduleFreeDeliveryInvalidation: effects.freeDeliveryInvalidate,
   scheduleSalesStatusInvalidation: effects.invalidate,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/record-settings-audit.server", () => ({
   recordSalesPausedAudit: effects.paused,
   recordSalesResumedAudit: effects.resumed,
   recordSettingsUpdatedAudit: effects.settingsUpdated,

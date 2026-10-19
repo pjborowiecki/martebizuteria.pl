@@ -16,7 +16,7 @@ import {
 } from "~/src/modules/_core/utils/datetime"
 import { parseJsonRecord, readJsonNumber, readJsonString, tryParseJsonRecord } from "~/src/modules/_core/utils/json"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
-import { describeAuditLogDetail } from "~/src/modules/audit-log/audit-log.detail.utils"
+import { describeAuditLogDetail } from "~/src/modules/audit-log/audit-log.utils"
 import {
   ADMIN_CUSTOMER_DETAIL_TAGS,
   ADMIN_CUSTOMER_MIN_REPEAT_ORDERS,

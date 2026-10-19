@@ -26,7 +26,11 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
   authorized: () => ({}),
   withRateLimit: () => ({}),
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audit)
+vi.mock("~/src/modules/audit-log/audit-log.utils", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  resolveAuthAuditActor: audit.resolveAuthAuditActor,
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-auth-audit.server", () => audit)
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: {
     delete: access.delete,

@@ -8,7 +8,7 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { getDefaultAddressForUser, upsertDefaultAddressForUser } from "~/src/modules/address/address.accessors"
-import { recordCustomerUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordCustomerUpdatedAudit } from "~/src/modules/audit-log/use-cases/record-customer-audit.server"
 import { getUserById } from "~/src/modules/user/user.accessors"
 import { USER_ERROR_CODES, USER_MUTATION_KEYS } from "~/src/modules/user/user.constants"
 import { user } from "~/src/modules/user/user.schema"

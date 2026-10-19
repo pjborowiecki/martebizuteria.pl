@@ -2,7 +2,7 @@ import { and, eq, gt, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
-import { recordOrderRefundFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordOrderRefundFailedAudit } from "~/src/modules/audit-log/use-cases/record-order-audit.server"
 import { order } from "~/src/modules/order/order.schema"
 import { type Order } from "~/src/modules/order/order.types"
 import { payment } from "~/src/modules/payment/payment.schema"

@@ -7,7 +7,7 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { scheduleProductAttributeCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { recordCatalogAttributeUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordCatalogAttributeUpdatedAudit } from "~/src/modules/audit-log/use-cases/record-catalog-audit.server"
 import { getProductAttributeByHandleQuery } from "~/src/modules/product-attribute/product-attribute.accessors"
 import {
   PRODUCT_ATTRIBUTE_ERROR_CODES,

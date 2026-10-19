@@ -5,7 +5,7 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
 
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
-import { recordListExportedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordListExportedAudit } from "~/src/modules/audit-log/use-cases/record-list-export-audit.server"
 import { type AdminCustomersListParams, getAdminCustomersFilteredList } from "~/src/modules/user/user.accessors"
 import { mapCustomerLocations, mapCustomerOrderStats, toAdminCustomerListItem } from "~/src/modules/user/user.utils"
 import { userZodSchemas } from "~/src/modules/user/user.zod"

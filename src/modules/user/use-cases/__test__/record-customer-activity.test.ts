@@ -21,13 +21,18 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
   withRateLimit,
 }))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: session.get }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/audit-log.utils", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  resolveAuthAuditActor: (user: { email: string }) => user.email,
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-customer-audit.server", () => ({
   recordCustomerCartAbandonedAudit: audits.abandoned,
   recordCustomerCartItemAddedAudit: audits.itemAdded,
   recordCustomerPageViewedAudit: audits.pageViewed,
-  resolveAuthAuditActor: (user: { email: string }) => user.email,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.record.server", () => ({ resolveRequestAuditIp: () => "198.51.100.4" }))
+vi.mock("~/src/modules/audit-log/use-cases/schedule-audit-log.server", () => ({
+  resolveRequestAuditIp: () => "198.51.100.4",
+}))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {

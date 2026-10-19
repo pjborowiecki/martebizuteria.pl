@@ -29,7 +29,9 @@ vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail: stubs.sendE
 
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: stubs.getCurrentLocale }))
 
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordEmailFailedAudit: stubs.recordEmailFailedAudit }))
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
+  recordEmailFailedAudit: stubs.recordEmailFailedAudit,
+}))
 
 vi.mock("~/src/presentation/emails/change-email", () => ({
   CHANGE_EMAIL_NAMESPACE: "emails.change-email",

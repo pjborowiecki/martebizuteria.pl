@@ -4,7 +4,7 @@ import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
-import { recordDiscountDeletedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordDiscountDeletedAudit } from "~/src/modules/audit-log/use-cases/record-settings-audit.server"
 import { deleteDiscountsByIds } from "~/src/modules/discount/discount.accessors"
 import { DISCOUNT_MUTATION_KEYS } from "~/src/modules/discount/discount.constants"
 import { discountZodSchemas } from "~/src/modules/discount/discount.zod"

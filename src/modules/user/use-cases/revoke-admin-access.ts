@@ -8,7 +8,8 @@ import { scheduleAdminCustomersInvalidation } from "~/src/integrations/realtime-
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
-import { recordTeamAccessAudit, resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.events.server"
+import { resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.utils"
+import { recordTeamAccessAudit } from "~/src/modules/audit-log/use-cases/record-settings-audit.server"
 import { getUserById } from "~/src/modules/user/user.accessors"
 import { TEAM_ERROR, USER_MUTATION_KEYS } from "~/src/modules/user/user.constants"
 import { revokeAdminRole } from "~/src/modules/user/user.team.server"

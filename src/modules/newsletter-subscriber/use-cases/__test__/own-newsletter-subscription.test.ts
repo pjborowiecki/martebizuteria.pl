@@ -29,7 +29,9 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminNewsletterSubscribersInvalidation,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordNewsletterSubscriberUnsubscribedAudit }))
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
+  recordNewsletterSubscriberUnsubscribedAudit,
+}))
 vi.mock("~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors", () => ({
   getSubscriberByEmail: accessors.getSubscriberByEmail,
   normalizeSubscriberEmail: (email: string) => email.trim().toLowerCase(),

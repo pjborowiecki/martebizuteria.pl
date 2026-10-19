@@ -14,7 +14,9 @@ vi.mock("~/src/modules/product/use-cases/list-admin-products.server", () => ({
   getAdminProductsFilteredList: collaborators.list,
   loadAdminListAggregates: collaborators.aggregates,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordListExportedAudit: collaborators.recordListExportedAudit }))
+vi.mock("~/src/modules/audit-log/use-cases/record-list-export-audit.server", () => ({
+  recordListExportedAudit: collaborators.recordListExportedAudit,
+}))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const state: { validate: ((input: unknown) => unknown) | undefined } = { validate: undefined }

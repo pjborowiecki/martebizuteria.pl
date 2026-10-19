@@ -7,7 +7,7 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleAdminOrdersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
-import { recordOrderSteppedBackAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordOrderSteppedBackAudit } from "~/src/modules/audit-log/use-cases/record-order-audit.server"
 import {
   ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP,
   ADMIN_ORDER_PREVIOUS_STEP,

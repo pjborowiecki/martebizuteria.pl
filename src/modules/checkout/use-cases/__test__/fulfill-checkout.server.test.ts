@@ -45,7 +45,10 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({ runDrizzleBatch
 vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutForFulfillment }))
 vi.mock("~/src/modules/checkout/checkout.pending.server", () => ({ findPendingCheckoutByTransaction }))
 vi.mock("~/src/modules/checkout/checkout.utils", () => ({ prepareFulfillCheckoutBatch }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordDiscountRedeemedAudit, recordOrderPlacedAudit }))
+vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => ({
+  recordDiscountRedeemedAudit,
+  recordOrderPlacedAudit,
+}))
 vi.mock("~/src/modules/discount/discount.redeem.server", () => ({ prepareDiscountRedemption }))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderByCheckoutId }))
 

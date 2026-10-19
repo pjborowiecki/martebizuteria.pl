@@ -16,11 +16,16 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
 vi.mock("~/src/modules/attribute-on-product/attribute-on-product.accessors", () => ({
   countForAttributeIds: server.countForAttributeIds,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
-  recordCatalogAttributeDeletedAudit: audit.deleted,
+vi.mock("~/src/modules/audit-log/audit-log.utils", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   resolveAuthAuditActor: (user: { email: string }) => `actor:${user.email}`,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.record.server", () => ({ resolveRequestAuditIp: () => "198.51.100.4" }))
+vi.mock("~/src/modules/audit-log/use-cases/record-catalog-audit.server", () => ({
+  recordCatalogAttributeDeletedAudit: audit.deleted,
+}))
+vi.mock("~/src/modules/audit-log/use-cases/schedule-audit-log.server", () => ({
+  resolveRequestAuditIp: () => "198.51.100.4",
+}))
 vi.mock("~/src/modules/product-attribute/product-attribute.accessors", () => ({
   deleteProductAttributes: server.deleteProductAttributes,
   getProductAttributesByIds: server.getProductAttributesByIds,

@@ -43,13 +43,20 @@ vi.mock("resend", () => ({
     public readonly emails = { send: emailsSend }
   },
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/audit-log.utils", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  resolveAuthAuditActor: vi.fn(),
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-auth-audit.server", () => ({
   recordAuthLoginAudit: vi.fn(),
   recordAuthPasswordResetAudit: vi.fn(),
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-customer-audit.server", () => ({
   recordCustomerDeletedAudit: vi.fn(),
   recordCustomerRegisteredAudit: vi.fn(),
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
   recordEmailFailedAudit,
-  resolveAuthAuditActor: vi.fn(),
 }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminAuditLogInvalidation: vi.fn(),

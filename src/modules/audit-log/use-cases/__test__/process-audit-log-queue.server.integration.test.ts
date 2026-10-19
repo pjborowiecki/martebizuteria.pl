@@ -4,9 +4,10 @@ import { z } from "zod"
 import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 
 import { deleteAuditLogs, getAdminAuditLogStats } from "~/src/modules/audit-log/audit-log.accessors"
-import { recordOrderFulfillmentFailedAudit, recordOrderPlacedAudit } from "~/src/modules/audit-log/audit-log.events.server"
-import { type AuditLogQueueMessage, processAuditLogQueueBatch } from "~/src/modules/audit-log/audit-log.queue.server"
+import { type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.types"
 import { resolveAuditLogToday } from "~/src/modules/audit-log/audit-log.utils"
+import { processAuditLogQueueBatch } from "~/src/modules/audit-log/use-cases/process-audit-log-queue.server"
+import { recordOrderFulfillmentFailedAudit, recordOrderPlacedAudit } from "~/src/modules/audit-log/use-cases/record-order-audit.server"
 
 const { sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")

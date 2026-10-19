@@ -21,7 +21,10 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordDiscountRedeemedAudit, recordOrderPlacedAudit: vi.fn() }))
+vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => ({
+  recordDiscountRedeemedAudit,
+  recordOrderPlacedAudit: vi.fn(),
+}))
 
 const PRICE = 24_900
 

@@ -9,8 +9,8 @@ import { LIST_PAGE_FIRST, buildListPaginationResult, listPaginationParamsFromPag
 import {
   type AdminAuditLogsListParams,
   getAdminAuditLogsPage as auditLogGetAdminAuditLogsPage,
+  buildAdminAuditLogsFilterParams,
 } from "~/src/modules/audit-log/audit-log.accessors"
-import { buildAdminAuditLogsFilterParams } from "~/src/modules/audit-log/audit-log.admin-list.server"
 import { ADMIN_AUDIT_LOG_PAGE_SIZE, AUDIT_LOG_QUERY_KEYS, AUDIT_LOG_QUERY_STALE_MS } from "~/src/modules/audit-log/audit-log.constants"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import { toAdminAuditListItem } from "~/src/modules/audit-log/audit-log.utils"

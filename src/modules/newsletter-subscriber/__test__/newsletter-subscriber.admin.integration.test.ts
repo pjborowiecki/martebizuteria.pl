@@ -20,7 +20,9 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
     return {}
   },
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordListExportedAudit: guards.recordListExportedAudit }))
+vi.mock("~/src/modules/audit-log/use-cases/record-list-export-audit.server", () => ({
+  recordListExportedAudit: guards.recordListExportedAudit,
+}))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const state: { validate: (input: unknown) => unknown } = { validate: (input) => input }

@@ -5,7 +5,7 @@ import zod from "zod/v4"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleFreeDeliveryInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
-import { recordSettingsUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordSettingsUpdatedAudit } from "~/src/modules/audit-log/use-cases/record-settings-audit.server"
 import { findFreeDeliveryThreshold, saveFreeDeliveryThreshold } from "~/src/modules/store-setting/store-setting.accessors"
 import { FREE_DELIVERY_THRESHOLD_MAX, STORE_SETTING_MUTATION_KEYS } from "~/src/modules/store-setting/store-setting.constants"
 import { type FreeDelivery } from "~/src/modules/store-setting/use-cases/get-free-delivery"

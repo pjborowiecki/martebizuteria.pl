@@ -25,14 +25,10 @@ import { scheduleAdminCustomersInvalidation } from "~/src/integrations/realtime-
 import { isEmailSenderUnavailable } from "~/src/integrations/resend/resend.availability.server"
 
 import { sendPasswordChangedEmail } from "~/src/modules/account/use-cases/send-password-changed-email.server"
-import {
-  recordAuthEmailVerifiedAudit,
-  recordAuthPasswordResetAudit,
-  recordCustomerDeletedAudit,
-  recordCustomerRegisteredAudit,
-  resolveAuthAuditActor,
-} from "~/src/modules/audit-log/audit-log.events.server"
-import { SYSTEM_AUDIT_ACTOR } from "~/src/modules/audit-log/audit-log.record.server"
+import { SYSTEM_AUDIT_ACTOR } from "~/src/modules/audit-log/audit-log.constants"
+import { resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.utils"
+import { recordAuthEmailVerifiedAudit, recordAuthPasswordResetAudit } from "~/src/modules/audit-log/use-cases/record-auth-audit.server"
+import { recordCustomerDeletedAudit, recordCustomerRegisteredAudit } from "~/src/modules/audit-log/use-cases/record-customer-audit.server"
 import { linkSubscriberToUser } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
 import { claimGuestOrdersForUser } from "~/src/modules/order/use-cases/claim-guest-orders.server"
 import { sendAccountDeletedEmail } from "~/src/modules/user/use-cases/send-account-deleted-email.server"

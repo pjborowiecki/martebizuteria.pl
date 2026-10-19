@@ -7,8 +7,8 @@ import {
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import { deleteStripeCustomer } from "~/src/integrations/stripe/stripe.customer.server"
 
-import { recordCustomerDeletionFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
+import { recordCustomerDeletionFailedAudit } from "~/src/modules/audit-log/use-cases/record-customer-audit.server"
 import { normalizeSubscriberEmail } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
 import { newsletterSubscriber } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.schema"
 import { prepareKeepingDeletedAccountOrdersFromClaims } from "~/src/modules/order/use-cases/claim-guest-orders.server"

@@ -20,10 +20,15 @@ vi.mock("cloudflare:workers", () => ({
   },
 }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail: vi.fn(() => Promise.resolve(undefined)) }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
-  recordAuthLoginAudit: vi.fn(),
-  recordCustomerRegisteredAudit: audit.recordCustomerRegisteredAudit,
+vi.mock("~/src/modules/audit-log/audit-log.utils", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   resolveAuthAuditActor: vi.fn(),
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-auth-audit.server", () => ({
+  recordAuthLoginAudit: vi.fn(),
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-customer-audit.server", () => ({
+  recordCustomerRegisteredAudit: audit.recordCustomerRegisteredAudit,
 }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminCustomersInvalidation: vi.fn(),

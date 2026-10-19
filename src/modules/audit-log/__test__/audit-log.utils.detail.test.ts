@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vite-plus/test"
 
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
-import { type AuditLogDetailSource, describeAuditLogDetail } from "~/src/modules/audit-log/audit-log.detail.utils"
+import { type AuditLogDetailSource } from "~/src/modules/audit-log/audit-log.types"
+import { describeAuditLogDetail } from "~/src/modules/audit-log/audit-log.utils"
 
 const describeRow = (action: string, detail: string | null, metadata?: Record<string, unknown>) =>
   describeAuditLogDetail({ action, detail, metadata } satisfies AuditLogDetailSource)

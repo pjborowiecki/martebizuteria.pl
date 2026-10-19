@@ -58,7 +58,7 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
   scheduleContentPageInvalidation: effects.contentPagesInvalidate,
   scheduleSellerDetailsInvalidation: effects.invalidate,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/record-settings-audit.server", () => ({
   recordSettingsUpdatedAudit: effects.settingsUpdated,
 }))
 

@@ -18,7 +18,7 @@ const stubs = vi.hoisted(() => ({
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail: stubs.sendEmail }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: stubs.getCurrentLocale }))
 vi.mock("~/src/modules/store-setting/store-setting.accessors", () => ({ readSellerDetails: stubs.readSellerDetails }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
   recordEmailFailedAudit: stubs.recordEmailFailedAudit,
   recordEmailSentAudit: stubs.recordEmailSentAudit,
 }))
