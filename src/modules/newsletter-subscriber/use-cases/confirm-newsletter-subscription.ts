@@ -6,10 +6,14 @@ import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.
 import { scheduleAdminNewsletterSubscribersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { recordNewsletterSubscriberConfirmedAudit } from "~/src/modules/audit-log/audit-log.events.server"
-import { getSubscriberByToken, updateSubscriberById } from "~/src/modules/newsletter/newsletter.accessors"
-import { NEWSLETTER_MUTATION_KEYS, NEWSLETTER_STATUS, NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter/newsletter.constants"
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
-import { newsletterZodSchemas } from "~/src/modules/newsletter/newsletter.zod"
+import { getSubscriberByToken, updateSubscriberById } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
+import {
+  NEWSLETTER_MUTATION_KEYS,
+  NEWSLETTER_STATUS,
+  NEWSLETTER_TOKEN_RESULT,
+} from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
+import { newsletterZodSchemas } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.zod"
 
 export const confirmNewsletterSubscription = createServerFn({ method: "POST" })
   .middleware([withRateLimit("newsletter-confirm", RATE_LIMITS.SENSITIVE)])

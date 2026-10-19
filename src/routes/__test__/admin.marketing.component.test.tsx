@@ -73,10 +73,10 @@ vi.mock("~/src/presentation/components/custom/pages/admin/marketing/subscribers/
     <section data-testid="newsletter-subscribers-table">{initialStatus ?? "every status"}</section>
   ),
 }))
-vi.mock("~/src/modules/newsletter/use-cases/get-newsletter-stats", () => ({
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/get-newsletter-stats", () => ({
   getNewsletterStatsQuery: () => ({ queryFn: () => remote.stats(), queryKey: ["admin", "newsletter", "stats"] }),
 }))
-vi.mock("~/src/modules/newsletter/use-cases/get-admin-newsletter-page", () => ({
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/get-admin-newsletter-page", () => ({
   getAdminNewsletterPageQuery: (input: unknown) => ({
     queryFn: () => remote.page(input),
     queryKey: ["admin", "newsletter", "page", input],

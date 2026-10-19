@@ -4,12 +4,16 @@ import { createColumnHelper, useTable } from "@tanstack/react-table"
 import { cleanup, renderHook } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
-vi.mock("~/src/modules/newsletter/use-cases/get-admin-newsletter-page", () => ({ getAdminNewsletterPageQuery: vi.fn() }))
-vi.mock("~/src/modules/newsletter/use-cases/export-admin-newsletter-subscribers", () => ({ exportAdminNewsletterSubscribers: vi.fn() }))
-vi.mock("~/src/modules/newsletter/use-cases/unsubscribe-newsletter-subscriber", () => ({ unsubscribeNewsletterSubscriberMutation: {} }))
-vi.mock("~/src/modules/newsletter/use-cases/erase-newsletter-subscriber", () => ({ eraseNewsletterSubscriberMutation: {} }))
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/get-admin-newsletter-page", () => ({ getAdminNewsletterPageQuery: vi.fn() }))
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/export-admin-newsletter-subscribers", () => ({
+  exportAdminNewsletterSubscribers: vi.fn(),
+}))
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/unsubscribe-newsletter-subscriber", () => ({
+  unsubscribeNewsletterSubscriberMutation: {},
+}))
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/erase-newsletter-subscriber", () => ({ eraseNewsletterSubscriberMutation: {} }))
 
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
 
 import { type DataGridFeatures, dataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 import { buildSubscriber } from "~/src/presentation/components/custom/pages/admin/marketing/subscribers/__test__/newsletter-subscriber.fixture"

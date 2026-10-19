@@ -2,8 +2,8 @@ import { and, eq, inArray, lt, or } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
-import { NEWSLETTER_STATUS } from "~/src/modules/newsletter/newsletter.constants"
-import { newsletterSubscriber } from "~/src/modules/newsletter/newsletter.schema"
+import { NEWSLETTER_STATUS } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { newsletterSubscriber } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.schema"
 
 export const deleteLapsedNewsletterSubscribers = async ({
   limit,

@@ -1,9 +1,9 @@
 import { scheduleAdminNewsletterSubscribersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { recordNewsletterSubscriberUnsubscribedAudit } from "~/src/modules/audit-log/audit-log.events.server"
-import { getSubscriberByToken, updateSubscriberById } from "~/src/modules/newsletter/newsletter.accessors"
-import { NEWSLETTER_STATUS, NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter/newsletter.constants"
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
+import { getSubscriberByToken, updateSubscriberById } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
+import { NEWSLETTER_STATUS, NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
 
 export const unsubscribeSubscriber = async ({
   email,

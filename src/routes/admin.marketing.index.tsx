@@ -6,7 +6,7 @@ import { Plus } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { getAdminNewsletterCampaignsQuery } from "~/src/modules/newsletter-campaign/use-cases/get-admin-newsletter-campaigns"
-import { getNewsletterStatsQuery } from "~/src/modules/newsletter/use-cases/get-newsletter-stats"
+import { getNewsletterStatsQuery } from "~/src/modules/newsletter-subscriber/use-cases/get-newsletter-stats"
 
 import { buttonVariants } from "~/src/presentation/components/shadcn/button"
 

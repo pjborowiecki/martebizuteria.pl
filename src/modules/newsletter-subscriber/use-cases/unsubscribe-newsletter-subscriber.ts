@@ -5,10 +5,10 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { getSubscriberById } from "~/src/modules/newsletter/newsletter.accessors"
-import { NEWSLETTER_ERROR_CODES, NEWSLETTER_MUTATION_KEYS } from "~/src/modules/newsletter/newsletter.constants"
-import { unsubscribeSubscriber } from "~/src/modules/newsletter/newsletter.unsubscribe.server"
-import { newsletterZodSchemas } from "~/src/modules/newsletter/newsletter.zod"
+import { getSubscriberById } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
+import { NEWSLETTER_ERROR_CODES, NEWSLETTER_MUTATION_KEYS } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { unsubscribeSubscriber } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.unsubscribe.server"
+import { newsletterZodSchemas } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.zod"
 
 export const unsubscribeNewsletterSubscriber = createServerFn({ method: "POST" })
   .middleware([authorized({ user: ["update"] })])

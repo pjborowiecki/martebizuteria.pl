@@ -9,8 +9,8 @@ import { deleteStripeCustomer } from "~/src/integrations/stripe/stripe.customer.
 
 import { recordCustomerDeletionFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
-import { normalizeSubscriberEmail } from "~/src/modules/newsletter/newsletter.accessors"
-import { newsletterSubscriber } from "~/src/modules/newsletter/newsletter.schema"
+import { normalizeSubscriberEmail } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
+import { newsletterSubscriber } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.schema"
 import { prepareKeepingDeletedAccountOrdersFromClaims } from "~/src/modules/order/order.claim.server"
 import { keyedByFormerAddressOf } from "~/src/modules/user-email-history/user-email-history.accessors"
 

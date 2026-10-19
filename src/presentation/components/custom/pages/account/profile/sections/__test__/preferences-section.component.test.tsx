@@ -27,16 +27,16 @@ vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => ({
   },
 }))
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: mocks.toastSuccess } }))
-vi.mock("~/src/modules/newsletter/use-cases/get-own-newsletter-subscription", () => ({
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/get-own-newsletter-subscription", () => ({
   getOwnNewsletterSubscriptionQuery: () => ({
     queryFn: () => Promise.resolve({ status: mocks.status.current }),
     queryKey: mocks.subscriptionKey,
   }),
 }))
-vi.mock("~/src/modules/newsletter/use-cases/subscribe-to-newsletter", () => ({
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/subscribe-to-newsletter", () => ({
   subscribeToNewsletterMutation: { mutationFn: mocks.subscribe, mutationKey: ["newsletter", "subscribe"] },
 }))
-vi.mock("~/src/modules/newsletter/use-cases/unsubscribe-own-newsletter", () => ({
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/unsubscribe-own-newsletter", () => ({
   unsubscribeOwnNewsletterMutation: { mutationFn: mocks.unsubscribe, mutationKey: ["newsletter", "unsubscribeOwn"] },
 }))
 

@@ -5,8 +5,12 @@ import { describe, expect, it } from "vite-plus/test"
 import { UUID_STRING_LENGTH } from "~/src/integrations/drizzle-orm/drizzle.utils"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
-import { NEWSLETTER_EMAIL_MAX_LENGTH, NEWSLETTER_SOURCES, NEWSLETTER_STATUSES } from "~/src/modules/newsletter/newsletter.constants"
-import { newsletterSubscriber, newsletterSubscriberRelations } from "~/src/modules/newsletter/newsletter.schema"
+import {
+  NEWSLETTER_EMAIL_MAX_LENGTH,
+  NEWSLETTER_SOURCES,
+  NEWSLETTER_STATUSES,
+} from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { newsletterSubscriber, newsletterSubscriberRelations } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.schema"
 
 const config = getTableConfig(newsletterSubscriber)
 

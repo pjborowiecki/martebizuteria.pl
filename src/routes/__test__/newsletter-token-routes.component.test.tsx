@@ -4,7 +4,7 @@ import type * as ReactRouter from "@tanstack/react-router"
 import { cleanup, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
 
 interface RouteDefinition {
   readonly component?: () => JSX.Element
@@ -24,12 +24,12 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
     return { options, useLoaderData: () => loader.data }
   },
 }))
-vi.mock("~/src/modules/newsletter/use-cases/confirm-newsletter-subscription", () => ({ confirmNewsletterSubscription: vi.fn() }))
-vi.mock("~/src/modules/newsletter/use-cases/unsubscribe-from-newsletter", () => ({ unsubscribeFromNewsletter: vi.fn() }))
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/confirm-newsletter-subscription", () => ({ confirmNewsletterSubscription: vi.fn() }))
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/unsubscribe-from-newsletter", () => ({ unsubscribeFromNewsletter: vi.fn() }))
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter/newsletter.constants"
+import { NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 
 await import("~/src/routes/_storefront.newsletter.confirm")
 await import("~/src/routes/_storefront.newsletter.unsubscribe")

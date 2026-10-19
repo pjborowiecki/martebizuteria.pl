@@ -1,6 +1,6 @@
 import { Hourglass, type LucideIcon, MailCheck, MailX, Mails } from "lucide-react"
 
-import { NEWSLETTER_STATUS, type NewsletterStatus } from "~/src/modules/newsletter/newsletter.constants"
+import { NEWSLETTER_STATUS, type NewsletterStatus } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 
 export interface NewsletterStatCardConfig {
   readonly gradient: string

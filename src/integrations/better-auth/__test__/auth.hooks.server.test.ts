@@ -49,7 +49,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: {},
 }))
 
-vi.mock("~/src/modules/newsletter/newsletter.accessors", () => ({ linkSubscriberToUser: stubs.linkSubscriberToUser }))
+vi.mock("~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors", () => ({ linkSubscriberToUser: stubs.linkSubscriberToUser }))
 vi.mock("~/src/modules/order/order.claim.server", () => ({ claimGuestOrdersForUser: stubs.claimGuestOrdersForUser }))
 vi.mock("~/src/modules/user/user.accessors", () => ({ getUserById: vi.fn() }))
 vi.mock("~/src/modules/user/user.erasure.server", () => ({ eraseAccountData: stubs.eraseAccountData }))

@@ -16,7 +16,7 @@ vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 import {
   buildNewsletterConfirmUrl,
   sendNewsletterConfirmationEmail,
-} from "~/src/modules/newsletter/use-cases/send-newsletter-confirmation-email.server"
+} from "~/src/modules/newsletter-subscriber/use-cases/send-newsletter-confirmation-email.server"
 
 import { ROUTES } from "~/src/routes"
 

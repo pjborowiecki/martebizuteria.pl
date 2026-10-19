@@ -3,7 +3,7 @@ import { z } from "zod"
 
 import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 
-import { deleteLapsedNewsletterSubscribers } from "~/src/modules/newsletter/use-cases/delete-lapsed-newsletter-subscribers.server"
+import { deleteLapsedNewsletterSubscribers } from "~/src/modules/newsletter-subscriber/use-cases/delete-lapsed-newsletter-subscribers.server"
 
 const { sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")

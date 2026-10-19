@@ -10,9 +10,9 @@ import {
   ADMIN_NEWSLETTER_TABLE_COLUMN_PINNING,
   ADMIN_NEWSLETTER_TABLE_DEFAULT_COLUMN_VISIBILITY,
   type NewsletterStatus,
-} from "~/src/modules/newsletter/newsletter.constants"
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
-import { getAdminNewsletterPageQuery } from "~/src/modules/newsletter/use-cases/get-admin-newsletter-page"
+} from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
+import { getAdminNewsletterPageQuery } from "~/src/modules/newsletter-subscriber/use-cases/get-admin-newsletter-page"
 
 import { useAdminDebouncedTableSearch } from "~/src/presentation/components/custom/datagrid/hooks/use-admin-debounced-table-search"
 import { useDataGridInstance } from "~/src/presentation/components/custom/datagrid/hooks/use-data-grid-instance"

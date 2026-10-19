@@ -29,7 +29,7 @@ export { productCategory, productCategoryRelations } from "~/src/modules/product
 
 export { productCollection, productCollectionRelations } from "~/src/modules/product-collection/product-collection.schema"
 
-export { newsletterSubscriber, newsletterSubscriberRelations } from "~/src/modules/newsletter/newsletter.schema"
+export { newsletterSubscriber, newsletterSubscriberRelations } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.schema"
 
 export { newsletterCampaign } from "~/src/modules/newsletter-campaign/newsletter-campaign.schema"
 

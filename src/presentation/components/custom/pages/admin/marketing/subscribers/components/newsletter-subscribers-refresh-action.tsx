@@ -7,7 +7,7 @@ import { useTranslations } from "use-intl/react"
 
 import { invalidateQueryPrefix } from "~/src/integrations/tanstack-query/query.invalidation"
 
-import { NEWSLETTER_QUERY_KEYS } from "~/src/modules/newsletter/newsletter.constants"
+import { NEWSLETTER_QUERY_KEYS } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 

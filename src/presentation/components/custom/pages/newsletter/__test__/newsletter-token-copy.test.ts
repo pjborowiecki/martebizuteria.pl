@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter/newsletter.constants"
+import { NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 
 import { newsletterDescriptionKey, newsletterTitleKey } from "~/src/presentation/components/custom/pages/newsletter/newsletter-token-copy"
 

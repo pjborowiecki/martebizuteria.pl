@@ -1,7 +1,7 @@
 import { cleanup, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
-vi.mock("~/src/modules/newsletter/use-cases/get-newsletter-stats", () => ({
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/get-newsletter-stats", () => ({
   getNewsletterStatsQuery: () => ({
     queryFn: () => Promise.resolve({ confirmed: 1234, pending: 3, total: 1242, unsubscribed: 5 }),
     queryKey: ["admin", "newsletter", "stats"],

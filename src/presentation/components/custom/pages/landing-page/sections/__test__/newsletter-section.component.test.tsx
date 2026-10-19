@@ -10,7 +10,7 @@ const { subscribe } = vi.hoisted(() => ({
   subscribe: vi.fn<(input: { email: string }) => Promise<{ outcome: string }>>(),
 }))
 
-vi.mock("~/src/modules/newsletter/use-cases/subscribe-to-newsletter", () => ({
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/subscribe-to-newsletter", () => ({
   subscribeToNewsletterMutation: { mutationFn: subscribe, mutationKey: ["newsletter", "subscribe"] },
 }))
 
@@ -19,7 +19,7 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
-import { NEWSLETTER_SOURCE } from "~/src/modules/newsletter/newsletter.constants"
+import { NEWSLETTER_SOURCE } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 
 import { NewsletterSection } from "~/src/presentation/components/custom/pages/landing-page/sections/newsletter-section"
 

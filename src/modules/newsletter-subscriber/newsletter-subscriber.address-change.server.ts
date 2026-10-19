@@ -7,9 +7,9 @@ import {
   mergeSubscribers,
   normalizeSubscriberEmail,
   updateSubscriberById,
-} from "~/src/modules/newsletter/newsletter.accessors"
-import { NEWSLETTER_STATUS } from "~/src/modules/newsletter/newsletter.constants"
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
+} from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
+import { NEWSLETTER_STATUS } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
 
 const takenOverStatus = (next: Newsletter["select"], previous: Newsletter["select"]) =>
   next.status === NEWSLETTER_STATUS.PENDING && previous.status === NEWSLETTER_STATUS.CONFIRMED

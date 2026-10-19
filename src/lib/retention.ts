@@ -2,7 +2,7 @@ import "@tanstack/react-start/server-only"
 
 import { deleteExpiredAuditLogs } from "~/src/modules/audit-log/use-cases/delete-expired-audit-logs.server"
 import { anonymizeEndedCheckouts } from "~/src/modules/checkout/use-cases/anonymize-ended-checkouts.server"
-import { deleteLapsedNewsletterSubscribers } from "~/src/modules/newsletter/use-cases/delete-lapsed-newsletter-subscribers.server"
+import { deleteLapsedNewsletterSubscribers } from "~/src/modules/newsletter-subscriber/use-cases/delete-lapsed-newsletter-subscribers.server"
 import { deleteExpiredRateLimits } from "~/src/modules/rate-limit/use-cases/delete-expired-rate-limits.server"
 import { deleteExpiredSessions } from "~/src/modules/session/use-cases/delete-expired-sessions.server"
 import { deleteExpiredVerifications } from "~/src/modules/verification/use-cases/delete-expired-verifications.server"

@@ -4,9 +4,9 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
 import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
-import { NEWSLETTER_STATUS, type NewsletterStatus } from "~/src/modules/newsletter/newsletter.constants"
-import { newsletterSubscriber } from "~/src/modules/newsletter/newsletter.schema"
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
+import { NEWSLETTER_STATUS, type NewsletterStatus } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { newsletterSubscriber } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.schema"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
 
 const NO_ROWS = 0
 

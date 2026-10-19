@@ -43,8 +43,8 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 vi.mock("~/src/modules/user/use-cases/get-customer-profile", () => ({
   getCustomerProfileQuery: () => ({ queryFn: state.fetchProfile, queryKey: ["customer-account", "profile"] }),
 }))
-vi.mock("~/src/modules/newsletter/use-cases/get-own-newsletter-subscription", async () => {
-  const { NEWSLETTER_QUERY_KEYS } = await import("~/src/modules/newsletter/newsletter.constants")
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/get-own-newsletter-subscription", async () => {
+  const { NEWSLETTER_QUERY_KEYS } = await import("~/src/modules/newsletter-subscriber/newsletter-subscriber.constants")
 
   return {
     getOwnNewsletterSubscriptionQuery: () => ({
@@ -74,7 +74,7 @@ vi.mock("~/src/presentation/components/custom/pages/account/profile/sections/clo
 }))
 
 import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/_core/constants/customer-account"
-import { NEWSLETTER_QUERY_KEYS, NEWSLETTER_STATUS } from "~/src/modules/newsletter/newsletter.constants"
+import { NEWSLETTER_QUERY_KEYS, NEWSLETTER_STATUS } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 
 await import("~/src/routes/account.profile")
 

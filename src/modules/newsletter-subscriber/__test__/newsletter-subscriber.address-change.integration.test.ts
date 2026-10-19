@@ -20,7 +20,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
-const { followAccountAddressChange } = await import("~/src/modules/newsletter/newsletter.address-change.server")
+const { followAccountAddressChange } = await import("~/src/modules/newsletter-subscriber/newsletter-subscriber.address-change.server")
 
 const CONFIRMED_AT = Date.UTC(2026, 3, 1)
 

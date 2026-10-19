@@ -65,7 +65,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", async () => ({
   recordEmailFailedAudit: vi.fn(),
   recordEmailSentAudit: vi.fn(),
 }))
-vi.mock(import("~/src/modules/newsletter/newsletter.address-change.server"), async (importOriginal) => {
+vi.mock(import("~/src/modules/newsletter-subscriber/newsletter-subscriber.address-change.server"), async (importOriginal) => {
   const { followAccountAddressChange } = await importOriginal()
 
   return { followAccountAddressChange: vi.fn(followAccountAddressChange) }
@@ -80,7 +80,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
 const audit = await import("~/src/modules/audit-log/audit-log.events.server")
 
-const newsletter = await import("~/src/modules/newsletter/newsletter.address-change.server")
+const newsletter = await import("~/src/modules/newsletter-subscriber/newsletter-subscriber.address-change.server")
 
 const HOUR_MS = 3_600_000
 

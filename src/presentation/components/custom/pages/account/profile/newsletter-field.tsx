@@ -9,10 +9,10 @@ import {
   NEWSLETTER_QUERY_KEYS,
   NEWSLETTER_SOURCE,
   NEWSLETTER_STATUS,
-} from "~/src/modules/newsletter/newsletter.constants"
-import { getOwnNewsletterSubscriptionQuery } from "~/src/modules/newsletter/use-cases/get-own-newsletter-subscription"
-import { subscribeToNewsletterMutation } from "~/src/modules/newsletter/use-cases/subscribe-to-newsletter"
-import { unsubscribeOwnNewsletterMutation } from "~/src/modules/newsletter/use-cases/unsubscribe-own-newsletter"
+} from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { getOwnNewsletterSubscriptionQuery } from "~/src/modules/newsletter-subscriber/use-cases/get-own-newsletter-subscription"
+import { subscribeToNewsletterMutation } from "~/src/modules/newsletter-subscriber/use-cases/subscribe-to-newsletter"
+import { unsubscribeOwnNewsletterMutation } from "~/src/modules/newsletter-subscriber/use-cases/unsubscribe-own-newsletter"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 

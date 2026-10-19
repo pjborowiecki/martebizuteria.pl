@@ -3,7 +3,7 @@ import { type JSX } from "react"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { cn } from "cn"
 
-import { getNewsletterStatsQuery } from "~/src/modules/newsletter/use-cases/get-newsletter-stats"
+import { getNewsletterStatsQuery } from "~/src/modules/newsletter-subscriber/use-cases/get-newsletter-stats"
 
 import { useFormatLocale } from "~/src/hooks/use-display-format"
 

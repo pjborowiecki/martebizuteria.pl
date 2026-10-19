@@ -4,10 +4,10 @@ import type * as zod from "zod"
 
 import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
 
-import { NEWSLETTER_MUTATION_KEYS } from "~/src/modules/newsletter/newsletter.constants"
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
-import { unsubscribeByToken } from "~/src/modules/newsletter/newsletter.unsubscribe.server"
-import { newsletterZodSchemas } from "~/src/modules/newsletter/newsletter.zod"
+import { NEWSLETTER_MUTATION_KEYS } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
+import { unsubscribeByToken } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.unsubscribe.server"
+import { newsletterZodSchemas } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.zod"
 
 export const unsubscribeFromNewsletter = createServerFn({ method: "POST" })
   .middleware([withRateLimit("newsletter-unsubscribe", RATE_LIMITS.SENSITIVE)])

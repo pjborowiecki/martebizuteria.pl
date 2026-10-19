@@ -4,8 +4,11 @@ import { createColumnHelper } from "@tanstack/react-table"
 import { type useTranslations } from "use-intl/react"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
-import { ADMIN_NEWSLETTER_TABLE_COLUMN_ID, ADMIN_NEWSLETTER_TABLE_COLUMN_SIZE } from "~/src/modules/newsletter/newsletter.constants"
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
+import {
+  ADMIN_NEWSLETTER_TABLE_COLUMN_ID,
+  ADMIN_NEWSLETTER_TABLE_COLUMN_SIZE,
+} from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
 
 import { type useFormatter } from "~/src/hooks/use-display-format"
 

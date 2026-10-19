@@ -4,7 +4,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { userEvent } from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
 
 const calls = vi.hoisted(() => ({
   erase: vi.fn<(input: { id: string }) => Promise<void>>(),
@@ -28,8 +28,8 @@ interface SubscribersPage {
 
 vi.mock("sonner", () => ({ toast: { error: calls.toastError, success: calls.toastSuccess } }))
 vi.mock("~/src/integrations/tanstack-query/query.sync", () => ({ syncQueryInvalidation: calls.syncQueryInvalidation }))
-vi.mock("~/src/modules/newsletter/use-cases/unsubscribe-newsletter-subscriber", async () => {
-  const { NEWSLETTER_MUTATION_KEYS } = await import("~/src/modules/newsletter/newsletter.constants")
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/unsubscribe-newsletter-subscriber", async () => {
+  const { NEWSLETTER_MUTATION_KEYS } = await import("~/src/modules/newsletter-subscriber/newsletter-subscriber.constants")
 
   return {
     unsubscribeNewsletterSubscriberMutation: {
@@ -38,33 +38,33 @@ vi.mock("~/src/modules/newsletter/use-cases/unsubscribe-newsletter-subscriber", 
     },
   }
 })
-vi.mock("~/src/modules/newsletter/use-cases/erase-newsletter-subscriber", async () => {
-  const { NEWSLETTER_MUTATION_KEYS } = await import("~/src/modules/newsletter/newsletter.constants")
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/erase-newsletter-subscriber", async () => {
+  const { NEWSLETTER_MUTATION_KEYS } = await import("~/src/modules/newsletter-subscriber/newsletter-subscriber.constants")
 
   return { eraseNewsletterSubscriberMutation: { mutationFn: calls.erase, mutationKey: NEWSLETTER_MUTATION_KEYS.ERASE_SUBSCRIBER } }
 })
-vi.mock("~/src/modules/newsletter/use-cases/get-admin-newsletter-page", async () => {
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/get-admin-newsletter-page", async () => {
   const { queryOptions } = await import("@tanstack/react-query")
-  const { NEWSLETTER_QUERY_KEYS } = await import("~/src/modules/newsletter/newsletter.constants")
+  const { NEWSLETTER_QUERY_KEYS } = await import("~/src/modules/newsletter-subscriber/newsletter-subscriber.constants")
 
   return {
     getAdminNewsletterPageQuery: (input: Record<string, unknown>) =>
       queryOptions({ queryFn: () => calls.page(input), queryKey: [...NEWSLETTER_QUERY_KEYS.ADMIN.PAGE, input] }),
   }
 })
-vi.mock("~/src/modules/newsletter/use-cases/get-newsletter-stats", async () => {
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/get-newsletter-stats", async () => {
   const { queryOptions } = await import("@tanstack/react-query")
-  const { NEWSLETTER_QUERY_KEYS } = await import("~/src/modules/newsletter/newsletter.constants")
+  const { NEWSLETTER_QUERY_KEYS } = await import("~/src/modules/newsletter-subscriber/newsletter-subscriber.constants")
 
   return { getNewsletterStatsQuery: () => queryOptions({ queryFn: () => calls.stats(), queryKey: NEWSLETTER_QUERY_KEYS.ADMIN.STATS }) }
 })
-vi.mock("~/src/modules/newsletter/use-cases/export-admin-newsletter-subscribers", () => ({
+vi.mock("~/src/modules/newsletter-subscriber/use-cases/export-admin-newsletter-subscribers", () => ({
   exportAdminNewsletterSubscribers: calls.exportSubscribers,
 }))
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { NEWSLETTER_QUERY_KEYS, type NewsletterStatus } from "~/src/modules/newsletter/newsletter.constants"
+import { NEWSLETTER_QUERY_KEYS, type NewsletterStatus } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 
 import {
   buildNewsletterStats,

@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
-import { NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter/newsletter.constants"
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
+import { NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
 
 interface RouteDefinition {
   readonly server: {
@@ -23,7 +23,7 @@ vi.mock("@tanstack/react-router", () => ({
     return options
   },
 }))
-vi.mock("~/src/modules/newsletter/newsletter.unsubscribe.server", () => ({ unsubscribeByToken }))
+vi.mock("~/src/modules/newsletter-subscriber/newsletter-subscriber.unsubscribe.server", () => ({ unsubscribeByToken }))
 
 await import("~/src/routes/api/newsletter.unsubscribe")
 

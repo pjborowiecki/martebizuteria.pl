@@ -1,7 +1,11 @@
 import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { NEWSLETTER_MUTATION_KEYS, NEWSLETTER_QUERY_KEYS, NEWSLETTER_QUERY_STALE_MS } from "~/src/modules/newsletter/newsletter.constants"
+import {
+  NEWSLETTER_MUTATION_KEYS,
+  NEWSLETTER_QUERY_KEYS,
+  NEWSLETTER_QUERY_STALE_MS,
+} from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 
 import { getOwnNewsletterSubscription, getOwnNewsletterSubscriptionQuery } from "../get-own-newsletter-subscription"
 import { unsubscribeOwnNewsletter, unsubscribeOwnNewsletterMutation } from "../unsubscribe-own-newsletter"
@@ -26,7 +30,7 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
   scheduleAdminNewsletterSubscribersInvalidation,
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordNewsletterSubscriberUnsubscribedAudit }))
-vi.mock("~/src/modules/newsletter/newsletter.accessors", () => ({
+vi.mock("~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors", () => ({
   getSubscriberByEmail: accessors.getSubscriberByEmail,
   normalizeSubscriberEmail: (email: string) => email.trim().toLowerCase(),
   updateSubscriberById: accessors.updateSubscriberById,

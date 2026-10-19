@@ -3,7 +3,7 @@ import { type JSX, useCallback, useMemo } from "react"
 import { ListFilter } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
-import { NEWSLETTER_STATUSES } from "~/src/modules/newsletter/newsletter.constants"
+import { NEWSLETTER_STATUSES } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/presentation/components/shadcn/select"
 

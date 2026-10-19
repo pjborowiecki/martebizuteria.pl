@@ -18,7 +18,7 @@ import {
 } from "~/src/modules/newsletter-campaign/newsletter-campaign.constants"
 import { enqueueNewsletterCampaign } from "~/src/modules/newsletter-campaign/newsletter-campaign.queue.server"
 import { newsletterCampaignZodSchemas } from "~/src/modules/newsletter-campaign/newsletter-campaign.zod"
-import { countConfirmedSubscribers } from "~/src/modules/newsletter/newsletter.accessors"
+import { countConfirmedSubscribers } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
 
 import { resolveRequestOrigin } from "~/src/lib/request"
 

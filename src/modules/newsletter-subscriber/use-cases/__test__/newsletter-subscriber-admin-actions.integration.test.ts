@@ -13,16 +13,16 @@ import {
   NEWSLETTER_MUTATION_KEYS,
   NEWSLETTER_QUERY_KEYS,
   NEWSLETTER_TOKEN_RESULT,
-} from "~/src/modules/newsletter/newsletter.constants"
-import { confirmNewsletterSubscription } from "~/src/modules/newsletter/use-cases/confirm-newsletter-subscription"
+} from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { confirmNewsletterSubscription } from "~/src/modules/newsletter-subscriber/use-cases/confirm-newsletter-subscription"
 import {
   eraseNewsletterSubscriber,
   eraseNewsletterSubscriberMutation,
-} from "~/src/modules/newsletter/use-cases/erase-newsletter-subscriber"
+} from "~/src/modules/newsletter-subscriber/use-cases/erase-newsletter-subscriber"
 import {
   unsubscribeNewsletterSubscriber,
   unsubscribeNewsletterSubscriberMutation,
-} from "~/src/modules/newsletter/use-cases/unsubscribe-newsletter-subscriber"
+} from "~/src/modules/newsletter-subscriber/use-cases/unsubscribe-newsletter-subscriber"
 
 const { doubles, guards, session, sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")

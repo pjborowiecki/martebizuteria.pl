@@ -5,7 +5,7 @@ import { cn } from "cn"
 import { FlaskConical, Loader2, Send } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
-import { getNewsletterStatsQuery } from "~/src/modules/newsletter/use-cases/get-newsletter-stats"
+import { getNewsletterStatsQuery } from "~/src/modules/newsletter-subscriber/use-cases/get-newsletter-stats"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 

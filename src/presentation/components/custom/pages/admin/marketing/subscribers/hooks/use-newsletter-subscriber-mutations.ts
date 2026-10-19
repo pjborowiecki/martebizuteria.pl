@@ -5,9 +5,9 @@ import { useTranslations } from "use-intl/react"
 import { syncQueryInvalidation } from "~/src/integrations/tanstack-query/query.sync"
 
 import { ERROR_CODES, errorCode } from "~/src/modules/_core/constants/errors"
-import { NEWSLETTER_QUERY_KEYS } from "~/src/modules/newsletter/newsletter.constants"
-import { eraseNewsletterSubscriberMutation } from "~/src/modules/newsletter/use-cases/erase-newsletter-subscriber"
-import { unsubscribeNewsletterSubscriberMutation } from "~/src/modules/newsletter/use-cases/unsubscribe-newsletter-subscriber"
+import { NEWSLETTER_QUERY_KEYS } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
+import { eraseNewsletterSubscriberMutation } from "~/src/modules/newsletter-subscriber/use-cases/erase-newsletter-subscriber"
+import { unsubscribeNewsletterSubscriberMutation } from "~/src/modules/newsletter-subscriber/use-cases/unsubscribe-newsletter-subscriber"
 
 const useSubscriberMutationFeedback = (errorTitleKey: "eraseDialog.errorTitle" | "unsubscribeDialog.errorTitle") => {
   const t = useTranslations("pages.admin.marketing.subscribers")

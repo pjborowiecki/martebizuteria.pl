@@ -1,4 +1,4 @@
-import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
+import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
 
 import { createDataGrid } from "~/src/presentation/components/custom/datagrid/components/create-data-grid"
 

@@ -27,7 +27,9 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
   scheduleAdminCustomersInvalidation: vi.fn(),
 }))
 vi.mock("~/src/modules/order/order.claim.server", () => ({ claimGuestOrdersForUser: vi.fn(() => Promise.resolve(0)) }))
-vi.mock("~/src/modules/newsletter/newsletter.accessors", () => ({ linkSubscriberToUser: vi.fn(() => Promise.resolve()) }))
+vi.mock("~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors", () => ({
+  linkSubscriberToUser: vi.fn(() => Promise.resolve()),
+}))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: {} }))
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const { drizzle } = await import("drizzle-orm/d1")
