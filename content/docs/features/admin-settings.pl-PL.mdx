@@ -107,17 +107,17 @@ Zakładka Dane sklepu ma jedną kartę, **Dane sprzedawcy**, z `src/presentation
 
 `SettingsStorePage` czyta `getAdminSellerDetailsQuery()`, a `SellerDetailsFields` (`seller-details-fields.tsx`) pokazuje te pola w stylu pól panelu, każde z oznaczeniem pola wymaganego, licznikiem tam, gdzie pole ma limit długości, podpowiedzią w dymku informacyjnym i komunikatem pod spodem, gdy jest błędne:
 
-| Pole                   | Co przyjmuje                                                                                                                 |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **Pełna nazwa firmy**  | Do 200 znaków, tak jak w rejestrze (CEIDG lub KRS)                                                                           |
-| **Ulica i numer**      | Do 120 znaków                                                                                                                |
-| **Kod pocztowy**       | Do 12 znaków, w formacie `00-000`, gdy krajem jest Polska                                                                    |
-| **Miejscowość**        | Do 80 znaków                                                                                                                 |
-| **Kraj**               | Jeden z krajów z `src/modules/_core/constants/country.ts`, wymienionych z nazwy w języku panelu                              |
-| **NIP**                | 10 cyfr z prawidłową cyfrą kontrolną; spacje, myślniki i przedrostek `PL` są pomijane, więc NIP zapisuje się jako same cyfry |
-| **REGON**              | 9 albo 14 cyfr z prawidłową cyfrą kontrolną; spacje i myślniki są pomijane                                                   |
-| **E-mail kontaktowy**  | Prawidłowy adres do 254 znaków. Podpowiedź mówi, że trafiają na niego też odpowiedzi na e-maile sklepu                       |
-| **Telefon kontaktowy** | Do 30 znaków, prawidłowy numer zapisany z numerem kierunkowym kraju, na przykład `+48 600 000 000`                           |
+| Pole                   | Co przyjmuje                                                                                                                                                                                                                     |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Pełna nazwa firmy**  | Do 200 znaków, tak jak w rejestrze (CEIDG lub KRS)                                                                                                                                                                               |
+| **Ulica i numer**      | Do 120 znaków                                                                                                                                                                                                                    |
+| **Kod pocztowy**       | Do 12 znaków, w formacie `00-000`, gdy krajem jest Polska                                                                                                                                                                        |
+| **Miejscowość**        | Do 80 znaków                                                                                                                                                                                                                     |
+| **Kraj**               | Jeden z krajów z `src/modules/_core/constants/country.ts`, wymienionych z nazwy w języku panelu                                                                                                                                  |
+| **NIP**                | 10 cyfr z prawidłową cyfrą kontrolną; spacje, myślniki i przedrostek `PL` są pomijane, więc NIP zapisuje się jako same cyfry                                                                                                     |
+| **REGON**              | 9 albo 14 cyfr z prawidłową cyfrą kontrolną; spacje i myślniki są pomijane                                                                                                                                                       |
+| **E-mail kontaktowy**  | Prawidłowy adres do 254 znaków. Podpowiedź mówi, że klienci widzą go na stronie i w e-mailach i że trafiają na niego ich odpowiedzi, a same e-maile nadal wychodzą z adresu nadawczego sklepu (`RESEND_EMAIL_FROM`), nie z niego |
+| **Telefon kontaktowy** | Do 30 znaków, prawidłowy numer zapisany z numerem kierunkowym kraju, na przykład `+48 600 000 000`                                                                                                                               |
 
 Każde pole jest wymagane. Reguły to `storeSettingZodSchemas.sellerDetails` w `src/modules/store-setting/store-setting.zod.ts`. Sprawdzenia NIP i REGON to `isValidNip` i `isValidRegon` w `src/modules/_core/utils/polish-business-ids.ts`, których używa też NIP do faktury na firmę w kasie, a sprawdzenie telefonu to `isValidPhoneNumber` z `libphonenumber-js`. Nazwy krajów pochodzą z `formatCountryName` w `src/modules/_core/utils/country-name.ts`. **Zapisz**, w nagłówku strony, najpierw uruchamia ten sam schemat w przeglądarce (`toSellerDetailsSubmission` w `seller-details-form.utils.ts`), więc błędne pole jest oznaczone, zanim cokolwiek zostanie wysłane, a serwer jeszcze raz parsuje dane wejściowe.
 
