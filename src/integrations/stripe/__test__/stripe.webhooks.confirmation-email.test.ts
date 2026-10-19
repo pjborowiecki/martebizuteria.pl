@@ -54,7 +54,7 @@ vi.mock("~/src/integrations/stripe/stripe.coupons.server", () => ({ deleteChecko
 vi.mock("~/src/modules/order/use-cases/send-new-order-email.server", () => ({ sendNewOrderEmail }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 vi.mock("~/src/integrations/cloudflare-r2/media.email.server", () => ({ embedEmailImages }))
-vi.mock("~/src/modules/order-withdrawal/order-withdrawal.form.server", () => ({ loadWithdrawalFormAttachment }))
+vi.mock("~/src/modules/order-withdrawal/use-cases/load-withdrawal-form-attachment.server", () => ({ loadWithdrawalFormAttachment }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminOrdersInvalidation: vi.fn(),
   scheduleProductCatalogInvalidation: vi.fn(),

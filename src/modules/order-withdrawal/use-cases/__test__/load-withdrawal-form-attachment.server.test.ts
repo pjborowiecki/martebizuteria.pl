@@ -10,7 +10,7 @@ const { assetsFetch } = vi.hoisted(() => ({
 
 vi.mock("cloudflare:workers", () => ({ env: { ASSETS: { fetch: assetsFetch } } }))
 
-const { loadWithdrawalFormAttachment } = await import("~/src/modules/order-withdrawal/order-withdrawal.form.server")
+const { loadWithdrawalFormAttachment } = await import("~/src/modules/order-withdrawal/use-cases/load-withdrawal-form-attachment.server")
 
 beforeEach(() => {
   assetsFetch.mockReset()

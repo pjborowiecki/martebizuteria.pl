@@ -17,7 +17,7 @@ import {
 } from "~/src/modules/checkout/checkout-metadata.zod"
 import { getCheckoutEmailContext } from "~/src/modules/checkout/checkout.accessors"
 import { readCheckoutSessionLines } from "~/src/modules/checkout/checkout.session-lines.server"
-import { loadWithdrawalFormAttachment } from "~/src/modules/order-withdrawal/order-withdrawal.form.server"
+import { loadWithdrawalFormAttachment } from "~/src/modules/order-withdrawal/use-cases/load-withdrawal-form-attachment.server"
 import { getOrderTotalsForEmail } from "~/src/modules/order/order.accessors"
 import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
 import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
