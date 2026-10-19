@@ -34,7 +34,7 @@ The check `inventory_quantity_available_non_negative` (`INVENTORY_NON_NEGATIVE_A
 
 There are no warehouses, no locations and no stock ledger — the two counters are the whole model. The table still has a `version integer DEFAULT 1 NOT NULL` column left from an earlier reservation guard (see [Reserving stock](#reserving-stock)), but the Drizzle schema no longer declares it, so no query selects or writes it and a new row takes its default. A migration of its own will drop it, applied only after this code is deployed, because a Worker still running older code selects it with every stock row it loads; no migration in the repository drops it yet.
 
-Rows are created alongside variants: `prepareProductCatalogBatch` in `product.mutations.ts` inserts a stock row from the `quantity` field of the product form, in the same D1 batch that inserts the variants, for every variant that has none yet, and leaves an existing row alone (`onConflictDoNothing` on `variant_id`). Every variant is persisted with `manageInventory: true` (`MANAGE_INVENTORY_ALWAYS` in `product.utils.ts`), so the `product_variant.manage_inventory` column exists but is never `false` in practice.
+Rows are created alongside variants: `prepareProductCatalogBatch` in `product.accessors.ts` inserts a stock row from the `quantity` field of the product form, in the same D1 batch that inserts the variants, for every variant that has none yet, and leaves an existing row alone (`onConflictDoNothing` on `variant_id`). Every variant is persisted with `manageInventory: true` (`MANAGE_INVENTORY_ALWAYS` in `use-cases/save-complete-product.server.ts`), so the `product_variant.manage_inventory` column exists but is never `false` in practice.
 
 ## Reading availability
 
@@ -135,7 +135,7 @@ Local error handling in `stripe.actions.server.ts` always compensates: a failure
 
 ## Stock decides visibility
 
-`publishedInStockWhere` in `src/modules/product/product.stock.server.ts` gates every storefront read on stock:
+`publishedInStockWhere` in `src/modules/product/product.accessors.ts` gates every storefront read on stock:
 
 ```ts
 export const totalStockSubquery = () =>

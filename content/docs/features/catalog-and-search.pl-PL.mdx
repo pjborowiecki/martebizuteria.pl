@@ -19,7 +19,7 @@ Same ścieżki pochodzą ze stałych `ROUTES.PRODUCTS`, `ROUTES.CATEGORIES`, `RO
 
 ## Stan filtrów żyje w adresie URL
 
-`src/modules/product/product.storefront-catalog.ts` jest właścicielem kontraktu parametrów wyszukiwania. To jedyne miejsce, które trzeba zmienić przy dodaniu filtra.
+Kontrakt parametrów wyszukiwania należy do modułu `storefront-search`: `storefront-search.zod.ts` trzyma schematy, `storefront-search.constants.ts` opcje sortowania, a `storefront-search.utils.ts` helpery, które normalizują, scalają, liczą i łatają filtry. To te trzy pliki trzeba zmienić przy dodaniu filtra. Leżą osobno od `product.zod.ts`, bo trasy witryny walidują nimi wyszukiwanie na każdej stronie, a razem z nimi przyszedłby schemat formularza produktu.
 
 ```ts
 export const storefrontProductsSearchSchema = z.object({
@@ -78,9 +78,9 @@ Przed odpytaniem tabeli produktów handler rozwiązuje handle zakresu na identyf
 
 ## Zapytanie SQL
 
-Instrukcję buduje `src/modules/product/product.storefront-catalog.accessors.ts`. Dwie rzeczy warto znać.
+Instrukcję buduje `src/modules/product/use-cases/get-storefront-products-page.server.ts`. Dwie rzeczy warto znać.
 
-**Listowane są wyłącznie produkty opublikowane i dostępne.** `publishedInStockWhere` w `src/modules/product/product.stock.server.ts` to wspólna bramka:
+**Listowane są wyłącznie produkty opublikowane i dostępne.** `publishedInStockWhere` w `src/modules/product/product.accessors.ts` to wspólna bramka:
 
 ```ts
 export const publishedInStockWhere = (...extraConditions: (SQL | undefined)[]): SQL => {
@@ -100,7 +100,7 @@ Filtry zakresu to `inArray(product.id, <podzapytanie>)` na tabelach `category_on
 
 ## Fraza wyszukiwania produktu
 
-Parametr `q` przeszukuje indeks FTS5 `storefront_search` przez `storefrontProductMatches(term)` w `src/modules/storefront-search/storefront-search.accessors.server.ts`. `buildStorefrontSearchExpression` zamienia `ł` na `l`, dzieli frazę na słowa i z każdego słowa robi zapytanie o prefiks, więc `zlo pier` znajduje „Złoty pierścionek”. Fraza bez liter i cyfr nie daje niczego do szukania, a strona wraca pusta.
+Parametr `q` przeszukuje indeks FTS5 `storefront_search` przez `storefrontProductMatches(term)` w `src/modules/storefront-search/storefront-search.accessors.ts`. `buildStorefrontSearchExpression` zamienia `ł` na `l`, dzieli frazę na słowa i z każdego słowa robi zapytanie o prefiks, więc `zlo pier` znajduje „Złoty pierścionek”. Fraza bez liter i cyfr nie daje niczego do szukania, a strona wraca pusta.
 
 `storefront_search` to wirtualna tabela FTS5, którą migracja `20261002100000_storefront_search.sql` tworzy z tokenizerem `unicode61 remove_diacritics 2`. Wyzwalacze wstawienia, aktualizacji i usunięcia na `product`, `product_category` i `product_collection` utrzymują jeden wpis na wiersz, oznaczony w kolumnie `kind` jako `product`, `category` albo `collection`. Każda indeksowana kolumna zawiera polską i angielską wartość wiersza obok siebie, z `ł` zamienionym na `l`, bo tokenizer usuwa pozostałe polskie znaki diakrytyczne, ale tego nie. Wpis produktu zawiera jego tytuły, podtytuły, tagi, opisy i handle. Wpis kategorii zawiera jej tytuły, podtytuły i handle, a krótkie opisy razem z opisami w kolumnie opisu. Wpis kolekcji zawiera jej tytuły, krótkie opisy jako podtytuł, opisy i handle. Wyzwalacze same wymieniają `pl-PL` i `en-US`, więc nowy język wymaga migracji, która odtworzy je i ponownie wypełni indeks.
 
@@ -146,7 +146,7 @@ Poniżej `lg` panel boczny jest ukryty. `ProductsCatalogMobileFilters` umieszcza
 
 ## Obniżone ceny na kartach
 
-`storefrontListVariantColumns` w `product.stock.server.ts` odczytuje też `compare_at_price` każdego wariantu. `getStorefrontPublishedProductsPage` przed zwróceniem produktów strony przekazuje je do `withPriceReductions` (`src/modules/price-history/price-history.accessors.ts`), a `getPublishedProductsAmong` w `product.accessors.ts` robi to samo dla nowości, produktów powiązanych i rekomendacji na koncie. Gdy któryś z wariantów na liście jest przeceniony, `withPriceReductions` czyta historię cen przecenionych wariantów jedną dodatkową instrukcją i daje każdemu wariantowi jego `priceReduction`, które zostaje `undefined`, chyba że cena jest niższa od najniższej ceny z 30 dni przed obniżką; gdy żaden nie jest przeceniony, nie czyta nic, więc lista bez obniżek kosztuje tyle instrukcji, ile opisano wyżej. Siatka katalogu, nowości, produkty powiązane i strona niedostępnej kolekcji przekazują do `ProductCard` obniżkę wariantu, który pokazuje dana karta, a jego `ProductPrice` przekreśla obok ceny tę najniższą cenę i dokłada pod nią „Najniższa cena z 30 dni przed obniżką: …” („Lowest price in the 30 days before the reduction: …”). Sposób wyznaczania tej najniższej ceny opisuje [Strona produktu](/docs/features/product-page#obniżone-ceny-i-najniższa-cena-z-30-dni-przed-obniżką). Filtr ceny i sortowanie po cenie nadal działają na `price`.
+`storefrontListVariantColumns` w `product.accessors.ts` odczytuje też `compare_at_price` każdego wariantu. `getStorefrontPublishedProductsPage` przed zwróceniem produktów strony przekazuje je do `withPriceReductions` (`src/modules/price-history/price-history.accessors.ts`), a `getPublishedProductsAmong` w `product.accessors.ts` robi to samo dla nowości, produktów powiązanych i rekomendacji na koncie. Gdy któryś z wariantów na liście jest przeceniony, `withPriceReductions` czyta historię cen przecenionych wariantów jedną dodatkową instrukcją i daje każdemu wariantowi jego `priceReduction`, które zostaje `undefined`, chyba że cena jest niższa od najniższej ceny z 30 dni przed obniżką; gdy żaden nie jest przeceniony, nie czyta nic, więc lista bez obniżek kosztuje tyle instrukcji, ile opisano wyżej. Siatka katalogu, nowości, produkty powiązane i strona niedostępnej kolekcji przekazują do `ProductCard` obniżkę wariantu, który pokazuje dana karta, a jego `ProductPrice` przekreśla obok ceny tę najniższą cenę i dokłada pod nią „Najniższa cena z 30 dni przed obniżką: …” („Lowest price in the 30 days before the reduction: …”). Sposób wyznaczania tej najniższej ceny opisuje [Strona produktu](/docs/features/product-page#obniżone-ceny-i-najniższa-cena-z-30-dni-przed-obniżką). Filtr ceny i sortowanie po cenie nadal działają na `price`.
 
 Karta w katalogu pokazuje cenę pierwszego wariantu, który listing zwraca dla jej produktu. Siatka formatuje ją przez `useFormatter()` z `src/hooks/use-display-format.ts`, a `ProductPrice` tak samo formatuje najniższą cenę, więc obie idą za formatem klienta, a nie za językiem strony (zobacz [Internacjonalizacja](/docs/features/internationalization)).
 
@@ -154,7 +154,7 @@ Karta w katalogu pokazuje cenę pierwszego wariantu, który listing zwraca dla j
 
 Wyszukiwanie w nagłówku to oddzielna funkcja oparta na `src/modules/storefront-search`.
 
-`searchStorefront` (`use-cases/search-storefront.ts`) jest publiczne, przyjmuje `{ locale, query }` i rozchodzi się na trzy akcesory w `storefront-search.server.ts`:
+`searchStorefront` (`use-cases/search-storefront.ts`) jest publiczne, przyjmuje `{ locale, query }` i rozchodzi się na trzy akcesory w `storefront-search.accessors.ts`:
 
 | Akcesor                       | Tabela               | Dopasowywane kolumny                                                                        |
 | ----------------------------- | -------------------- | ------------------------------------------------------------------------------------------- |
@@ -162,7 +162,7 @@ Wyszukiwanie w nagłówku to oddzielna funkcja oparta na `src/modules/storefront
 | `searchStorefrontCategories`  | `product_category`   | `titles`, `subtitles`, `short_descriptions`, `descriptions` i `handle`, status aktywny      |
 | `searchStorefrontCollections` | `product_collection` | `titles`, `short_descriptions`, `descriptions` i `handle`, status aktywny                   |
 
-Wszystkie trzy dopasowują przez indeks `storefront_search`: każdy złącza `storefrontSearchMatches(kind, expression)` z `storefront-search.accessors.server.ts`, które przeszukuje wpisy swojego rodzaju, i porządkuje według trafności `bm25`, w której dopasowanie w tytule waży 10, w podtytule 5, w tagach 3, w handle 2, a w opisie 1, a potem według `rank`. Drugi wiersz produktu to jego podtytuł, a gdy go nie ma, tytuł jego kategorii głównej.
+Wszystkie trzy dopasowują przez indeks `storefront_search`: każdy złącza `storefrontSearchMatches(kind, expression)` z tego samego pliku, które przeszukuje wpisy swojego rodzaju, i porządkuje według trafności `bm25`, w której dopasowanie w tytule waży 10, w podtytule 5, w tagach 3, w handle 2, a w opisie 1, a potem według `rank`. Drugi wiersz produktu to jego podtytuł, a gdy go nie ma, tytuł jego kategorii głównej.
 
 Grupa produktów w nakładce dopasowuje wyłącznie własny tekst produktu. W przeciwieństwie do parametru `q` nie dociera do produktów przez ich kategorie, kolekcje ani SKU.
 

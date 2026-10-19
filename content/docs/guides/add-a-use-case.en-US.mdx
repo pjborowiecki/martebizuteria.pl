@@ -64,7 +64,7 @@ export const getAdminCategoriesQuery = () =>
   })
 ```
 
-The handler shapes the rows for its consumer — `toAdminCategoryListItem` lives in `product-category.utils.ts`, and the prepared statements live in `product-category.server.ts`. Keep the handler itself a short sequence of named calls; the 20-statement limit will tell you when it is no longer short.
+The handler shapes the rows for its consumer — `toAdminCategoryListItem` lives in `product-category.utils.ts`, and the prepared statements live in `product-category.accessors.ts`. Keep the handler itself a short sequence of named calls; the 20-statement limit will tell you when it is no longer short.
 
 ### Paginated queries
 

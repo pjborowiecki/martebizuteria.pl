@@ -64,7 +64,7 @@ export const getAdminCategoriesQuery = () =>
   })
 ```
 
-Handler kształtuje wiersze pod swojego konsumenta — `toAdminCategoryListItem` leży w `product-category.utils.ts`, a zapytania przygotowane w `product-category.server.ts`. Sam handler powinien być krótkim ciągiem nazwanych wywołań; limit 20 instrukcji powie Ci, kiedy przestał być krótki.
+Handler kształtuje wiersze pod swojego konsumenta — `toAdminCategoryListItem` leży w `product-category.utils.ts`, a zapytania przygotowane w `product-category.accessors.ts`. Sam handler powinien być krótkim ciągiem nazwanych wywołań; limit 20 instrukcji powie Ci, kiedy przestał być krótki.
 
 ### Zapytania stronicowane
 
