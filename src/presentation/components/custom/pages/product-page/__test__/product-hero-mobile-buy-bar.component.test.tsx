@@ -20,7 +20,7 @@ vi.mock("~/src/lib/image", () => ({ getProductImageUrl: (path: string | null) =>
 vi.mock("~/src/hooks/use-wishlist", () => ({
   useWishlist: () => ({ isWishlisted: () => false, signedIn: false, toggle: vi.fn() }),
 }))
-vi.mock("~/src/modules/user/user.tracking", () => ({ trackCartItemAdded: vi.fn() }))
+vi.mock("~/src/presentation/components/custom/customer-activity-tracking", () => ({ trackCartItemAdded: vi.fn() }))
 
 type VisibilityCallback = (entries: readonly { readonly isIntersecting: boolean }[]) => void
 

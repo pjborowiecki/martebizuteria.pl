@@ -7,12 +7,12 @@ import { useTranslations } from "use-intl/react"
 
 import { type PriceReduction } from "~/src/modules/price-history/price-history.types"
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils"
-import { trackCartItemAdded } from "~/src/modules/user/user.tracking"
 
 import { useCartStore } from "~/src/hooks/use-cart-store"
 import { useProductCardImageHover } from "~/src/hooks/use-product-card-image-hover"
 import { useWishlist } from "~/src/hooks/use-wishlist"
 
+import { trackCartItemAdded } from "~/src/presentation/components/custom/customer-activity-tracking"
 import { Image } from "~/src/presentation/components/custom/image"
 import { LocalizedLink, type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
 import { ProductPrice } from "~/src/presentation/components/custom/product-price"

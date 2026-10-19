@@ -7,7 +7,7 @@ const trackCartItemAdded = vi.hoisted(() => vi.fn<(input: { readonly variantTitl
 
 const wishlist = vi.hoisted(() => ({ toggle: vi.fn<(productId: string) => void>(), wishlistedIds: new Set<string>() }))
 
-vi.mock("~/src/modules/user/user.tracking", () => ({ trackCartItemAdded }))
+vi.mock("~/src/presentation/components/custom/customer-activity-tracking", () => ({ trackCartItemAdded }))
 vi.mock("~/src/hooks/use-wishlist", () => ({
   useWishlist: () => ({
     isWishlisted: (productId: string) => wishlist.wishlistedIds.has(productId),

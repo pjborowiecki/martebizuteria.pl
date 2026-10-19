@@ -31,9 +31,9 @@ import { recordAuthEmailVerifiedAudit, recordAuthPasswordResetAudit } from "~/sr
 import { recordCustomerDeletedAudit, recordCustomerRegisteredAudit } from "~/src/modules/audit-log/use-cases/record-customer-audit.server"
 import { linkSubscriberToUser } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
 import { claimGuestOrdersForUser } from "~/src/modules/order/use-cases/claim-guest-orders.server"
+import { eraseAccountData } from "~/src/modules/user/use-cases/erase-account-data.server"
 import { sendAccountDeletedEmail } from "~/src/modules/user/use-cases/send-account-deleted-email.server"
 import { getUserById } from "~/src/modules/user/user.accessors"
-import { eraseAccountData } from "~/src/modules/user/user.erasure.server"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
 import { auditRequestIp, resolveRequestOrigin } from "~/src/lib/request"

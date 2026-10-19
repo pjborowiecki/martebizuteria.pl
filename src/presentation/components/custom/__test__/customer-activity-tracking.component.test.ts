@@ -5,13 +5,14 @@ const record = vi.hoisted(() => vi.fn())
 vi.mock("~/src/modules/user/use-cases/record-customer-activity", () => ({ recordCustomerActivity: record }))
 
 import { CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY, CUSTOMER_ACTIVITY_PAGE_VIEW_STORAGE_PREFIX } from "~/src/modules/user/user.constants"
+
 import {
   resetCartAbandonedTracking,
   shouldTrackStorefrontPath,
   trackCartAbandoned,
   trackCartItemAdded,
   trackPageViewed,
-} from "~/src/modules/user/user.tracking"
+} from "~/src/presentation/components/custom/customer-activity-tracking"
 
 describe("shouldTrackStorefrontPath", () => {
   it("tracks storefront paths", () => {

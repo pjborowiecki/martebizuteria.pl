@@ -32,7 +32,7 @@ vi.mock("~/src/modules/audit-log/use-cases/record-customer-audit.server", () => 
 
 import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 
-import { eraseAccountData } from "~/src/modules/user/user.erasure.server"
+import { eraseAccountData } from "~/src/modules/user/use-cases/erase-account-data.server"
 
 const ANNA = { email: "anna@example.com", id: "user-anna" }
 
