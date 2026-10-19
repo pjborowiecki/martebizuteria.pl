@@ -96,6 +96,16 @@ describe("SettingsStorePage", () => {
     expect(screen.getByLabelText("Contact phone")).toHaveValue(SELLER.phone)
   })
 
+  it("explains that customers see the contact email and reply to it, while the shop's emails are still sent from its own sending address", () => {
+    renderCard()
+
+    expect(
+      screen.getByRole("button", {
+        name: /^Customers see this address on the site and in the shop's emails, and their replies come here\. The emails themselves are still sent from the shop's own sending address, not from this one\./u,
+      }),
+    ).toBeInTheDocument()
+  })
+
   it("saves the edited details with the time they were loaded, then refreshes the admin copy, drops the shop's and says so", async () => {
     const { queryClient } = renderCard()
 
