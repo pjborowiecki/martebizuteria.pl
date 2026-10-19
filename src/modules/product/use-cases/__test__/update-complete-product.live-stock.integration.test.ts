@@ -58,8 +58,10 @@ vi.mock("~/src/integrations/better-auth/auth.session", () => ({
 }))
 vi.mock("~/src/lib/rate-limit", () => ({}))
 vi.mock("~/src/lib/background", () => ({ scheduleBackgroundWork: vi.fn() }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/record-catalog-audit.server", () => ({
   recordCatalogProductUpdatedAudit: vi.fn(),
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => ({
   recordDiscountRedeemedAudit: vi.fn(),
   recordOrderPlacedAudit: vi.fn(),
 }))

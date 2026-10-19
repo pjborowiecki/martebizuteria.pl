@@ -20,7 +20,9 @@ vi.mock("@tanstack/react-router", () => ({
     return options
   },
 }))
-vi.mock("~/src/modules/audit-log/audit-log.auth.server", () => ({ handleAuthRequestWithAudit }))
+vi.mock("~/src/modules/audit-log/use-cases/handle-auth-request.server", () => ({
+  handleAuthRequestWithAudit,
+}))
 
 await import("~/src/routes/api/auth.$")
 

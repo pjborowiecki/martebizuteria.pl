@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { describeAuditLogChanges } from "~/src/modules/audit-log/audit-log.changes.utils"
+import { describeAuditLogChanges } from "~/src/modules/audit-log/audit-log.utils"
 
 const variant = (sku: string, price: number, quantity: number) => ({ price, quantity, sku })
 

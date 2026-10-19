@@ -6,7 +6,7 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { MIME_EXTENSION, uploadImageInputSchema } from "~/src/integrations/cloudflare-r2/media.zod"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { recordImageUploadedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordImageUploadedAudit } from "~/src/modules/audit-log/use-cases/record-catalog-audit.server"
 
 const bufferToHex = (buffer: ArrayBuffer): string => {
   const bytes = new Uint8Array(buffer)

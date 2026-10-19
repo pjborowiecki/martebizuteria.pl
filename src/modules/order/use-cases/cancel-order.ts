@@ -9,7 +9,7 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { recordOrderCancelledAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordOrderCancelledAudit } from "~/src/modules/audit-log/use-cases/record-order-audit.server"
 import { getAdminOrderRefundTarget, getRestockLinesForOrder } from "~/src/modules/order/order.accessors"
 import { ORDER_ERROR_CODES, ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
 import { canCancelAdminOrder, cancelRefundsAdminOrderPayment, resolveAdminOrderPaymentUiKey } from "~/src/modules/order/order.utils"

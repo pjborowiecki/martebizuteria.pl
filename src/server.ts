@@ -4,7 +4,7 @@ import { REALTIME_INVALIDATION_HUB } from "~/src/integrations/realtime-invalidat
 import { handleRealtimeInvalidationWebSocket } from "~/src/integrations/realtime-invalidation/realtime-invalidation.ws.server"
 import { resolveLocale } from "~/src/integrations/use-intl/i18n.middleware"
 
-import { type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.queue.server"
+import { type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.types"
 import { type NewsletterCampaign } from "~/src/modules/newsletter-campaign/newsletter-campaign.types"
 import { isNewsletterQueueBatch } from "~/src/modules/newsletter-campaign/newsletter-campaign.utils"
 
@@ -122,7 +122,7 @@ const server: ExportedHandler<Env, WorkerQueueMessage> = {
     }
 
     if (isAuditLogQueueBatch(batch)) {
-      const { processAuditLogQueueBatch } = await import("~/src/modules/audit-log/audit-log.queue.server")
+      const { processAuditLogQueueBatch } = await import("~/src/modules/audit-log/use-cases/process-audit-log-queue.server")
       await processAuditLogQueueBatch(batch)
     }
   },

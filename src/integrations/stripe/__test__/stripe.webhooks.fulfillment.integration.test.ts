@@ -84,7 +84,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.batch"), async (importOri
 })
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { checkout: { sessions: { retrieve: retrieveSession } } } }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => invalidations)
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audits)
+vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => audits)
 vi.mock("~/src/lib/incident-alert.server", () => ({ sendIncidentAlert }))
 vi.mock("~/src/modules/order/use-cases/send-order-confirmation-email.server", () => ({
   sendOrderConfirmationEmail: emails.sendOrderConfirmationEmail,

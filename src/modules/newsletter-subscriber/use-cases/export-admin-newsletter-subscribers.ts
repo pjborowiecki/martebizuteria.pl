@@ -4,7 +4,7 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
-import { recordListExportedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordListExportedAudit } from "~/src/modules/audit-log/use-cases/record-list-export-audit.server"
 import { getAdminSubscribersFilteredList } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors"
 import { type Newsletter } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.types"
 import { toAdminNewsletterListItem } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.utils"

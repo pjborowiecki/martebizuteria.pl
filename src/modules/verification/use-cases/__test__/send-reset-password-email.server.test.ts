@@ -39,7 +39,9 @@ vi.mock(import("~/src/integrations/resend/resend.public-email-limits.server"), a
 
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: stubs.getCurrentLocale }))
 
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordEmailFailedAudit: stubs.recordEmailFailedAudit }))
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
+  recordEmailFailedAudit: stubs.recordEmailFailedAudit,
+}))
 
 vi.mock("~/src/presentation/emails/reset-password", () => ({
   RESET_PASSWORD_NAMESPACE: "emails.reset-password",

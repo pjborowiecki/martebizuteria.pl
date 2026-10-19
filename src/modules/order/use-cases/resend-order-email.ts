@@ -8,7 +8,7 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { recordEmailResendRequestedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordEmailResendRequestedAudit } from "~/src/modules/audit-log/use-cases/record-email-audit.server"
 import { getAdminOrderRefundTarget, getAdminOrderTimelineRows } from "~/src/modules/order/order.accessors"
 import { ORDER_EMAIL_KIND, ORDER_ERROR_CODES, ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"

@@ -6,7 +6,7 @@ import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
-import { recordOrderShippedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordOrderShippedAudit } from "~/src/modules/audit-log/use-cases/record-order-audit.server"
 import { ORDER_MUTATION_KEYS, SHIPPABLE_FULFILLMENT_STATUSES } from "~/src/modules/order/order.constants"
 import { canMarkAdminOrderShipped } from "~/src/modules/order/order.utils"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"

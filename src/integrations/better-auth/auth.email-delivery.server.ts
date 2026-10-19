@@ -4,7 +4,7 @@ import { EMAIL_DELIVERY_FAILED } from "~/src/integrations/better-auth/auth.const
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 
 import { type AuditEmailKind } from "~/src/modules/audit-log/audit-log.constants"
-import { recordEmailFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordEmailFailedAudit } from "~/src/modules/audit-log/use-cases/record-email-audit.server"
 
 export const recordAuthEmailFailure = (kind: AuditEmailKind, { failure, to, userId }: Readonly<AuthEmailFailure>): void => {
   console.error(`[Auth] Failed to send ${kind} email to ${to}: ${failure}`)

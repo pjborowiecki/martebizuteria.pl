@@ -7,7 +7,7 @@ import { scheduleDeliveryMethodsInvalidation } from "~/src/integrations/realtime
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
-import { recordDeliveryMethodAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordDeliveryMethodAudit } from "~/src/modules/audit-log/use-cases/record-settings-audit.server"
 import {
   findDeliveryMethodById,
   listOfferedDeliveryMethods,

@@ -12,7 +12,7 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
 import { AUDIT_EMAIL_KIND, type AuditEmailKind } from "~/src/modules/audit-log/audit-log.constants"
-import { recordEmailFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordEmailFailedAudit } from "~/src/modules/audit-log/use-cases/record-email-audit.server"
 import {
   getSubscriberByEmail,
   insertSubscriber,

@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.queue.server"
+import { SYSTEM_AUDIT_ACTOR } from "~/src/modules/audit-log/audit-log.constants"
+import { type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.types"
 import {
-  SYSTEM_AUDIT_ACTOR,
   resolveRequestAuditActor,
   resolveRequestAuditIp,
   scheduleAuditLog,
   scheduleAuditLogFromRequest,
   scheduleSystemAuditLog,
-} from "~/src/modules/audit-log/audit-log.record.server"
+} from "~/src/modules/audit-log/use-cases/schedule-audit-log.server"
 
 interface SessionUser {
   readonly email: string

@@ -14,9 +14,12 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
   withRateLimit: () => ({}),
 }))
 vi.mock("~/src/integrations/better-auth/auth.server", () => ({ auth: { api: { setPassword: setCredential } } }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
-  recordAuthPasswordChangedAudit: recordPasswordChanged,
+vi.mock("~/src/modules/audit-log/audit-log.utils", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   resolveAuthAuditActor: (user: { readonly id: string }) => `actor:${user.id}`,
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-auth-audit.server", () => ({
+  recordAuthPasswordChangedAudit: recordPasswordChanged,
 }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {

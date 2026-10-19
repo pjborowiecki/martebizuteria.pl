@@ -7,7 +7,7 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { scheduleCategoryCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { recordCatalogCategoryCreatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordCatalogCategoryCreatedAudit } from "~/src/modules/audit-log/use-cases/record-catalog-audit.server"
 import {
   getCategoriesByIds,
   getCategoryByHandleQuery,

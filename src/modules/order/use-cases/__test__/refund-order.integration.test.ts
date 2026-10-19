@@ -31,7 +31,9 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
     ),
   }
 })
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderRefundAudit: recordRefundAudit }))
+vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => ({
+  recordOrderRefundAudit: recordRefundAudit,
+}))
 
 const ORDER_ID = "order-1"
 

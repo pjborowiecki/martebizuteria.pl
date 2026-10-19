@@ -17,7 +17,7 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
   scheduleAdminOrdersInvalidation: mocked.scheduleAdminOrdersInvalidation,
   scheduleProductCatalogInvalidation: mocked.scheduleProductCatalogInvalidation,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => ({
   recordOrderPaymentCapturedAudit: mocked.recordOrderPaymentCapturedAudit,
 }))
 vi.mock("~/src/modules/checkout/use-cases/fulfill-checkout.server", () => ({ fulfillCheckout: mocked.fulfillCheckout }))

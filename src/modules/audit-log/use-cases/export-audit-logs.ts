@@ -5,12 +5,11 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
 
 import { LIST_PAGE_FIRST, LIST_PAGE_SIZE_MAX, listPaginationParamsFromPage } from "~/src/modules/_core/utils/pagination"
-import { getAdminAuditLogsPage } from "~/src/modules/audit-log/audit-log.accessors"
-import { buildAdminAuditLogsFilterParams } from "~/src/modules/audit-log/audit-log.admin-list.server"
-import { recordListExportedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { buildAdminAuditLogsFilterParams, getAdminAuditLogsPage } from "~/src/modules/audit-log/audit-log.accessors"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import { toAdminAuditListItem } from "~/src/modules/audit-log/audit-log.utils"
 import { auditLogZodSchemas } from "~/src/modules/audit-log/audit-log.zod"
+import { recordListExportedAudit } from "~/src/modules/audit-log/use-cases/record-list-export-audit.server"
 
 export interface AuditLogsExportPage {
   readonly hasMore: boolean

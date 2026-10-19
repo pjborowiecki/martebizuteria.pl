@@ -8,11 +8,9 @@ import { confirmedEmailChangeSchema } from "~/src/integrations/better-auth/auth.
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { updateStripeCustomerEmail } from "~/src/integrations/stripe/stripe.customer.server"
 
-import {
-  recordAuthEmailChangedAudit,
-  recordCustomerStripeEmailFailedAudit,
-  resolveAuthAuditActor,
-} from "~/src/modules/audit-log/audit-log.events.server"
+import { resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.utils"
+import { recordAuthEmailChangedAudit } from "~/src/modules/audit-log/use-cases/record-auth-audit.server"
+import { recordCustomerStripeEmailFailedAudit } from "~/src/modules/audit-log/use-cases/record-customer-audit.server"
 import { followAccountAddressChange } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.address-change.server"
 import { session } from "~/src/modules/session/session.schema"
 import { sendEmailChangedEmail } from "~/src/modules/user/use-cases/send-email-changed-email.server"

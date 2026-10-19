@@ -52,7 +52,7 @@ vi.mock("~/src/modules/newsletter-subscriber/use-cases/send-newsletter-confirmat
   sendNewsletterConfirmationEmail,
 }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
   recordEmailFailedAudit,
   recordNewsletterSubscriberConfirmedAudit,
   recordNewsletterSubscriberUnsubscribedAudit,

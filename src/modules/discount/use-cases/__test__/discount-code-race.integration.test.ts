@@ -33,7 +33,7 @@ vi.mock(import("@tanstack/react-start/server"), async (importOriginal) => {
 })
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: stubs.getRequestSession }))
 vi.mock("~/src/lib/rate-limit", () => ({}))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/record-settings-audit.server", () => ({
   recordDiscountCreatedAudit: vi.fn(),
   recordDiscountUpdatedAudit: vi.fn(),
 }))

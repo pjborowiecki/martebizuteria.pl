@@ -19,13 +19,14 @@ vi.mock("~/src/modules/user/user.accessors", () => ({ getUserIdByEmail: stubs.ge
 
 vi.mock("~/src/lib/background", () => ({ scheduleBackgroundWork: (work: Promise<unknown>) => work }))
 
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/record-auth-audit.server", () => ({
   recordAuthLoginFailedAudit: stubs.recordAuthLoginFailedAudit,
   recordAuthLogoutAudit: stubs.recordAuthLogoutAudit,
-  resolveAuthAuditActor: stubs.resolveAuthAuditActor,
 }))
 
-const { handleAuthRequestWithAudit } = await import("~/src/modules/audit-log/audit-log.auth.server")
+vi.mock("~/src/modules/audit-log/audit-log.utils", () => ({ resolveAuthAuditActor: stubs.resolveAuthAuditActor }))
+
+const { handleAuthRequestWithAudit } = await import("~/src/modules/audit-log/use-cases/handle-auth-request.server")
 
 const CLIENT_IP = "203.0.113.7"
 

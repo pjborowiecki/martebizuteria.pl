@@ -32,7 +32,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
 
 vi.mock("~/src/modules/user/user.accessors", () => ({ getUserById: access.userById }))
 
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audit)
+vi.mock("~/src/modules/audit-log/use-cases/record-customer-audit.server", () => audit)
 
 vi.mock("~/src/modules/address/address.accessors", () => ({
   getDefaultAddressForUser: access.defaultAddress,

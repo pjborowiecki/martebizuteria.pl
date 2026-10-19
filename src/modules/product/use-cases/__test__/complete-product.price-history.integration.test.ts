@@ -39,7 +39,7 @@ vi.mock("~/src/integrations/better-auth/auth.session", () => ({
   getRequestSession: () => Promise.resolve({ user: { role: ROLES.ADMIN, twoFactorEnabled: true } }),
 }))
 vi.mock("~/src/lib/rate-limit", () => ({}))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/record-catalog-audit.server", () => ({
   recordCatalogProductCreatedAudit: vi.fn(),
   recordCatalogProductUpdatedAudit: vi.fn(),
 }))

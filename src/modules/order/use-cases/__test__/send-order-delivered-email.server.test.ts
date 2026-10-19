@@ -25,7 +25,9 @@ vi.mock("cloudflare:workers", () => ({ env: {} }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: {} }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 vi.mock("~/src/integrations/use-intl/i18n.messages", () => ({ loadNamespace }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderEmailOutcome }))
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
+  recordOrderEmailOutcome,
+}))
 vi.mock("~/src/modules/store-setting/store-setting.accessors", async () => {
   const { TEST_STORED_SELLER_DETAILS } = await import("~/src/platform/testing/mocks/seller-details")
 

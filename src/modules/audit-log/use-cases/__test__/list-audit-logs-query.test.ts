@@ -7,7 +7,11 @@ const accessors = vi.hoisted(() => ({
 
 vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => import("~/src/platform/testing/mocks/display-preferences"))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
-vi.mock("~/src/modules/audit-log/audit-log.accessors", () => ({ getAdminAuditLogsPage: accessors.page }))
+vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: {} }))
+vi.mock("~/src/modules/audit-log/audit-log.accessors", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  getAdminAuditLogsPage: accessors.page,
+}))
 vi.mock("~/src/modules/audit-log/audit-log.utils", () => ({ toAdminAuditListItem: (row: { id: string }) => ({ ...row, mapped: true }) }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {

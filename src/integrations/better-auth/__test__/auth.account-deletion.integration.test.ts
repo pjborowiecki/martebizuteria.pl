@@ -32,7 +32,13 @@ vi.mock("cloudflare:workers", () => ({
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { customers: stripeCustomers } }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail: vi.fn(() => Promise.resolve(undefined)) }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "en-US" }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audit)
+vi.mock("~/src/modules/audit-log/audit-log.utils", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  resolveAuthAuditActor: audit.resolveAuthAuditActor,
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-auth-audit.server", () => audit)
+vi.mock("~/src/modules/audit-log/use-cases/record-customer-audit.server", () => audit)
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => audit)
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminAuditLogInvalidation: vi.fn(),
   scheduleAdminCustomersInvalidation: vi.fn(),

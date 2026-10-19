@@ -81,7 +81,7 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.publish.
   publishRealtimeInvalidation: vi.fn(),
   scheduleRealtimeInvalidation: doubles.scheduleRealtimeInvalidation,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
   recordNewsletterSubscriberErasedAudit: doubles.recordNewsletterSubscriberErasedAudit,
   recordNewsletterSubscriberUnsubscribedAudit: doubles.recordNewsletterSubscriberUnsubscribedAudit,
 }))

@@ -6,7 +6,7 @@ import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i1
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
-import { recordListExportedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordListExportedAudit } from "~/src/modules/audit-log/use-cases/record-list-export-audit.server"
 import { getAdminOrdersExport as orderGetAdminOrdersExport } from "~/src/modules/order/order.accessors"
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"

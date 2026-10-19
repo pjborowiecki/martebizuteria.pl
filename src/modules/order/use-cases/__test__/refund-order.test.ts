@@ -31,7 +31,9 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
     },
   },
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderRefundAudit: calls.audit }))
+vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => ({
+  recordOrderRefundAudit: calls.audit,
+}))
 vi.mock("~/src/modules/order/order.accessors", () => ({
   getOrderByCheckoutId: () => Promise.resolve(state.orderRow),
   prepareRefundBatch: (_settled: Order["settled"], input: Order["refundInput"]) => {

@@ -7,7 +7,7 @@ import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
 import { AUDIT_EMAIL_KIND } from "~/src/modules/audit-log/audit-log.constants"
-import { recordEmailFailedAudit, recordEmailSentAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordEmailFailedAudit, recordEmailSentAudit } from "~/src/modules/audit-log/use-cases/record-email-audit.server"
 import { readSellerDetails } from "~/src/modules/store-setting/store-setting.accessors"
 import { maskEmailAddress } from "~/src/modules/user/user.utils"
 

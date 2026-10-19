@@ -12,8 +12,8 @@ import {
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { AUDIT_EMAIL_KIND, AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
-import { recordNewsletterSubscriberErasedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
+import { recordNewsletterSubscriberErasedAudit } from "~/src/modules/audit-log/use-cases/record-email-audit.server"
 import { NEWSLETTER_ERROR_CODES, NEWSLETTER_MUTATION_KEYS } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.constants"
 import { newsletterSubscriber } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.schema"
 import { newsletterZodSchemas } from "~/src/modules/newsletter-subscriber/newsletter-subscriber.zod"

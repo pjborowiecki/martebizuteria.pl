@@ -7,8 +7,9 @@ import { scheduleProductAttributeCatalogInvalidation } from "~/src/integrations/
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { countForAttributeIds } from "~/src/modules/attribute-on-product/attribute-on-product.accessors"
-import { recordCatalogAttributeDeletedAudit, resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.events.server"
-import { resolveRequestAuditIp } from "~/src/modules/audit-log/audit-log.record.server"
+import { resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.utils"
+import { recordCatalogAttributeDeletedAudit } from "~/src/modules/audit-log/use-cases/record-catalog-audit.server"
+import { resolveRequestAuditIp } from "~/src/modules/audit-log/use-cases/schedule-audit-log.server"
 import {
   getProductAttributesByIds,
   deleteProductAttributes as productAttributeDeleteProductAttributes,

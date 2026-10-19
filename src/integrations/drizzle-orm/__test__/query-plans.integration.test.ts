@@ -29,7 +29,9 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   }
 })
 
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordCustomerOrdersClaimedAudit: vi.fn() }))
+vi.mock("~/src/modules/audit-log/use-cases/record-customer-audit.server", () => ({
+  recordCustomerOrdersClaimedAudit: vi.fn(),
+}))
 
 const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
 const { applyMigrationHistory } = await import("~/src/platform/testing/mocks/migrations")

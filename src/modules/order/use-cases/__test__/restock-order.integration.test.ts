@@ -77,9 +77,11 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
   scheduleAdminOrdersInvalidation: vi.fn(),
   scheduleProductCatalogInvalidation: catalogInvalidated,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
-  recordOrderCancelledAudit: audit.cancelled,
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
   recordOrderEmailOutcome: audit.email,
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => ({
+  recordOrderCancelledAudit: audit.cancelled,
   recordOrderRefundAudit: audit.refund,
   recordOrderRefundRequestedAudit: audit.refundRequested,
   recordOrderRestockedAudit: audit.restocked,

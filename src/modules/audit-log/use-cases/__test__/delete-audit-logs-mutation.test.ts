@@ -14,7 +14,7 @@ const audit = vi.hoisted(() => ({ recordAuditLogsDeletedAudit: vi.fn() }))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => realtime)
 vi.mock("~/src/modules/audit-log/audit-log.accessors", () => ({ deleteAuditLogs: accessor.deleteAuditLogs }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audit)
+vi.mock("~/src/modules/audit-log/use-cases/record-settings-audit.server", () => audit)
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {

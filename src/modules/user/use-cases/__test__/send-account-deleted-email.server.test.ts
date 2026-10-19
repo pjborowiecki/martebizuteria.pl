@@ -35,7 +35,9 @@ vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: stu
 
 vi.mock("~/src/lib/seo", () => ({ buildLocalizedUrl: stubs.buildLocalizedUrl }))
 
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordEmailFailedAudit: stubs.recordEmailFailedAudit }))
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
+  recordEmailFailedAudit: stubs.recordEmailFailedAudit,
+}))
 
 vi.mock("~/src/presentation/emails/account-deleted", () => ({
   ACCOUNT_DELETED_NAMESPACE: "emails.account-deleted",

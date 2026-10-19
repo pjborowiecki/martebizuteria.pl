@@ -55,7 +55,7 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
   scheduleProductCatalogInvalidation: vi.fn(),
 }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audits)
+vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => audits)
 
 const OLD_SESSION = "cs_old"
 

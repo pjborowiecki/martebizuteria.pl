@@ -54,7 +54,9 @@ vi.mock("~/src/modules/order/use-cases/send-order-delivered-email.server", () =>
 vi.mock("~/src/modules/order/use-cases/send-order-tracking-email.server", () => ({ sendOrderTrackingEmail: notify.tracking }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { checkout: { sessions: { retrieve: sessionsRetrieve } } } }))
 vi.mock("~/src/modules/order/use-cases/send-order-confirmation-email.server", () => ({ sendOrderConfirmationEmail: notify.confirmed }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordEmailResendRequestedAudit }))
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
+  recordEmailResendRequestedAudit,
+}))
 vi.mock("~/src/modules/order/order.accessors", () => orders)
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {

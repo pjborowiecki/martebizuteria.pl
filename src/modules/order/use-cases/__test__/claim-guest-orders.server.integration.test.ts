@@ -17,7 +17,9 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordCustomerOrdersClaimedAudit }))
+vi.mock("~/src/modules/audit-log/use-cases/record-customer-audit.server", () => ({
+  recordCustomerOrdersClaimedAudit,
+}))
 vi.spyOn(console, "info").mockImplementation(() => {})
 
 import {

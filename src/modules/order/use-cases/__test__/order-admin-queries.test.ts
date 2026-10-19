@@ -73,7 +73,9 @@ vi.mock("~/src/modules/order/order.accessors", () => ({
   getAdminOrdersExport: accessors.getAdminOrdersExport,
   getAdminOrdersPage: accessors.getAdminOrdersPage,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordListExportedAudit: accessors.recordListExportedAudit }))
+vi.mock("~/src/modules/audit-log/use-cases/record-list-export-audit.server", () => ({
+  recordListExportedAudit: accessors.recordListExportedAudit,
+}))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "en-US" }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {

@@ -29,7 +29,7 @@ const bucket = vi.hoisted(() => {
 const audit = vi.hoisted(() => ({ recordImageUploadedAudit: vi.fn() }))
 
 vi.mock("cloudflare:workers", () => ({ env: { IMAGES: { head: bucket.head, put: bucket.put } } }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audit)
+vi.mock("~/src/modules/audit-log/use-cases/record-catalog-audit.server", () => audit)
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 const passthrough = vi.hoisted(
   () =>

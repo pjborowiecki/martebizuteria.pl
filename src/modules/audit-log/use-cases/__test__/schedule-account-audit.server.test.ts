@@ -6,9 +6,8 @@ import {
   type AuditLogCategory,
   type AuditLogSeverity,
 } from "~/src/modules/audit-log/audit-log.constants"
-import { recordCustomerEmailChangeAudit } from "~/src/modules/audit-log/audit-log.email-change.server"
+import { type AuditEventOptions, type AuditLogActorInput } from "~/src/modules/audit-log/audit-log.types"
 import {
-  type AuditEventOptions,
   recordAuthEmailChangedAudit,
   recordAuthEmailVerifiedAudit,
   recordAuthPasswordChangedAudit,
@@ -18,12 +17,9 @@ import {
   recordAuthTwoFactorEnabledAudit,
   recordAuthUserBannedAudit,
   recordAuthUserUnbannedAudit,
-  recordCustomerDeletedAudit,
-  recordCustomerOrdersClaimedAudit,
-  recordCustomerStripeEmailFailedAudit,
-  recordTeamAccessAudit,
-} from "~/src/modules/audit-log/audit-log.events.server"
-import { type AuditLogActorInput } from "~/src/modules/audit-log/audit-log.record.server"
+} from "~/src/modules/audit-log/use-cases/record-auth-audit.server"
+import { recordCustomerDeletedAudit, recordCustomerEmailChangeAudit } from "~/src/modules/audit-log/use-cases/record-customer-audit.server"
+import { recordTeamAccessAudit } from "~/src/modules/audit-log/use-cases/record-settings-audit.server"
 
 const record = vi.hoisted(() => ({
   scheduleAuditLog: vi.fn(),
@@ -31,7 +27,7 @@ const record = vi.hoisted(() => ({
   scheduleSystemAuditLog: vi.fn(),
 }))
 
-vi.mock("~/src/modules/audit-log/audit-log.record.server", () => record)
+vi.mock("~/src/modules/audit-log/use-cases/schedule-audit-log.server", () => record)
 
 interface AccountAuditCase {
   readonly action: AuditLogAction
@@ -186,43 +182,5 @@ describe("account audit events", () => {
     recordAudit({ id: "user-8", name: "Grace", role: "unknown" })
 
     expect(record.scheduleAuditLog).toHaveBeenCalledWith(expect.objectContaining({ ip: undefined, metadata: undefined, target: "Grace" }))
-  })
-})
-
-describe("recordCustomerOrdersClaimedAudit", () => {
-  it("files the guest orders an account took over under customers, from the system, against the account", () => {
-    recordCustomerOrdersClaimedAudit("ada@example.test", {
-      metadata: { orderCount: 2, orderIds: ["order-1", "order-2"] },
-      resourceId: "user-7",
-    })
-
-    expect(record.scheduleAuditLog).not.toHaveBeenCalled()
-    expect(record.scheduleSystemAuditLog).toHaveBeenCalledExactlyOnceWith({
-      action: AUDIT_LOG_ACTION.CUSTOMER_ORDERS_CLAIMED,
-      category: "customers",
-      detail: undefined,
-      metadata: { orderCount: 2, orderIds: ["order-1", "order-2"] },
-      resourceId: "user-7",
-      severity: "info",
-      target: "ada@example.test",
-    })
-  })
-})
-
-describe("recordCustomerStripeEmailFailedAudit", () => {
-  it("files the Stripe customer that kept the old address under customers, from the system, against the account", () => {
-    recordCustomerStripeEmailFailedAudit(customer, { detail: "Error: Stripe is down", ip: "198.51.100.4" })
-
-    expect(record.scheduleAuditLog).not.toHaveBeenCalled()
-    expect(record.scheduleSystemAuditLog).toHaveBeenCalledExactlyOnceWith({
-      action: AUDIT_LOG_ACTION.CUSTOMER_STRIPE_EMAIL_FAILED,
-      category: "customers",
-      detail: "Error: Stripe is down",
-      ip: "198.51.100.4",
-      metadata: { email: "ada@example.test" },
-      resourceId: "user-7",
-      severity: "warning",
-      target: "ada@example.test",
-    })
   })
 })

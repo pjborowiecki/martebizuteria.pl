@@ -70,8 +70,10 @@ vi.mock(import("~/src/integrations/inpost/inpost.shipx.server"), async (importOr
 }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: {} }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
   recordOrderEmailOutcome: vi.fn(),
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => ({
   recordOrderShippedAudit: vi.fn(),
   recordOrderTrackingUpdatedAudit: vi.fn(),
 }))

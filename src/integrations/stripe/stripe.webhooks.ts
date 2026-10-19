@@ -24,7 +24,7 @@ import {
   recordOrderFulfillmentFailedAudit,
   recordOrderPaymentFailedAudit,
   recordOrderReleasedAudit,
-} from "~/src/modules/audit-log/audit-log.events.server"
+} from "~/src/modules/audit-log/use-cases/record-order-audit.server"
 import { resolveCheckoutSessionCurrency, resolveCheckoutSessionLocale } from "~/src/modules/checkout/checkout-metadata.zod"
 import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checkout.server"
 import { sendPaymentFailedEmail } from "~/src/modules/checkout/use-cases/send-payment-failed-email.server"

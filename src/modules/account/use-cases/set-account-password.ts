@@ -7,7 +7,8 @@ import { auth } from "~/src/integrations/better-auth/auth.server"
 import { strictPasswordSchema } from "~/src/integrations/better-auth/auth.zod"
 
 import { ACCOUNT_MUTATION_KEYS } from "~/src/modules/account/account.constants"
-import { recordAuthPasswordChangedAudit, resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.events.server"
+import { resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.utils"
+import { recordAuthPasswordChangedAudit } from "~/src/modules/audit-log/use-cases/record-auth-audit.server"
 
 import { resolveRequestIp } from "~/src/lib/request"
 

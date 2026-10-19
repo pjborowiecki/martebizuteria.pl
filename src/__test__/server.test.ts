@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { REALTIME_INVALIDATION_HUB } from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
-import { type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.queue.server"
+import { type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.types"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
 
@@ -44,7 +44,7 @@ vi.mock("cloudflare:workers", () => ({ env: { VITE_R2_URL: "https://images.marte
 vi.mock("~/src/durable-objects/realtime-invalidation-hub", () => ({ RealtimeInvalidationHub: vi.fn() }))
 vi.mock("@tanstack/react-start/server-entry", () => ({ default: entry }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.ws.server", () => realtime)
-vi.mock("~/src/modules/audit-log/audit-log.queue.server", () => queue)
+vi.mock("~/src/modules/audit-log/use-cases/process-audit-log-queue.server", () => queue)
 vi.mock("~/src/lib/sitemap", () => sitemap)
 vi.mock("~/src/lib/retention", () => retention)
 vi.mock("~/src/modules/newsletter-campaign/newsletter-campaign.queue.server", () => newsletterQueue)

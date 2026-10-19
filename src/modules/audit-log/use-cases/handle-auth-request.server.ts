@@ -1,7 +1,8 @@
 import { auth } from "~/src/integrations/better-auth/auth.server"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 
-import { recordAuthLoginFailedAudit, recordAuthLogoutAudit, resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.events.server"
+import { resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.utils"
+import { recordAuthLoginFailedAudit, recordAuthLogoutAudit } from "~/src/modules/audit-log/use-cases/record-auth-audit.server"
 import { getUserIdByEmail } from "~/src/modules/user/user.accessors"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"

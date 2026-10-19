@@ -6,7 +6,7 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleContentPageInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { recordContentPageUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordContentPageUpdatedAudit } from "~/src/modules/audit-log/use-cases/record-settings-audit.server"
 import { findContentPageByHandle, updateContentPageIfUnchanged } from "~/src/modules/content-page/content-page.accessors"
 import { CONTENT_PAGE_MUTATION_KEYS } from "~/src/modules/content-page/content-page.constants"
 import { reviseChangedLocales } from "~/src/modules/content-page/content-page.utils"

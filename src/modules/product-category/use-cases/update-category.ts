@@ -7,7 +7,7 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { scheduleCategoryCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { recordCatalogCategoryUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordCatalogCategoryUpdatedAudit } from "~/src/modules/audit-log/use-cases/record-catalog-audit.server"
 import { normalizeProductAttributeLocaleMapForSave } from "~/src/modules/product-attribute/product-attribute.utils"
 import { getAdminCategoriesQuery, getCategoryByHandleQuery } from "~/src/modules/product-category/product-category.accessors"
 import { CATEGORY_ERROR_CODES } from "~/src/modules/product-category/product-category.constants"

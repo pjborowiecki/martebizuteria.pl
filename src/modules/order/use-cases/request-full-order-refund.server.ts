@@ -3,7 +3,7 @@ import { stripe } from "~/src/integrations/stripe/stripe.server"
 import { resolveStripeObjectId } from "~/src/integrations/stripe/stripe.utils"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { recordOrderRefundRequestedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordOrderRefundRequestedAudit } from "~/src/modules/audit-log/use-cases/record-order-audit.server"
 import { type AdminOrderRefundTarget } from "~/src/modules/order/order.accessors"
 import { ADMIN_ORDER_REFUND_BLOCKER, ORDER_ERROR_CODES } from "~/src/modules/order/order.constants"
 import { resolveAdminOrderDispute, resolveAdminOrderRefundBlocker } from "~/src/modules/order/order.utils"

@@ -6,7 +6,7 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleCategoryCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { recordCatalogCategoryDeletedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordCatalogCategoryDeletedAudit } from "~/src/modules/audit-log/use-cases/record-catalog-audit.server"
 import { countProductsForCategories } from "~/src/modules/category-on-product/category-on-product.accessors"
 import {
   countChildCategories,

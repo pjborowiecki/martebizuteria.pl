@@ -26,7 +26,7 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
   scheduleAdminAuditLogInvalidation: effects.scheduleAdminAuditLogInvalidation,
   scheduleAdminNewsletterSubscribersInvalidation: effects.scheduleAdminNewsletterSubscribersInvalidation,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/record-customer-audit.server", () => ({
   recordCustomerDeletionFailedAudit: effects.recordCustomerDeletionFailedAudit,
 }))
 

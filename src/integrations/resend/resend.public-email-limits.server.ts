@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers"
 
 import { AUDIT_EMAIL_KIND, type AuditEmailKind } from "~/src/modules/audit-log/audit-log.constants"
-import { recordEmailFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordEmailFailedAudit } from "~/src/modules/audit-log/use-cases/record-email-audit.server"
 import { PUBLIC_EMAIL_RATE_LIMIT_KEY, RATE_LIMIT_WINDOW_SECONDS } from "~/src/modules/rate-limit/rate-limit.constants"
 
 import { withinRateLimit } from "~/src/lib/rate-limit"

@@ -59,10 +59,12 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
   scheduleAdminOrdersInvalidation: vi.fn(),
   scheduleProductCatalogInvalidation: vi.fn(),
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
+  recordOrderEmailOutcome,
+}))
+vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => ({
   recordOrderDisputeClosedAudit: vi.fn(),
   recordOrderDisputeOpenedAudit: vi.fn(),
-  recordOrderEmailOutcome,
   recordOrderPaymentCapturedAudit,
   recordOrderPaymentFailedAudit: vi.fn(),
   recordOrderReleasedAudit: vi.fn(),

@@ -6,7 +6,7 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleDeliveryMethodsInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
-import { recordDeliveryMethodAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordDeliveryMethodAudit } from "~/src/modules/audit-log/use-cases/record-settings-audit.server"
 import { setDeliveryMethodRanks } from "~/src/modules/delivery-method/delivery-method.accessors"
 import { DELIVERY_METHOD_MUTATION_KEYS } from "~/src/modules/delivery-method/delivery-method.constants"
 import { deliveryMethodZodSchemas } from "~/src/modules/delivery-method/delivery-method.zod"

@@ -52,7 +52,8 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
   scheduleAdminOrdersInvalidation: vi.fn(),
   scheduleProductCatalogInvalidation: vi.fn(),
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audits)
+vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => audits)
+vi.mock("~/src/modules/audit-log/use-cases/record-order-audit.server", () => audits)
 vi.mock("~/src/lib/incident-alert.server", () => ({ sendIncidentAlert }))
 
 const SHOP_ORIGIN = "http://127.0.0.1:3000"

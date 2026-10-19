@@ -5,7 +5,7 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
-import { recordCatalogProductDeletedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordCatalogProductDeletedAudit } from "~/src/modules/audit-log/use-cases/record-catalog-audit.server"
 import { getVariantIdsByProductIds } from "~/src/modules/product-variant/product-variant.accessors"
 import { assertVariantsNotHeldByOpenCheckouts, deleteProducts as productDeleteProducts } from "~/src/modules/product/product.accessors"
 import { PRODUCT_MUTATION_KEYS } from "~/src/modules/product/product.constants"

@@ -1,7 +1,7 @@
 import { scheduleAdminOrdersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
-import { recordOrderWithdrawalReceivedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordOrderWithdrawalReceivedAudit } from "~/src/modules/audit-log/use-cases/record-order-audit.server"
 import { getOrderWithdrawals, insertOrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.accessors"
 import { ORDER_WITHDRAWAL_OUTCOME } from "~/src/modules/order-withdrawal/order-withdrawal.constants"
 import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
