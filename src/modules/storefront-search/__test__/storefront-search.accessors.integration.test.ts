@@ -19,12 +19,13 @@ import { MIGRATION, applyMigration } from "~/src/platform/testing/mocks/migratio
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
-import { storefrontProductMatches, storefrontSearchMatches } from "~/src/modules/storefront-search/storefront-search.accessors.server"
 import {
   searchStorefrontCategories,
   searchStorefrontCollections,
   searchStorefrontProducts,
-} from "~/src/modules/storefront-search/storefront-search.server"
+  storefrontProductMatches,
+  storefrontSearchMatches,
+} from "~/src/modules/storefront-search/storefront-search.accessors"
 import { buildStorefrontSearchExpression } from "~/src/modules/storefront-search/storefront-search.utils"
 
 const LIMIT = 6

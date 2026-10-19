@@ -6,6 +6,7 @@ const { database, sqlite } = await vi.hoisted(async () => {
   return { database: { dropsCountRows: false }, sqlite: new DatabaseSync(":memory:") }
 })
 
+vi.mock("cloudflare:workers", () => ({ env: {} }))
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const { drizzle } = await import("drizzle-orm/d1")
   const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")

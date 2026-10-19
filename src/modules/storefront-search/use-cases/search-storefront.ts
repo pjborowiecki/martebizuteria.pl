@@ -6,17 +6,17 @@ import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import {
+  searchStorefrontCategories,
+  searchStorefrontCollections,
+  searchStorefrontProducts,
+} from "~/src/modules/storefront-search/storefront-search.accessors"
+import {
   STOREFRONT_SEARCH_LIMIT_PER_GROUP,
   STOREFRONT_SEARCH_MAX_LENGTH,
   STOREFRONT_SEARCH_MIN_LENGTH,
   STOREFRONT_SEARCH_QUERY_KEYS,
   STOREFRONT_SEARCH_QUERY_STALE_MS,
 } from "~/src/modules/storefront-search/storefront-search.constants"
-import {
-  searchStorefrontCategories,
-  searchStorefrontCollections,
-  searchStorefrontProducts,
-} from "~/src/modules/storefront-search/storefront-search.server"
 import { type StorefrontSearch } from "~/src/modules/storefront-search/storefront-search.types"
 
 interface StorefrontSearchInput {
