@@ -13,17 +13,19 @@ import {
 import { recordCatalogProductUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { expireCheckoutsHoldingVariants } from "~/src/modules/checkout/use-cases/expire-checkouts-holding-variants.server"
 import { prepareProductImagesBatch } from "~/src/modules/product-image/product-image.accessors"
-import { buildProductAuditChange, extractProductAuditSnapshot } from "~/src/modules/product/product-audit.utils"
-import { getAdminProductDetailByIdQuery, getProductByHandleQuery } from "~/src/modules/product/product.accessors"
+import {
+  assertVariantsNotHeldByOpenCheckouts,
+  getAdminProductDetailByIdQuery,
+  getProductByHandleQuery,
+} from "~/src/modules/product/product.accessors"
+import { PRODUCT_ADMIN_STATUS, PRODUCT_ERROR_CODES } from "~/src/modules/product/product.constants"
+import { buildProductAuditChange, extractProductAuditSnapshot, rethrowProductMutationError } from "~/src/modules/product/product.utils"
+import { productZodSchemas } from "~/src/modules/product/product.zod"
 import {
   assertCatalogSkusAvailable,
-  assertVariantsNotHeldByOpenCheckouts,
+  prepareCatalogReplacePayload,
   prepareProductUpdateBatch,
-} from "~/src/modules/product/product.catalog.server"
-import { PRODUCT_ADMIN_STATUS, PRODUCT_ERROR_CODES } from "~/src/modules/product/product.constants"
-import { rethrowProductMutationError } from "~/src/modules/product/product.mutation-errors"
-import { prepareCatalogReplacePayload } from "~/src/modules/product/product.utils"
-import { productZodSchemas } from "~/src/modules/product/product.zod"
+} from "~/src/modules/product/use-cases/save-complete-product.server"
 
 const updateProductRecord = async (
   data: zod.infer<(typeof productZodSchemas)["updateCompleteInput"]>,

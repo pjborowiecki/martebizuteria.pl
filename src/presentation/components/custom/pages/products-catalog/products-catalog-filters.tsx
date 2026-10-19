@@ -8,9 +8,9 @@ import { type ProductCollection } from "~/src/modules/product-collection/product
 import {
   STOREFRONT_PRODUCTS_SORT,
   STOREFRONT_PRODUCTS_SORTS,
-  type StorefrontProductsSearch,
   type StorefrontProductsSort,
-} from "~/src/modules/product/product.storefront-catalog"
+} from "~/src/modules/storefront-search/storefront-search.constants"
+import { type StorefrontProductsSearch } from "~/src/modules/storefront-search/storefront-search.zod"
 
 import { ProductsCatalogPriceFilter } from "~/src/presentation/components/custom/pages/products-catalog/products-catalog-price-filter"
 import {

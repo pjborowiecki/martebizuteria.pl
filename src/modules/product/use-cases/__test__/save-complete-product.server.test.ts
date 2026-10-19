@@ -1,19 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { type ProductCatalogReplacePayload, type ProductOrganizationReplacePayload } from "~/src/modules/product/product.types"
+import { productZodSchemas } from "~/src/modules/product/product.zod"
 import {
   assertCatalogSkusAvailable,
-  assertVariantsNotHeldByOpenCheckouts,
   deleteOrphanProductByHandle,
   getNextProductRank,
+  prepareCatalogReplacePayload,
   prepareProductInsertBatch,
   prepareProductUpdateBatch,
-} from "~/src/modules/product/product.catalog.server"
-import {
-  type ProductCatalogReplacePayload,
-  type ProductOrganizationReplacePayload,
-  prepareCatalogReplacePayload,
-} from "~/src/modules/product/product.utils"
-import { productZodSchemas } from "~/src/modules/product/product.zod"
+} from "~/src/modules/product/use-cases/save-complete-product.server"
 
 const database = vi.hoisted(() => ({
   insert: vi.fn<(row: Record<string, unknown>) => void>(),
@@ -22,7 +18,6 @@ const database = vi.hoisted(() => ({
 
 const access = vi.hoisted(() => ({
   byHandle: vi.fn(),
-  heldByOpenCheckout: vi.fn<(variantIds: readonly string[]) => Promise<boolean>>(),
   maxRank: vi.fn(),
 }))
 
@@ -54,16 +49,11 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   },
 }))
 
-vi.mock("~/src/modules/payment/payment.accessors", () => ({ isAnyVariantHeldByOpenCheckout: access.heldByOpenCheckout }))
-
 vi.mock("~/src/modules/product/product.accessors", () => ({
-  getMaxRankQuery: { execute: access.maxRank },
-  getProductByHandleQuery: { execute: access.byHandle },
-}))
-
-vi.mock("~/src/modules/product/product.mutations", () => ({
   deleteProducts: mutations.deleteProducts,
   findTakenSkus: mutations.findTakenSkus,
+  getMaxRankQuery: { execute: access.maxRank },
+  getProductByHandleQuery: { execute: access.byHandle },
   prepareProductCatalogBatch: mutations.prepareCatalog,
   prepareProductOrganizationBatch: mutations.prepareOrganization,
 }))
@@ -116,24 +106,6 @@ describe("assertCatalogSkusAvailable", () => {
       code: "CONFLICT",
       message: "DUPLICATE_SKU",
       name: "AppError",
-    })
-  })
-})
-
-describe("assertVariantsNotHeldByOpenCheckouts", () => {
-  it("lets variants no open checkout holds go", async () => {
-    access.heldByOpenCheckout.mockResolvedValue(false)
-
-    await expect(assertVariantsNotHeldByOpenCheckouts(["variant-1", "variant-2"])).resolves.toBeUndefined()
-    expect(access.heldByOpenCheckout).toHaveBeenCalledWith(["variant-1", "variant-2"])
-  })
-
-  it("refuses while a checkout the customer can still pay holds one of them", async () => {
-    access.heldByOpenCheckout.mockResolvedValue(true)
-
-    await expect(assertVariantsNotHeldByOpenCheckouts(["variant-1"])).rejects.toMatchObject({
-      code: "CONFLICT",
-      message: "RESERVED_IN_CHECKOUT",
     })
   })
 })

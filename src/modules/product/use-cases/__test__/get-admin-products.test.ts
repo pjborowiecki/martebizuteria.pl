@@ -7,7 +7,7 @@ const adminList = vi.hoisted(() => ({
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: vi.fn() }))
-vi.mock("~/src/modules/product/product.admin-list.server", () => ({
+vi.mock("~/src/modules/product/use-cases/list-admin-products.server", () => ({
   getAdminProductsCatalogList: adminList.catalogList,
   loadAdminListAggregates: adminList.aggregates,
 }))

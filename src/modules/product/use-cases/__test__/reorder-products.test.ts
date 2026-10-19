@@ -8,7 +8,7 @@ const { scheduleProductCatalogInvalidation, setProductRanks } = vi.hoisted(() =>
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({ scheduleProductCatalogInvalidation }))
-vi.mock("~/src/modules/product/product.mutations", () => ({ setProductRanks }))
+vi.mock("~/src/modules/product/product.accessors", () => ({ setProductRanks }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const state: { validator?: (input: unknown) => unknown } = {}

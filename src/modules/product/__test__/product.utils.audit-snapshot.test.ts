@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { extractProductAuditSnapshot } from "~/src/modules/product/product-audit.utils"
-import { type AdminProductDetail } from "~/src/modules/product/product.utils"
+import { type AdminProductDetail, extractProductAuditSnapshot } from "~/src/modules/product/product.utils"
 
 const AT = new Date("2026-01-01T00:00:00.000Z")
 

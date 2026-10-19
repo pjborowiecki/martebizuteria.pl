@@ -7,9 +7,8 @@ import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-
 
 import { recordCatalogProductDeletedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { getVariantIdsByProductIds } from "~/src/modules/product-variant/product-variant.accessors"
-import { assertVariantsNotHeldByOpenCheckouts } from "~/src/modules/product/product.catalog.server"
+import { assertVariantsNotHeldByOpenCheckouts, deleteProducts as productDeleteProducts } from "~/src/modules/product/product.accessors"
 import { PRODUCT_MUTATION_KEYS } from "~/src/modules/product/product.constants"
-import { deleteProducts as productDeleteProducts } from "~/src/modules/product/product.mutations"
 import { productZodSchemas } from "~/src/modules/product/product.zod"
 
 export const deleteProducts = createServerFn({ method: "POST" })

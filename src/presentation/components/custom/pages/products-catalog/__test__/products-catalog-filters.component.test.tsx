@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { type StorefrontProductsSearch } from "~/src/modules/product/product.storefront-catalog"
+import { type StorefrontProductsSearch } from "~/src/modules/storefront-search/storefront-search.zod"
 
 import { ProductsCatalogFilters } from "~/src/presentation/components/custom/pages/products-catalog/products-catalog-filters"
 

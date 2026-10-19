@@ -3,7 +3,7 @@ import { type ChangeEvent, type JSX, useCallback, useId } from "react"
 import { useTranslations } from "use-intl/react"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
-import { type StorefrontProductsSearch } from "~/src/modules/product/product.storefront-catalog"
+import { type StorefrontProductsSearch } from "~/src/modules/storefront-search/storefront-search.zod"
 
 export const ProductsCatalogPriceFilter = ({ onSearchChange, search }: ProductsCatalogPriceFilterProps): JSX.Element => {
   const t = useTranslations("pages.products.filters")

@@ -22,14 +22,13 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { ATTRIBUTE_ON_PRODUCT_QUERY_KEYS } from "~/src/modules/attribute-on-product/attribute-on-product.constants"
 import { setAllProductAttributes } from "~/src/modules/attribute-on-product/use-cases/set-all-product-attributes"
 import { PRODUCT_IMAGE_QUERY_KEYS } from "~/src/modules/product-image/product-image.constants"
+import { PRODUCT_ERROR_CODES, PRODUCT_FORM_VALIDATION_KEYS, PRODUCT_QUERY_KEYS } from "~/src/modules/product/product.constants"
 import {
+  type AdminProductDetail,
   buildAllProductImageRows,
   buildProductLevelAttributeRows,
   buildVariantAttributeGroups,
-} from "~/src/modules/product/product-admin-persist.utils"
-import { collectProductFormSkuEntries } from "~/src/modules/product/product-sku.validation.utils"
-import { PRODUCT_ERROR_CODES, PRODUCT_FORM_VALIDATION_KEYS, PRODUCT_QUERY_KEYS } from "~/src/modules/product/product.constants"
-import {
+  collectProductFormSkuEntries,
   isDatabaseSchemaOutdatedMutationError,
   isDuplicateAttributeOnProductMutationError,
   isDuplicateHandleMutationError,
@@ -37,8 +36,7 @@ import {
   isReservedInCheckoutMutationError,
   isStockChangedWhileEditingMutationError,
   resolveProductMutationErrorMessage,
-} from "~/src/modules/product/product.mutation-errors"
-import { type AdminProductDetail } from "~/src/modules/product/product.utils"
+} from "~/src/modules/product/product.utils"
 import { type ProductFormValues, parseCatalogUpsertInput, productZodSchemas } from "~/src/modules/product/product.zod"
 import { createCompleteProduct } from "~/src/modules/product/use-cases/create-complete-product"
 import { updateCompleteProduct } from "~/src/modules/product/use-cases/update-complete-product"

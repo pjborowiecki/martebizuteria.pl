@@ -85,7 +85,7 @@ vi.mock("~/src/modules/product-category/product-category.accessors", () => ({
   getStorefrontRootCategoriesQuery: { execute: server.storefrontRoots },
   setCategoryRanks: server.setCategoryRanks,
 }))
-vi.mock("~/src/modules/product/product.storefront-catalog.accessors", () => ({
+vi.mock("~/src/modules/product/product.accessors", () => ({
   getPublishedProductCountsByRootCategory: server.publishedCountsByRoot,
 }))
 vi.mock("@tanstack/react-start", () => ({

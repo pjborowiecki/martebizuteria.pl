@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { type ProductAuditSnapshot, buildProductAuditChange } from "~/src/modules/product/product-audit.utils"
+import { type ProductAuditSnapshot } from "~/src/modules/product/product.types"
+import { buildProductAuditChange } from "~/src/modules/product/product.utils"
 
 const snapshot = (overrides: Partial<ProductAuditSnapshot> = {}): ProductAuditSnapshot => ({
   status: "published",

@@ -1,3 +1,5 @@
+import { type StorefrontCatalogScope, type StorefrontProductsSearch } from "~/src/modules/storefront-search/storefront-search.zod"
+
 type StorefrontSearchIndexedType = "category" | "collection" | "product"
 
 type StorefrontSearchResultType = StorefrontSearchIndexedType | "page"
@@ -32,4 +34,8 @@ export interface StorefrontSearch {
   results: StorefrontSearchResults
   trendingItem: StorefrontSearchTrendingItem
   trendingType: StorefrontSearchTrendingType
+}
+
+export interface StorefrontProductsRequest extends StorefrontProductsSearch {
+  readonly scope?: StorefrontCatalogScope
 }

@@ -3,7 +3,7 @@ import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
 import { PRODUCT_QUERY_KEYS } from "~/src/modules/product/product.constants"
-import { isReservedInCheckoutMutationError } from "~/src/modules/product/product.mutation-errors"
+import { isReservedInCheckoutMutationError } from "~/src/modules/product/product.utils"
 import { deleteProductsMutation } from "~/src/modules/product/use-cases/delete-products"
 
 export const useDeleteProducts = (): UseMutationResult<DeleteResult, Error, string[]> => {

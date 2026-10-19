@@ -2,12 +2,9 @@ import { type QueryClient } from "@tanstack/react-query"
 
 import { getCategoriesQuery } from "~/src/modules/product-category/use-cases/get-categories"
 import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
-import {
-  type StorefrontCatalogScope,
-  type StorefrontProductsSearch,
-  normalizeStorefrontProductsSearch,
-} from "~/src/modules/product/product.storefront-catalog"
 import { getStorefrontProductsPageQuery } from "~/src/modules/product/use-cases/get-storefront-products-page"
+import { normalizeStorefrontProductsSearch } from "~/src/modules/storefront-search/storefront-search.utils"
+import { type StorefrontCatalogScope, type StorefrontProductsSearch } from "~/src/modules/storefront-search/storefront-search.zod"
 
 import { catalogDebugLog } from "~/src/lib/catalog-debug-log"
 import { type ImagePrefetchService, prefetchProductThumbnails } from "~/src/lib/image"

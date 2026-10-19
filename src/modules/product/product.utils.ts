@@ -1,17 +1,13 @@
-import { v7 as uuidv7 } from "uuid"
-import { type z } from "zod/v4"
+import { type ColumnFiltersState, type SortingState } from "@tanstack/react-table"
 
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
-import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
-import { parseMoneyInputToMinorUnits } from "~/src/modules/_core/utils/currency"
-import { type categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
-import { buildCategoryOnProductRows, resolvePrimaryCategoryId } from "~/src/modules/category-on-product/category-on-product.utils"
-import { type collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema"
-import { buildCollectionOnProductRows } from "~/src/modules/collection-on-product/collection-on-product.utils"
-import { type inventory } from "~/src/modules/inventory/inventory.schema"
-import { type optionOnVariant } from "~/src/modules/option-on-variant/option-on-variant.schema"
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { isDateColumnFilterValue, isNumericColumnFilterValue } from "~/src/modules/_core/utils/column-filters"
+import { type AuditChangeMetadata, buildAuditChangeMetadata, toAuditMetadataRecord } from "~/src/modules/audit-log/audit-log.diff.utils"
+import { resolvePrimaryCategoryId } from "~/src/modules/category-on-product/category-on-product.utils"
+import { INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK } from "~/src/modules/inventory/inventory.constants"
 import { type ProductAttributeType } from "~/src/modules/product-attribute/product-attribute.constants"
 import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 import {
@@ -22,84 +18,60 @@ import {
 } from "~/src/modules/product-attribute/product-attribute.utils"
 import { resolveCategoryTitle } from "~/src/modules/product-category/product-category.utils"
 import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
-import { isProductLevelImage } from "~/src/modules/product-image/product-image.utils"
-import { type productOptionValue } from "~/src/modules/product-option-value/product-option-value.schema"
-import { type productOption } from "~/src/modules/product-option/product-option.schema"
-import { type productVariant } from "~/src/modules/product-variant/product-variant.schema"
-import {
-  DEFAULT_VARIANT_TITLE,
-  type ProductOptionDraft,
-  buildVariantCombinationKey,
-  buildVariantCombinations,
-  buildVariantDisplayTitle,
-  inferHasVariants,
-  normalizeOptionDrafts,
-  resolveVariantOptionValueIds,
-} from "~/src/modules/product-variant/product-variant.utils"
+import { galleryImagesToReplacePayload, isProductLevelImage } from "~/src/modules/product-image/product-image.utils"
+import { inferHasVariants, resolveVariantOptionValueIds } from "~/src/modules/product-variant/product-variant.utils"
 import type {
   getProductByHandleQuery,
   getProductVariantSkuRowsQuery,
   getProductVariantStatsQuery,
   getPublishedProductByHandleQuery,
 } from "~/src/modules/product/product.accessors"
-import { type getAdminProductsCatalogList } from "~/src/modules/product/product.admin-list.server"
 import {
   PRODUCT_ADMIN_STATUS,
+  PRODUCT_ERROR_CODES,
   PRODUCT_INVENTORY_LEVEL,
   PRODUCT_LOW_STOCK_THRESHOLD,
   PRODUCT_MULTI_VARIANT_COUNT_THRESHOLD,
   PRODUCT_STATUS,
+  PRODUCT_TABLE_COLUMN_ID,
   PRODUCT_VARIANT_KIND,
   type ProductAdminStatus,
   type ProductInventoryLevel,
   type ProductStatus,
   type ProductVariantKind,
 } from "~/src/modules/product/product.constants"
-import { type Product } from "~/src/modules/product/product.types"
-import { type productZodSchemas } from "~/src/modules/product/product.zod"
+import {
+  type AdminProductsListColumnFilters,
+  type AdminProductsListSort,
+  type Product,
+  type ProductAuditSnapshot,
+  type ProductAuditVariantSnapshot,
+  type ProductFormSkuEntry,
+  type ProductSkuFormFieldPath,
+} from "~/src/modules/product/product.types"
+import { type CatalogUpsertInput, type ProductFormValues } from "~/src/modules/product/product.zod"
+import { type getAdminProductsCatalogList } from "~/src/modules/product/use-cases/list-admin-products.server"
 
 const EMPTY_SKU = ""
 
-const MANAGE_INVENTORY_ALWAYS = true
+const VARIANT_SKU_PATH_REGEX = /^variants\.(?<variantIndex>\d+)\.sku$/u
 
-type CatalogUpsertInput = z.infer<(typeof productZodSchemas)["catalogUpsertInput"]>
+const UNIQUE_PRODUCT_HANDLE_CONSTRAINT = "UNIQUE constraint failed: product.handle"
 
-type VariantRowInput = CatalogUpsertInput["variants"][number]
+const UNIQUE_PRODUCT_VARIANT_SKU_CONSTRAINT = "UNIQUE constraint failed: product_variant.sku"
 
-type SimpleVariantInput = NonNullable<CatalogUpsertInput["simpleVariant"]>
+const NEGATIVE_AVAILABLE_STOCK_CONSTRAINT = `CHECK constraint failed: ${INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK}`
 
-export interface ProductVariantPersistRow {
-  readonly compareAtPrice: number | undefined
-  readonly id: string
-  readonly loadedQuantity: number | undefined
-  readonly manageInventory: boolean
-  readonly optionValues: Readonly<Record<string, string>>
-  readonly price: number
-  readonly quantity: number
-  readonly sku: string | undefined
-  readonly title: string
-}
-
-export interface InventoryAdjustment {
-  readonly quantityChange: number
-  readonly variantId: string
-}
-
-export interface ProductCatalogReplacePayload {
-  readonly inventoryAdjustments: readonly InventoryAdjustment[]
-  readonly inventoryRows: (typeof inventory.$inferInsert)[]
-  readonly optionOnVariantRows: (typeof optionOnVariant.$inferInsert)[]
-  readonly optionRows: (typeof productOption.$inferInsert)[]
-  readonly optionValueRows: (typeof productOptionValue.$inferInsert)[]
-  readonly variantRows: (typeof productVariant.$inferInsert)[]
-}
-
-type ProductOptionWithId = ProductOptionDraft & { readonly id: string }
-
-export interface ProductOrganizationReplacePayload {
-  readonly categoryRows: (typeof categoryOnProduct.$inferInsert)[]
-  readonly collectionRows: (typeof collectionOnProduct.$inferInsert)[]
-}
+const SERVER_SORTABLE_COLUMN_IDS = new Set<string>([
+  PRODUCT_TABLE_COLUMN_ID.title,
+  PRODUCT_TABLE_COLUMN_ID.recordId,
+  PRODUCT_TABLE_COLUMN_ID.status,
+  PRODUCT_TABLE_COLUMN_ID.minPrice,
+  PRODUCT_TABLE_COLUMN_ID.stock,
+  PRODUCT_TABLE_COLUMN_ID.variantKind,
+  PRODUCT_TABLE_COLUMN_ID.createdAt,
+  PRODUCT_TABLE_COLUMN_ID.editedAt,
+])
 
 export type AdminProductListRow = Awaited<ReturnType<typeof getAdminProductsCatalogList>>[number]
 
@@ -433,204 +405,309 @@ export const mapPublishedProductForStorefront = (
   }
 }
 
-const normalizeSku = (sku: string | undefined): string | undefined => {
-  const trimmed = sku?.trim()
-  if (trimmed === undefined || trimmed === EMPTY_SKU) {
+type AdminProductsColumnFilterHandler = (filters: AdminProductsListColumnFilters, value: unknown) => AdminProductsListColumnFilters
+
+const applyMinPriceFilter: AdminProductsColumnFilterHandler = (filters, value) =>
+  isNumericColumnFilterValue(value)
+    ? {
+        ...filters,
+        minPrice: value,
+      }
+    : filters
+
+const applyTotalStockFilter: AdminProductsColumnFilterHandler = (filters, value) =>
+  isNumericColumnFilterValue(value)
+    ? {
+        ...filters,
+        totalStock: value,
+      }
+    : filters
+
+const applyCreatedAtFilter: AdminProductsColumnFilterHandler = (filters, value) =>
+  isDateColumnFilterValue(value)
+    ? {
+        ...filters,
+        createdAt: value,
+      }
+    : filters
+
+const ADMIN_PRODUCTS_COLUMN_FILTER_HANDLERS: Partial<Record<string, AdminProductsColumnFilterHandler>> = {
+  [PRODUCT_TABLE_COLUMN_ID.createdAt]: applyCreatedAtFilter,
+  [PRODUCT_TABLE_COLUMN_ID.minPrice]: applyMinPriceFilter,
+  [PRODUCT_TABLE_COLUMN_ID.stock]: applyTotalStockFilter,
+}
+
+export const hasAdminProductsListColumnFilters = (columnFilters: AdminProductsListColumnFilters): boolean =>
+  columnFilters.minPrice !== undefined || columnFilters.totalStock !== undefined || columnFilters.createdAt !== undefined
+
+export const parseAdminProductsListColumnFilters = (columnFilters: ColumnFiltersState): AdminProductsListColumnFilters =>
+  columnFilters.reduce<AdminProductsListColumnFilters>((filters, { id, value }) => {
+    const handler = ADMIN_PRODUCTS_COLUMN_FILTER_HANDLERS[id]
+
+    return handler === undefined ? filters : handler(filters, value)
+  }, {})
+
+export const parseAdminProductsListSort = (sorting: SortingState): AdminProductsListSort | undefined => {
+  const [active] = sorting
+  if (active === undefined || !SERVER_SORTABLE_COLUMN_IDS.has(active.id)) {
     return undefined
   }
 
-  return trimmed
+  return {
+    columnId: active.id,
+    desc: active.desc,
+  }
 }
 
-const requireMoneyMinorUnits = (input: string): number => {
-  const minor = parseMoneyInputToMinorUnits(input, STORE_CURRENCY_CODE)
-  if (minor === undefined) {
-    throw new Error("Invalid money input")
+export const adminProductsListSortRequiresVariantStats = (sort: AdminProductsListSort | undefined): boolean => {
+  if (sort === undefined) {
+    return false
   }
 
-  return minor
+  return (
+    sort.columnId === PRODUCT_TABLE_COLUMN_ID.minPrice ||
+    sort.columnId === PRODUCT_TABLE_COLUMN_ID.stock ||
+    sort.columnId === PRODUCT_TABLE_COLUMN_ID.variantKind
+  )
 }
 
-const ownedVariantId = (id: string | undefined, ownedVariantIds: ReadonlySet<string>): string =>
-  id !== undefined && ownedVariantIds.has(id) ? id : uuidv7()
+export const formPathToZodPath = (formPath: ProductSkuFormFieldPath): (string | number)[] => {
+  if (formPath === "simpleVariant.sku") {
+    return ["simpleVariant", "sku"]
+  }
 
-const buildSimpleVariantRows = (simple: SimpleVariantInput, ownedVariantIds: ReadonlySet<string>): ProductVariantPersistRow[] => [
-  {
-    compareAtPrice: simple.compareAtPrice === "" ? undefined : requireMoneyMinorUnits(simple.compareAtPrice),
-    id: ownedVariantId(simple.id, ownedVariantIds),
-    loadedQuantity: simple.loadedQuantity,
-    manageInventory: MANAGE_INVENTORY_ALWAYS,
-    optionValues: {},
-    price: requireMoneyMinorUnits(simple.price),
-    quantity: simple.quantity,
-    sku: normalizeSku(simple.sku),
-    title: DEFAULT_VARIANT_TITLE,
-  },
-]
+  const variantIndex = VARIANT_SKU_PATH_REGEX.exec(formPath)?.groups?.["variantIndex"]
+  if (variantIndex !== undefined) {
+    return ["variants", Number(variantIndex), "sku"]
+  }
 
-const mergeVariantRows = ({
-  combinations,
-  options,
-  ownedVariantIds,
-  variants,
-}: Readonly<{
-  combinations: ReturnType<typeof buildVariantCombinations>
-  options: readonly ProductOptionDraft[]
-  ownedVariantIds: ReadonlySet<string>
-  variants: readonly VariantRowInput[]
-}>): ProductVariantPersistRow[] => {
-  const variantsByKey = new Map(variants.map((row) => [buildVariantCombinationKey(row.optionValues), row] as const))
-  const variantsByTitle = new Map(variants.map((row) => [(row.title ?? "").trim(), row] as const))
+  return []
+}
 
-  return combinations.map((combination, combinationIndex) => {
-    const key = buildVariantCombinationKey(combination.optionValues)
-    const existing =
-      variantsByKey.get(key) ??
-      variantsByTitle.get(buildVariantDisplayTitle(combination.optionValues, options, I18N.DEFAULT_LOCALE)) ??
-      variantsByTitle.get(combination.title) ??
-      variants[combinationIndex]
-    return {
-      compareAtPrice:
-        existing?.compareAtPrice === undefined || existing.compareAtPrice === ""
-          ? undefined
-          : requireMoneyMinorUnits(existing.compareAtPrice),
-      id: ownedVariantId(existing?.id, ownedVariantIds),
-      loadedQuantity: existing?.loadedQuantity,
-      manageInventory: MANAGE_INVENTORY_ALWAYS,
-      optionValues: combination.optionValues,
-      price: requireMoneyMinorUnits(existing?.price ?? ""),
-      quantity: existing?.quantity ?? 0,
-      sku: normalizeSku(existing?.sku),
-      title: existing?.title?.trim() === "" ? combination.title : (existing?.title ?? combination.title),
+export const collectProductFormSkuEntries = (values: ProductFormValues): ProductFormSkuEntry[] => {
+  if (!values.hasVariants) {
+    const sku = values.simpleVariant?.sku.trim() ?? EMPTY_SKU
+    if (sku === EMPTY_SKU) {
+      return []
     }
+
+    return [
+      {
+        formPath: "simpleVariant.sku",
+        sku,
+      },
+    ]
+  }
+
+  return values.variants.flatMap((variant, index): ProductFormSkuEntry[] => {
+    const sku = variant.sku.trim()
+    if (sku === EMPTY_SKU) {
+      return []
+    }
+
+    return [
+      {
+        formPath: `variants.${index}.sku`,
+        sku,
+      },
+    ]
   })
 }
 
-const buildMultiVariantRows = (
-  options: readonly ProductOptionDraft[],
-  variants: readonly VariantRowInput[],
-  ownedVariantIds: ReadonlySet<string>,
-): ProductVariantPersistRow[] => {
-  const normalizedOptions = normalizeOptionDrafts(options)
-  const combinations = buildVariantCombinations(normalizedOptions)
+export const collectSkusFromCatalogInput = (input: CatalogUpsertInput): string[] => {
+  if (!input.hasVariants) {
+    const sku = input.simpleVariant?.sku.trim() ?? EMPTY_SKU
 
-  return mergeVariantRows({ combinations, options, ownedVariantIds, variants })
-}
-
-const buildVariantPersistRows = (input: CatalogUpsertInput, ownedVariantIds: ReadonlySet<string>): ProductVariantPersistRow[] => {
-  if (input.hasVariants) {
-    return buildMultiVariantRows(input.options, input.variants, ownedVariantIds)
+    return sku === EMPTY_SKU ? [] : [sku]
   }
 
-  return buildSimpleVariantRows(
-    input.simpleVariant ?? {
-      compareAtPrice: "",
-      manageInventory: true,
-      price: "",
-      quantity: 0,
-      sku: "",
-    },
-    ownedVariantIds,
-  )
+  return input.variants.map((variant) => variant.sku.trim()).filter((sku) => sku !== EMPTY_SKU)
 }
 
-const buildOptionValueRows = (
-  options: readonly ProductOptionWithId[],
-): Pick<ProductCatalogReplacePayload, "optionValueRows"> & { readonly valueIdByOptionAndKey: Map<string, string> } => {
-  const optionValueRows: ProductCatalogReplacePayload["optionValueRows"] = []
-  const valueIdByOptionAndKey = new Map<string, string>()
-  for (const option of options) {
-    for (const [rank, value] of option.values.entries()) {
-      const id = value.id ?? uuidv7()
-      optionValueRows.push({ id, labels: normalizeProductAttributeLocaleMapForSave(value.labels), optionId: option.id, rank })
-      const labelKey = I18N.SUPPORTED_LOCALES.map((locale) => value.labels[locale].trim()).join("|")
-      valueIdByOptionAndKey.set(`${option.id}|${labelKey}`, id)
-      if (value.id !== undefined) {
-        valueIdByOptionAndKey.set(`${option.id}|${value.id}`, id)
-      }
+export const buildProductLevelAttributeRows = (values: ProductFormValues) => {
+  if (values.hasVariants) {
+    return []
+  }
+
+  return values.attributeValues
+    .filter((row) => row.attributeId.trim() !== "" && row.value.trim() !== "")
+    .map((row, index) => ({
+      attributeId: row.attributeId,
+      id: row.id,
+      rank: index,
+      value: row.value.trim(),
+    }))
+}
+
+export const buildVariantAttributeGroups = (values: ProductFormValues) =>
+  values.variants
+    .filter(
+      (
+        variant,
+      ): variant is typeof variant & {
+        id: string
+      } => variant.id !== undefined,
+    )
+    .map((variant) => ({
+      values: (variant.attributeValues ?? [])
+        .filter((row) => row.attributeId.trim() !== "" && row.value.trim() !== "")
+        .map((row, index) => ({
+          attributeId: row.attributeId,
+          id: row.id,
+          rank: index,
+          value: row.value.trim(),
+        })),
+      variantId: variant.id,
+    }))
+    .filter((group) => group.values.length > 0)
+
+export const buildAllProductImageRows = (values: ProductFormValues) => {
+  const sharedImages = galleryImagesToReplacePayload(values.images, values.mainImageId)
+  const variantImages = values.variants.flatMap((variant) => {
+    if (variant.id === undefined) {
+      return []
     }
-  }
 
-  return { optionValueRows, valueIdByOptionAndKey }
+    return galleryImagesToReplacePayload(variant.images ?? [], variant.mainImageId, variant.id)
+  })
+
+  return [...sharedImages, ...variantImages]
 }
 
-export const prepareCatalogReplacePayload = (
-  productId: string,
-  input: CatalogUpsertInput,
-  ownedVariantIds: ReadonlySet<string>,
-): ProductCatalogReplacePayload => {
-  const variantPersistRows = buildVariantPersistRows(input, ownedVariantIds)
-  const options = (input.hasVariants ? normalizeOptionDrafts(input.options) : []).map((option) => ({
-    id: option.id ?? uuidv7(),
-    titles: option.titles,
-    values: option.values,
-  }))
-  const optionRows = options.map((option) => ({
-    id: option.id,
-    productId,
-    titles: normalizeProductAttributeLocaleMapForSave(option.titles),
-  }))
-  const { optionValueRows, valueIdByOptionAndKey } = buildOptionValueRows(options)
-  const variantRows = variantPersistRows.map((variantRow) => ({
-    compareAtPrice: variantRow.compareAtPrice,
-    id: variantRow.id,
-    manageInventory: variantRow.manageInventory,
-    price: variantRow.price,
-    productId,
-    sku: variantRow.sku,
-    title: variantRow.title,
-  }))
+const collectErrorMessages = (error: unknown): string[] => {
+  const messages: string[] = []
+  let current: unknown = error
+  while (current instanceof Error) {
+    if (current.message !== "") {
+      messages.push(current.message)
+    }
+    current = current.cause
+  }
 
-  const inventoryRows = variantPersistRows.map((variantRow) => ({
-    id: uuidv7(),
-    quantityAvailable: variantRow.quantity,
-    quantityReserved: 0,
-    variantId: variantRow.id,
-  }))
-  const inventoryAdjustments = variantPersistRows.flatMap(({ id, loadedQuantity, quantity }) =>
-    ownedVariantIds.has(id) && loadedQuantity !== undefined && quantity !== loadedQuantity
-      ? [{ quantityChange: quantity - loadedQuantity, variantId: id }]
-      : [],
+  return messages
+}
+
+export const isDuplicateHandleMutationError = (error: unknown): boolean =>
+  collectErrorMessages(error).some(
+    (message) => message === PRODUCT_ERROR_CODES.DUPLICATE_HANDLE || message.includes(UNIQUE_PRODUCT_HANDLE_CONSTRAINT),
   )
 
-  const optionOnVariantRows = variantPersistRows.flatMap((variantRow) =>
-    Object.entries(variantRow.optionValues).flatMap(([optionId, valueKey]) => {
-      const valueId = valueIdByOptionAndKey.get(`${optionId}|${valueKey}`)
-      if (valueId === undefined) {
-        return []
-      }
-
-      return [
-        {
-          id: uuidv7(),
-          optionId,
-          valueId,
-          variantId: variantRow.id,
-        },
-      ]
-    }),
+export const isDuplicateSkuMutationError = (error: unknown): boolean =>
+  collectErrorMessages(error).some(
+    (message) => message === PRODUCT_ERROR_CODES.DUPLICATE_SKU || message.includes(UNIQUE_PRODUCT_VARIANT_SKU_CONSTRAINT),
   )
+
+export const isReservedInCheckoutMutationError = (error: unknown): boolean =>
+  collectErrorMessages(error).includes(PRODUCT_ERROR_CODES.RESERVED_IN_CHECKOUT)
+
+export const isStockChangedWhileEditingMutationError = (error: unknown): boolean =>
+  collectErrorMessages(error).some(
+    (message) => message === PRODUCT_ERROR_CODES.STOCK_CHANGED_WHILE_EDITING || message.includes(NEGATIVE_AVAILABLE_STOCK_CONSTRAINT),
+  )
+
+export const isDuplicateAttributeOnProductMutationError = (error: unknown): boolean =>
+  collectErrorMessages(error).some(
+    (message) =>
+      message.includes("attribute_on_product_product_attribute_uidx") ||
+      message.includes("attribute_on_product.product_id, attribute_on_product.attribute_id"),
+  )
+
+export const isDatabaseSchemaOutdatedMutationError = (error: unknown): boolean =>
+  collectErrorMessages(error).some(
+    (message) => message.includes("no such column") || (message.includes("Failed query") && message.includes('"titles"')),
+  )
+
+export const resolveProductMutationErrorMessage = (error: unknown): string => collectErrorMessages(error).at(-1) ?? ""
+
+export const rethrowProductMutationError = (error: unknown): never => {
+  if (isDuplicateHandleMutationError(error)) {
+    throw new AppError(ERROR_CODES.CONFLICT, PRODUCT_ERROR_CODES.DUPLICATE_HANDLE)
+  }
+
+  if (isDuplicateSkuMutationError(error)) {
+    throw new AppError(ERROR_CODES.CONFLICT, PRODUCT_ERROR_CODES.DUPLICATE_SKU)
+  }
+
+  if (isStockChangedWhileEditingMutationError(error)) {
+    throw new AppError(ERROR_CODES.CONFLICT, PRODUCT_ERROR_CODES.STOCK_CHANGED_WHILE_EDITING)
+  }
+
+  throw error
+}
+
+const normalizeVariantSnapshots = (product: AdminProductDetail): ProductAuditVariantSnapshot[] =>
+  product.variants
+    .map((variant) => ({
+      price: variant.price,
+      quantity: variant.inventory?.quantityAvailable ?? 0,
+      sku: variant.sku ?? "",
+    }))
+    .toSorted((left, right) => left.sku.localeCompare(right.sku))
+
+export const extractProductAuditSnapshot = (product: AdminProductDetail): ProductAuditSnapshot => {
+  const variants = normalizeVariantSnapshots(product)
 
   return {
-    inventoryAdjustments,
-    inventoryRows,
-    optionOnVariantRows,
-    optionRows,
-    optionValueRows,
-    variantRows,
+    status: product.status,
+    totalStock: variants.reduce((sum, variant) => sum + variant.quantity, 0),
+    variants,
   }
 }
 
-export const prepareOrganizationReplacePayload = (
-  productId: string,
-  input: CatalogUpsertInput,
-): ProductOrganizationReplacePayload | undefined => {
-  if (input.primaryCategoryId === "") {
-    return undefined
+const variantsChanged = (before: readonly ProductAuditVariantSnapshot[], after: readonly ProductAuditVariantSnapshot[]): boolean => {
+  if (before.length !== after.length) {
+    return true
+  }
+
+  return before.some((variant, index) => {
+    const next = after[index]
+
+    return variant.price !== next?.price || variant.quantity !== next.quantity || variant.sku !== next.sku
+  })
+}
+
+export const buildProductAuditChange = (
+  before: ProductAuditSnapshot | undefined,
+  after: ProductAuditSnapshot,
+): {
+  metadata?: Record<string, unknown>
+} => {
+  if (before === undefined) {
+    return {}
+  }
+
+  const baseChange = buildAuditChangeMetadata(before, after, ["status", "totalStock"])
+  const hasVariantChange = variantsChanged(before.variants, after.variants)
+  if (baseChange === undefined && !hasVariantChange) {
+    return {}
+  }
+
+  const changed = [...(baseChange?.changed ?? [])]
+  if (hasVariantChange) {
+    changed.push("variants")
+  }
+
+  const metadata: AuditChangeMetadata<ProductAuditSnapshot, ProductAuditSnapshot> = {
+    changed,
+    new: {
+      ...baseChange?.new,
+      ...(hasVariantChange
+        ? {
+            variants: [...after.variants],
+          }
+        : {}),
+    },
+    old: {
+      ...baseChange?.old,
+      ...(hasVariantChange
+        ? {
+            variants: [...before.variants],
+          }
+        : {}),
+    },
   }
 
   return {
-    categoryRows: buildCategoryOnProductRows(productId, input.primaryCategoryId, input.additionalCategoryIds),
-    collectionRows: buildCollectionOnProductRows(productId, input.collectionIds),
+    metadata: toAuditMetadataRecord(metadata),
   }
 }

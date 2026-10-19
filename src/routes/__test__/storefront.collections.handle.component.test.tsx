@@ -13,7 +13,7 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import {
   type StorefrontProductsSearch,
   type StorefrontScopedCollectionCatalogSearch,
-} from "~/src/modules/product/product.storefront-catalog"
+} from "~/src/modules/storefront-search/storefront-search.zod"
 
 import { ImagePrefetchService } from "~/src/lib/image"
 import { buildBreadcrumbStructuredData } from "~/src/lib/seo"

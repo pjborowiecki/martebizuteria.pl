@@ -4,12 +4,6 @@ import { type ColumnFiltersState, type PaginationState, type SortingState, type 
 import { useTranslations } from "use-intl/react"
 
 import {
-  type AdminProductsListColumnFilters,
-  hasAdminProductsListColumnFilters,
-  parseAdminProductsListColumnFilters,
-} from "~/src/modules/product/product.admin-list-filters"
-import { type AdminProductsListSort, parseAdminProductsListSort } from "~/src/modules/product/product.admin-list-sort"
-import {
   ADMIN_PRODUCTS_PAGE_SIZE,
   PRODUCT_TABLE_COLUMN_ID,
   PRODUCT_TABLE_COLUMN_PINNING,
@@ -18,7 +12,12 @@ import {
   type ProductStatus,
   type ProductVariantKind,
 } from "~/src/modules/product/product.constants"
-import { type Product } from "~/src/modules/product/product.types"
+import { type AdminProductsListColumnFilters, type AdminProductsListSort, type Product } from "~/src/modules/product/product.types"
+import {
+  hasAdminProductsListColumnFilters,
+  parseAdminProductsListColumnFilters,
+  parseAdminProductsListSort,
+} from "~/src/modules/product/product.utils"
 
 import { useAdminDebouncedTableSearch } from "~/src/presentation/components/custom/datagrid/hooks/use-admin-debounced-table-search"
 import { useDataGridInstance } from "~/src/presentation/components/custom/datagrid/hooks/use-data-grid-instance"

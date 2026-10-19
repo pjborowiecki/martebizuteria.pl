@@ -7,11 +7,10 @@ import { useTranslations } from "use-intl/react"
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
 import {
-  type StorefrontProductsSearch,
   applyStorefrontProductsSearchPatch,
   normalizeStorefrontProductsSearch,
-  storefrontProductsSearchSchema,
-} from "~/src/modules/product/product.storefront-catalog"
+} from "~/src/modules/storefront-search/storefront-search.utils"
+import { type StorefrontProductsSearch, storefrontProductsSearchSchema } from "~/src/modules/storefront-search/storefront-search.zod"
 
 import { buildBreadcrumbStructuredData } from "~/src/lib/seo"
 

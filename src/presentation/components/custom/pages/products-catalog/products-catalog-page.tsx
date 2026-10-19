@@ -7,16 +7,15 @@ import { type ProductCategory } from "~/src/modules/product-category/product-cat
 import { getCategoriesQuery } from "~/src/modules/product-category/use-cases/get-categories"
 import { type ProductCollection } from "~/src/modules/product-collection/product-collection.types"
 import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
+import { getStorefrontProductsPageQuery } from "~/src/modules/product/use-cases/get-storefront-products-page"
 import {
-  type StorefrontCatalogScope,
-  type StorefrontProductsSearch,
   buildEffectiveStorefrontProductsSearch,
   countActiveStorefrontProductFilters,
   hasActiveStorefrontProductFilters,
   normalizeStorefrontProductsSearch,
   storefrontCatalogFilterOptions,
-} from "~/src/modules/product/product.storefront-catalog"
-import { getStorefrontProductsPageQuery } from "~/src/modules/product/use-cases/get-storefront-products-page"
+} from "~/src/modules/storefront-search/storefront-search.utils"
+import { type StorefrontCatalogScope, type StorefrontProductsSearch } from "~/src/modules/storefront-search/storefront-search.zod"
 
 import { ProductsCatalogFilters } from "~/src/presentation/components/custom/pages/products-catalog/products-catalog-filters"
 import { ProductsCatalogGrid } from "~/src/presentation/components/custom/pages/products-catalog/products-catalog-grid"

@@ -5,7 +5,7 @@ const validated = vi.hoisted((): { parse?: (input: unknown) => unknown } => ({})
 const mutations = vi.hoisted(() => ({ findTakenSkus: vi.fn() }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
-vi.mock("~/src/modules/product/product.mutations", () => ({ findTakenSkus: mutations.findTakenSkus }))
+vi.mock("~/src/modules/product/product.accessors", () => ({ findTakenSkus: mutations.findTakenSkus }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {

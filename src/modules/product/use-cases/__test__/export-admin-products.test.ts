@@ -9,9 +9,9 @@ const collaborators = vi.hoisted(() => ({
 
 vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => import("~/src/platform/testing/mocks/display-preferences"))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: vi.fn() }))
-vi.mock("~/src/modules/product/product.accessors", () => ({ getAdminProductsFilteredList: collaborators.list }))
-vi.mock("~/src/modules/product/product.admin-list.server", () => ({
+vi.mock("~/src/modules/product/use-cases/list-admin-products.server", () => ({
   buildAdminProductsFilterParams: collaborators.filterParams,
+  getAdminProductsFilteredList: collaborators.list,
   loadAdminListAggregates: collaborators.aggregates,
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordListExportedAudit: collaborators.recordListExportedAudit }))

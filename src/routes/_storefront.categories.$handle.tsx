@@ -8,11 +8,13 @@ import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 import { resolveCategoryDescription, resolveCategoryTitle } from "~/src/modules/product-category/product-category.utils"
 import { getStorefrontCategoryQuery } from "~/src/modules/product-category/use-cases/get-storefront-category"
 import {
-  type StorefrontScopedCategoryCatalogSearch,
   applyStorefrontProductsSearchPatch,
   normalizeStorefrontProductsSearch,
+} from "~/src/modules/storefront-search/storefront-search.utils"
+import {
+  type StorefrontScopedCategoryCatalogSearch,
   storefrontScopedCategoryCatalogSearchSchema,
-} from "~/src/modules/product/product.storefront-catalog"
+} from "~/src/modules/storefront-search/storefront-search.zod"
 
 import { catalogDebugLog } from "~/src/lib/catalog-debug-log"
 import { buildBreadcrumbStructuredData } from "~/src/lib/seo"

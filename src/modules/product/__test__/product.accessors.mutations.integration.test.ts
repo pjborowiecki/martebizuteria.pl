@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
-import { type ProductCatalogReplacePayload, type ProductOrganizationReplacePayload } from "~/src/modules/product/product.utils"
+import { type ProductCatalogReplacePayload, type ProductOrganizationReplacePayload } from "~/src/modules/product/product.types"
 
 const { sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
@@ -17,6 +17,12 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
+const payments = vi.hoisted(() => ({
+  heldByOpenCheckout: vi.fn<(variantIds: readonly string[]) => Promise<boolean>>(),
+}))
+
+vi.mock("~/src/modules/payment/payment.accessors", () => ({ isAnyVariantHeldByOpenCheckout: payments.heldByOpenCheckout }))
+
 const { categoryOnProduct } = await import("~/src/modules/category-on-product/category-on-product.schema")
 const { collectionOnProduct } = await import("~/src/modules/collection-on-product/collection-on-product.schema")
 const { inventory } = await import("~/src/modules/inventory/inventory.schema")
@@ -29,8 +35,14 @@ const { productOption } = await import("~/src/modules/product-option/product-opt
 const { productVariant } = await import("~/src/modules/product-variant/product-variant.schema")
 const { product } = await import("~/src/modules/product/product.schema")
 const { runDrizzleBatch } = await import("~/src/integrations/drizzle-orm/drizzle.batch")
-const { deleteProducts, findTakenSkus, prepareProductCatalogBatch, prepareProductOrganizationBatch, setProductRanks } =
-  await import("~/src/modules/product/product.mutations")
+const {
+  assertVariantsNotHeldByOpenCheckouts,
+  deleteProducts,
+  findTakenSkus,
+  prepareProductCatalogBatch,
+  prepareProductOrganizationBatch,
+  setProductRanks,
+} = await import("~/src/modules/product/product.accessors")
 
 const { createTables } = await import("./product-sqlite-schema")
 
@@ -245,6 +257,24 @@ describe("setProductRanks", () => {
     await setProductRanks([])
 
     expect(rows("select rank from product")).toStrictEqual([{ rank: 3 }])
+  })
+})
+
+describe("assertVariantsNotHeldByOpenCheckouts", () => {
+  it("lets variants no open checkout holds go", async () => {
+    payments.heldByOpenCheckout.mockResolvedValue(false)
+
+    await expect(assertVariantsNotHeldByOpenCheckouts(["variant-1", "variant-2"])).resolves.toBeUndefined()
+    expect(payments.heldByOpenCheckout).toHaveBeenCalledWith(["variant-1", "variant-2"])
+  })
+
+  it("refuses while a checkout the customer can still pay holds one of them", async () => {
+    payments.heldByOpenCheckout.mockResolvedValue(true)
+
+    await expect(assertVariantsNotHeldByOpenCheckouts(["variant-1"])).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "RESERVED_IN_CHECKOUT",
+    })
   })
 })
 

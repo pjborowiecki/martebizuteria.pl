@@ -9,12 +9,8 @@ import { countOpenCheckouts } from "~/src/modules/checkout/use-cases/count-open-
 import { fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
 import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checkout.server"
 import { reserveInventoryForItems } from "~/src/modules/inventory/use-cases/reserve-inventory.server"
-import {
-  buildAllProductImageRows,
-  buildProductLevelAttributeRows,
-  buildVariantAttributeGroups,
-} from "~/src/modules/product/product-admin-persist.utils"
 import { PRODUCT_ADMIN_STATUS, PRODUCT_ERROR_CODES, type ProductAdminStatus } from "~/src/modules/product/product.constants"
+import { buildAllProductImageRows, buildProductLevelAttributeRows, buildVariantAttributeGroups } from "~/src/modules/product/product.utils"
 import { type ProductFormValues, parseCatalogUpsertInput } from "~/src/modules/product/product.zod"
 import { getAdminProduct } from "~/src/modules/product/use-cases/get-admin-product"
 import { updateCompleteProduct } from "~/src/modules/product/use-cases/update-complete-product"

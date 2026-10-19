@@ -16,3 +16,19 @@ export const STOREFRONT_SEARCH_QUERY_KEYS = {
   RESULTS: ["storefront-search"] as const,
   TRENDING: ["storefront-search", "trending"] as const,
 } as const
+
+export const STOREFRONT_PRODUCTS_SORT = {
+  NEWEST: "newest",
+  PRICE_ASC: "price_asc",
+  PRICE_DESC: "price_desc",
+  RANK: "rank",
+} as const
+
+export const STOREFRONT_PRODUCTS_SORTS = [
+  STOREFRONT_PRODUCTS_SORT.RANK,
+  STOREFRONT_PRODUCTS_SORT.NEWEST,
+  STOREFRONT_PRODUCTS_SORT.PRICE_ASC,
+  STOREFRONT_PRODUCTS_SORT.PRICE_DESC,
+] as const
+
+export type StorefrontProductsSort = (typeof STOREFRONT_PRODUCTS_SORTS)[number]

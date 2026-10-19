@@ -6,12 +6,16 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
 
 import { LIST_PAGE_FIRST, buildListPaginationResult, listPaginationParamsFromPage } from "~/src/modules/_core/utils/pagination"
-import { type AdminProductsListParams, getAdminProductsPage as productGetAdminProductsPage } from "~/src/modules/product/product.accessors"
-import { buildAdminProductsFilterParams, loadAdminListAggregates } from "~/src/modules/product/product.admin-list.server"
 import { ADMIN_PRODUCTS_PAGE_SIZE, PRODUCT_QUERY_KEYS, PRODUCT_QUERY_STALE_MS } from "~/src/modules/product/product.constants"
 import { type Product } from "~/src/modules/product/product.types"
 import { toAdminProductListItem } from "~/src/modules/product/product.utils"
 import { productZodSchemas } from "~/src/modules/product/product.zod"
+import {
+  type AdminProductsListParams,
+  buildAdminProductsFilterParams,
+  loadAdminListAggregates,
+  getAdminProductsPage as productGetAdminProductsPage,
+} from "~/src/modules/product/use-cases/list-admin-products.server"
 
 const buildAdminProductsListParams = (
   input: zod.output<typeof productZodSchemas.adminProductsPageInput>,
