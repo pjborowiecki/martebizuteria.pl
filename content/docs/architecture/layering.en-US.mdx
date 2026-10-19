@@ -5,13 +5,13 @@ description: "The five layers of the application, what each one is allowed to de
 
 ## The layers
 
-| Layer        | Lives in                                    | Decides                                                                                    |
-| ------------ | ------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Worker entry | `src/server.ts`                             | Which requests never reach React; locale redirects; `waitUntil` plumbing; security headers |
-| Delivery     | `src/routes`, `src/router.tsx`              | URL shape, guards, what a page preloads, head tags                                         |
-| Use cases    | `src/modules/*/use-cases`                   | Who may call an operation, what input is valid, which query keys it owns                   |
-| Data access  | `src/modules/*.accessors.ts`, `*.server.ts` | How a row is read or written; SQL shape; prepared statements                               |
-| Presentation | `src/presentation`, `src/providers`         | Markup, styles, which query options to read                                                |
+| Layer        | Lives in                            | Decides                                                                                    |
+| ------------ | ----------------------------------- | ------------------------------------------------------------------------------------------ |
+| Worker entry | `src/server.ts`                     | Which requests never reach React; locale redirects; `waitUntil` plumbing; security headers |
+| Delivery     | `src/routes`, `src/router.tsx`      | URL shape, guards, what a page preloads, head tags                                         |
+| Use cases    | `src/modules/*/use-cases`           | Who may call an operation, what input is valid, which query keys it owns                   |
+| Data access  | `src/modules/*/*.accessors.ts`      | How a row is read or written; SQL shape; prepared statements                               |
+| Presentation | `src/presentation`, `src/providers` | Markup, styles, which query options to read                                                |
 
 Vendors sit beside these layers rather than inside them: `src/integrations/{vendor}` configures a third party and hands the domain decisions back to the module that owns the data.
 

@@ -43,11 +43,10 @@ src/
 │   ├── _core/
 │   │   ├── constants/                 api, currency, customer-account, errors, placeholder,
 │   │   │                              country, timezone, tax
-│   │   └── utils/                     pagination, zod-fields, table-export, download,
-│   │                                  currency, datetime, iso-date, iso-datetime, json,
-│   │                                  column-filters, datetime-column-filter,
-│   │                                  search-conditions, polish-deadline, tax,
-│   │                                  account-page-meta
+│   │   └── utils/                     pagination, zod-fields, currency, datetime,
+│   │                                  iso-date, iso-datetime, json, column-filters,
+│   │                                  datetime-column-filter, search-conditions,
+│   │                                  polish-deadline, tax
 │   └── <feature>/                     One folder per database table of the same name
 │       ├── <feature>.schema.ts        Drizzle table and relations
 │       ├── <feature>.zod.ts           Input schemas shared by forms and server functions
@@ -55,7 +54,6 @@ src/
 │       ├── <feature>.types.ts         Derived row and input types
 │       ├── <feature>.utils.ts         Pure helpers
 │       ├── <feature>.accessors.ts     Data access with no authorization
-│       ├── <feature>.*.server.ts      Server-only helpers that are not use cases
 │       └── use-cases/<verb-noun>.ts   createServerFn plus its query or mutation options,
 │                                      or a server-only operation in <verb-noun>.server.ts
 ├── integrations/<vendor>/             <prefix>.<concern>.ts

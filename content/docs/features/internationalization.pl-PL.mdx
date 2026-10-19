@@ -308,7 +308,7 @@ Formularz Stripe Elements jest lokalizowany osobno, przez mapowanie języka apli
 4. Dodaj nowy język do map `titles`, `descriptions`, `bodies` i `revised_ats` każdego wiersza `content_page` w migracji, zaczynając od polskiego tekstu. Potem przetłumacz każdą stronę w edytorze pod `/admin/content`, który nie zapisze strony, dopóki każdy język nie ma wszystkich trzech pól.
 5. Uzupełnij mapy lokalizacji w JSON w D1, także `delivery_method.names`; `coerceProductLocaleMap` utrzymuje w tym czasie istniejące wiersze czytelnymi, a `resolveLocalizedString` wraca do polskiego. Formularz metody dostawy w ustawieniach ma po jednym polu nazwy na język w `NAME_FIELDS` (`delivery-method-fields.tsx`), więc potrzebuje też pola dla nowego języka.
 6. Dodaj język Stripe Elements w `STRIPE_LOCALES` (`stripe.client.ts`) — jest tam `satisfies Record<SupportedLocale, StripeElementLocale>`, więc kontroler typów sam wskaże to miejsce.
-7. Sprawdź `DELIVERY_COUNTRY_CODES` w `delivery-method.constants.ts`, według którego kasa odrzuca każdy inny kraj wysyłki, oraz `POSTAL_CODE_PATTERNS` i kraj dla `libphonenumber-js` w `checkout.validation.utils.ts`, jeśli nowy język oznacza nowy kraj wysyłki.
+7. Sprawdź `DELIVERY_COUNTRY_CODES` w `delivery-method.constants.ts`, według którego kasa odrzuca każdy inny kraj wysyłki, oraz `POSTAL_CODE_PATTERNS` i kraj dla `libphonenumber-js` w `checkout.zod.ts`, jeśli nowy język oznacza nowy kraj wysyłki.
 
 ## Powiązane strony
 

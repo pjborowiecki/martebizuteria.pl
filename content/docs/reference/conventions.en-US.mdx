@@ -7,7 +7,7 @@ Almost every rule on this page is enforced by a tool, not by review. `bun run ch
 
 ## Code
 
-- **Comments are for non-obvious constraints only.** Intent is carried by names and types; there is no code narration, no decorative separators and no comment that restates what a name already says. No lint rule checks this; review does. In practice the TypeScript and CSS in `src` contain none: even a constraint such as the column order `INSERT ... SELECT` in `checkout/checkout.utils.ts` must follow is carried by a name, `columnsInTableOrder`. Prose belongs in `.mdx` files like this one.
+- **Comments are for non-obvious constraints only.** Intent is carried by names and types; there is no code narration, no decorative separators and no comment that restates what a name already says. No lint rule checks this; review does. In practice the TypeScript and CSS in `src` contain none: even a constraint such as the column order `INSERT ... SELECT` in `checkout/checkout.accessors.ts` must follow is carried by a name, `columnsInTableOrder`. Prose belongs in `.mdx` files like this one.
 - **No escape hatches.** No `any`, no `as never`, no `as unknown as`, no `@ts-nocheck`, no `@ts-expect-error` and no lint suppressions added to make a rule pass. The one `as unknown as` in the repository is the D1 test double in `src/platform/testing/mocks/d1.ts`, under the override for that folder. Fix the cause instead. `reportUnusedDisableDirectives: "error"` means even a stale suppression fails the build.
 - **No barrels.** Import from the file that defines the symbol. There is no `index.ts` re-export layer, and no object whose only job is to collect unrelated functions.
 - **No forwarding layers.** A component that only passes its props through, a function that only calls one other function, or an alias for a plain `0` or `1` all get rejected in review and usually by `max-lines` pressure anyway.
@@ -109,7 +109,7 @@ A module owns one Drizzle table and everything derived from it. Inside a module:
 
 - `*.schema.ts` defines the table and its relations, and nothing else.
 - `*.accessors.ts` holds plain data access. Accessors have no notion of who is asking; they take arguments and talk to `db`.
-- `*.server.ts` holds server-only helpers, usually prepared statements.
+- `*.accessors.ts` also holds the prepared statements and batch builders; a server-only operation that is not an RPC endpoint is `use-cases/<verb>-<noun>.server.ts`. A module holds no other kind of file.
 - `use-cases/<verb>-<noun>.ts` holds one operation. It exports the `createServerFn` server function, plus the `queryOptions` or mutation key that callers use. Loaders, components and cache invalidation all import the same options object, so they share one query key by construction.
 - Constants — column lengths, status enums, error codes, query keys, mutation keys, table column ids — live in `*.constants.ts` as `SCREAMING_SNAKE_CASE` objects prefixed by the entity, for example `CATEGORY_QUERY_KEYS` and `CATEGORY_ERROR_CODES`.
 - `*.zod.ts` builds Zod schemas, usually from `drizzle-zod`'s `createSchemaFactory`, and exports them as a single `<entity>ZodSchemas` object plus named input schemas.
