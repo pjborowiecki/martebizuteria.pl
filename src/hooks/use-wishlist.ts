@@ -7,9 +7,9 @@ import { useTranslations } from "use-intl/react"
 
 import { getCurrentSessionQuery } from "~/src/integrations/better-auth/auth.session"
 
-import { listWishlistProductIdsQuery } from "~/src/modules/wishlist/use-cases/list-wishlist-product-ids"
-import { toggleWishlistItemMutation } from "~/src/modules/wishlist/use-cases/toggle-wishlist-item"
-import { WISHLIST_ERROR_CODES, WISHLIST_MAX_ITEMS, WISHLIST_QUERY_KEYS } from "~/src/modules/wishlist/wishlist.constants"
+import { listWishlistProductIdsQuery } from "~/src/modules/wishlist-item/use-cases/list-wishlist-product-ids"
+import { toggleWishlistItemMutation } from "~/src/modules/wishlist-item/use-cases/toggle-wishlist-item"
+import { WISHLIST_ERROR_CODES, WISHLIST_MAX_ITEMS, WISHLIST_QUERY_KEYS } from "~/src/modules/wishlist-item/wishlist-item.constants"
 
 import { ROUTES } from "~/src/routes"
 

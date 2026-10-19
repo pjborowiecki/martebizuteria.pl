@@ -6,7 +6,7 @@ import { MIGRATION, applyMigration } from "~/src/platform/testing/mocks/migratio
 
 import { CONTENT_PAGE_HANDLE } from "~/src/modules/content-page/content-page.constants"
 import { contentPageZodSchemas } from "~/src/modules/content-page/content-page.zod"
-import { WISHLIST_MAX_ITEMS } from "~/src/modules/wishlist/wishlist.constants"
+import { WISHLIST_MAX_ITEMS } from "~/src/modules/wishlist-item/wishlist-item.constants"
 
 const sqlite = new DatabaseSync(":memory:")
 

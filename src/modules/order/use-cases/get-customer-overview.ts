@@ -28,7 +28,7 @@ import { getPublishedProductsByCategoryIds, getPublishedProductsByCollectionHand
 import { LANDING_NEW_ARRIVALS_COLLECTION_HANDLE } from "~/src/modules/product/product.constants"
 import { resolveProductTitle } from "~/src/modules/product/product.utils"
 import { getUserById } from "~/src/modules/user/user.accessors"
-import { countWishlistItems } from "~/src/modules/wishlist/wishlist.accessors"
+import { countWishlistItems } from "~/src/modules/wishlist-item/wishlist-item.accessors"
 
 import { getProductImageUrl } from "~/src/lib/image"
 

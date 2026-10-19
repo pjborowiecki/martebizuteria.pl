@@ -22,8 +22,8 @@ import {
   getWishlistProductIds,
   getWishlistRows,
   insertWishlistItem,
-} from "~/src/modules/wishlist/wishlist.accessors"
-import { WISHLIST_MAX_ITEMS } from "~/src/modules/wishlist/wishlist.constants"
+} from "~/src/modules/wishlist-item/wishlist-item.accessors"
+import { WISHLIST_MAX_ITEMS } from "~/src/modules/wishlist-item/wishlist-item.constants"
 
 const CUSTOMER = "user-1"
 

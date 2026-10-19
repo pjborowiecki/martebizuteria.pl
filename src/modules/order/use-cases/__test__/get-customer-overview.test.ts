@@ -54,7 +54,7 @@ vi.mock("~/src/modules/order/order.accessors", () => ({
   getCustomerSpendStats: access.spendStats,
   getOrderItemsForOrders: access.orderItems,
 }))
-vi.mock("~/src/modules/wishlist/wishlist.accessors", () => ({ countWishlistItems: access.wishlistCount }))
+vi.mock("~/src/modules/wishlist-item/wishlist-item.accessors", () => ({ countWishlistItems: access.wishlistCount }))
 vi.mock("~/src/modules/product/product.accessors", () => ({
   getPublishedProductsByCategoryIds: access.publishedProductsByCategories,
   getPublishedProductsByCollectionHandle: access.publishedProducts,

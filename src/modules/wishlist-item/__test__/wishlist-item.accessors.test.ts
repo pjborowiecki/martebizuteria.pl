@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { countWishlistItems } from "~/src/modules/wishlist/wishlist.accessors"
+import { countWishlistItems } from "~/src/modules/wishlist-item/wishlist-item.accessors"
 
 const database = vi.hoisted(() => ({ rows: [] as unknown[] }))
 

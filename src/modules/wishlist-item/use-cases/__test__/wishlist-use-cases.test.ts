@@ -7,7 +7,7 @@ import {
   WISHLIST_MAX_ITEMS,
   WISHLIST_MUTATION_KEYS,
   WISHLIST_QUERY_KEYS,
-} from "~/src/modules/wishlist/wishlist.constants"
+} from "~/src/modules/wishlist-item/wishlist-item.constants"
 
 import { listWishlistItems, listWishlistItemsQuery } from "../list-wishlist-items"
 import { listWishlistProductIds, listWishlistProductIdsQuery } from "../list-wishlist-product-ids"
@@ -28,7 +28,7 @@ const database = vi.hoisted(() => ({ batch: vi.fn() }))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: { batch: database.batch } }))
 vi.mock("~/src/lib/image", () => ({ getProductImageUrl: (path: string | null) => (path === null ? undefined : `cdn/${path}`) }))
-vi.mock("~/src/modules/wishlist/wishlist.accessors", () => ({
+vi.mock("~/src/modules/wishlist-item/wishlist-item.accessors", () => ({
   deleteWishlistItemQuery: (userId: string, productId: string) => ({ delete: [userId, productId] }),
   getPublishedProductForCustomerQuery: (userId: string, productId: string) => ({ published: [userId, productId] }),
   getWishlistProductIds: accessors.getProductIds,

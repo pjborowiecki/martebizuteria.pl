@@ -29,14 +29,14 @@ vi.mock("@tanstack/react-router", async () => {
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({
   getCurrentSessionQuery: { queryFn: () => Promise.resolve(calls.session), queryKey: SESSION_KEY },
 }))
-vi.mock("~/src/modules/wishlist/use-cases/toggle-wishlist-item", () => ({
+vi.mock("~/src/modules/wishlist-item/use-cases/toggle-wishlist-item", () => ({
   toggleWishlistItemMutation: { mutationFn: calls.toggle, mutationKey: ["wishlist", "toggleItem"] },
 }))
-vi.mock("~/src/modules/wishlist/use-cases/list-wishlist-product-ids", () => ({
+vi.mock("~/src/modules/wishlist-item/use-cases/list-wishlist-product-ids", () => ({
   listWishlistProductIdsQuery: () => ({ queryFn: () => Promise.resolve(["product-1"]), queryKey: ["wishlist", "productIds"] }),
 }))
 
-import { WISHLIST_ERROR_CODES, WISHLIST_MAX_ITEMS, WISHLIST_QUERY_KEYS } from "~/src/modules/wishlist/wishlist.constants"
+import { WISHLIST_ERROR_CODES, WISHLIST_MAX_ITEMS, WISHLIST_QUERY_KEYS } from "~/src/modules/wishlist-item/wishlist-item.constants"
 
 import { useWishlist } from "~/src/hooks/use-wishlist"
 

@@ -1,4 +1,4 @@
-import { type wishlistItem } from "~/src/modules/wishlist/wishlist.schema"
+import { type wishlistItem } from "~/src/modules/wishlist-item/wishlist-item.schema"
 
 interface WishlistProduct {
   readonly addedAt: Date

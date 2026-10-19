@@ -2,7 +2,7 @@ import { getTableName } from "drizzle-orm"
 import { getTableConfig } from "drizzle-orm/sqlite-core"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { wishlistItem } from "~/src/modules/wishlist/wishlist.schema"
+import { wishlistItem } from "~/src/modules/wishlist-item/wishlist-item.schema"
 
 const config = getTableConfig(wishlistItem)
 

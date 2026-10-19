@@ -3,11 +3,11 @@ import { createServerFn } from "@tanstack/react-start"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
-import { getWishlistRows } from "~/src/modules/wishlist/wishlist.accessors"
-import { WISHLIST_QUERY_KEYS, WISHLIST_QUERY_STALE_MS } from "~/src/modules/wishlist/wishlist.constants"
-import { type Wishlist } from "~/src/modules/wishlist/wishlist.types"
-import { toWishlistProduct } from "~/src/modules/wishlist/wishlist.utils"
-import { wishlistZodSchemas } from "~/src/modules/wishlist/wishlist.zod"
+import { getWishlistRows } from "~/src/modules/wishlist-item/wishlist-item.accessors"
+import { WISHLIST_QUERY_KEYS, WISHLIST_QUERY_STALE_MS } from "~/src/modules/wishlist-item/wishlist-item.constants"
+import { type Wishlist } from "~/src/modules/wishlist-item/wishlist-item.types"
+import { toWishlistProduct } from "~/src/modules/wishlist-item/wishlist-item.utils"
+import { wishlistZodSchemas } from "~/src/modules/wishlist-item/wishlist-item.zod"
 
 export const listWishlistItems = createServerFn({ method: "GET" })
   .middleware([authorized()])
