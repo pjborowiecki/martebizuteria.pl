@@ -50,7 +50,7 @@ vi.mock("~/src/modules/storefront-search/use-cases/get-trending-searches", async
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { useCartStore } from "~/src/modules/cart/cart.store"
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { Navigation } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation"
 import { NAVIGATION_MENU_ID } from "~/src/presentation/components/custom/pages/landing-page/navigation/constants"

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react"
 
-import { useCartStore } from "~/src/modules/cart/cart.store"
 import { getVariantQuantityAvailable, isVariantPurchasable } from "~/src/modules/inventory/inventory.utils"
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils"
 import { type Product } from "~/src/modules/product/product.types"
 import { trackCartItemAdded } from "~/src/modules/user/user.tracking"
+
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { getProductImageUrl } from "~/src/lib/image"
 

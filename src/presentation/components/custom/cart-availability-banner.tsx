@@ -3,9 +3,8 @@ import { type JSX } from "react"
 import { AlertTriangle } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
-import { useCartStore } from "~/src/modules/cart/cart.store"
-
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 export const CartAvailabilityBanner = (): JSX.Element | undefined => {
   const t = useTranslations("pages.cart.availability")

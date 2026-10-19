@@ -5,13 +5,14 @@ import { useRouteContext } from "@tanstack/react-router"
 
 import { getCurrentSessionQuery } from "~/src/integrations/better-auth/auth.session"
 
-import { useCartStore } from "~/src/modules/cart/cart.store"
 import {
   resetCartAbandonedTracking,
   shouldTrackStorefrontPath,
   trackCartAbandoned,
   trackPageViewed,
 } from "~/src/modules/user/user.tracking"
+
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 export const CustomerActivityTracker = (): JSX.Element | undefined => {
   const { data: session } = useQuery(getCurrentSessionQuery)

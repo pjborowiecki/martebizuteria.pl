@@ -44,7 +44,7 @@ import {
 import { ProcessingCheckoutSessionError } from "~/src/integrations/stripe/stripe.checkout.processing"
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
-import { type CartItem } from "~/src/modules/cart/cart.store"
+import { type CartItem } from "~/src/modules/cart/cart.types"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 
 const shippingValues: CheckoutFormSchema = {

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { CART_LINE_QUANTITY_MAX } from "~/src/modules/cart/cart.constants"
-import type { CartItem } from "~/src/modules/cart/cart.store"
+import type { CartItem } from "~/src/modules/cart/cart.types"
 
 const STORAGE_KEY = "marte-cart"
 
@@ -38,7 +38,7 @@ const storage: Storage = {
 
 vi.stubGlobal("window", { localStorage: storage })
 
-const { useCartStore } = await import("~/src/modules/cart/cart.store")
+const { useCartStore } = await import("~/src/hooks/use-cart-store")
 
 const rehydrate = async (stored: unknown): Promise<void> => {
   storage.setItem(STORAGE_KEY, JSON.stringify(stored))

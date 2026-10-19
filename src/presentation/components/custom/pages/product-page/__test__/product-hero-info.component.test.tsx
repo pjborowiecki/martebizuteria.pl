@@ -5,8 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { CART_LINE_QUANTITY_MAX } from "~/src/modules/cart/cart.constants"
-import { useCartStore } from "~/src/modules/cart/cart.store"
 import { type Product } from "~/src/modules/product/product.types"
+
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { ProductHeroInfo } from "~/src/presentation/components/custom/pages/product-page/product-hero-info"
 

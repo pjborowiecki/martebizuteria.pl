@@ -37,7 +37,6 @@ import { CHECKOUT_PAYMENT_METHOD_ORDER } from "~/src/integrations/stripe/stripe.
 import { CHECKOUT_ERROR_CODES, getCheckoutErrorKey } from "~/src/integrations/stripe/stripe.errors"
 
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
-import { useCartStore } from "~/src/modules/cart/cart.store"
 import { toInternationalCheckoutPhone } from "~/src/modules/checkout/checkout.validation.utils"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 import { type CheckoutSessionStatus, checkoutSessionStatusQuery } from "~/src/modules/checkout/use-cases/get-checkout-session-status"
@@ -45,6 +44,7 @@ import { DELIVERY_METHOD_QUERY_KEYS } from "~/src/modules/delivery-method/delive
 import { STORE_SETTING_QUERY_KEYS } from "~/src/modules/store-setting/store-setting.constants"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { Button, buttonVariants } from "~/src/presentation/components/shadcn/button"
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"

@@ -1,8 +1,10 @@
 import { act, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { type CartItem, useCartStore } from "~/src/modules/cart/cart.store"
+import { type CartItem } from "~/src/modules/cart/cart.types"
 import { type Product } from "~/src/modules/product/product.types"
+
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { useProductHeroCart } from "~/src/presentation/components/custom/pages/product-page/use-product-hero-cart"
 

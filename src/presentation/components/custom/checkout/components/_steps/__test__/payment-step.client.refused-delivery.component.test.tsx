@@ -73,8 +73,9 @@ vi.mock("@stripe/react-stripe-js/checkout", () => ({
 }))
 
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
-import { useCartStore } from "~/src/modules/cart/cart.store"
 import { DELIVERY_METHOD_QUERY_KEYS } from "~/src/modules/delivery-method/delivery-method.constants"
+
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { PaymentStep } from "~/src/presentation/components/custom/checkout/components/_steps/payment-step.client"
 import { CHECKOUT_STEP_ID } from "~/src/presentation/components/custom/checkout/lib/checkout-steps"

@@ -6,11 +6,11 @@ import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
-import { useCartStore } from "~/src/modules/cart/cart.store"
 import { toggleWishlistItemMutation } from "~/src/modules/wishlist-item/use-cases/toggle-wishlist-item"
 import { WISHLIST_QUERY_KEYS } from "~/src/modules/wishlist-item/wishlist-item.constants"
 import { type Wishlist } from "~/src/modules/wishlist-item/wishlist-item.types"
 
+import { useCartStore } from "~/src/hooks/use-cart-store"
 import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Button } from "~/src/presentation/components/shadcn/button"

@@ -5,8 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { CART_LINE_QUANTITY_MAX } from "~/src/modules/cart/cart.constants"
-import { type CartItem, useCartStore } from "~/src/modules/cart/cart.store"
+import { type CartItem } from "~/src/modules/cart/cart.types"
 import { type CartAvailabilityIssue } from "~/src/modules/cart/use-cases/check-cart-availability"
+
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { CartItemCard } from "~/src/presentation/components/custom/pages/cart-page/cart-item-card"
 

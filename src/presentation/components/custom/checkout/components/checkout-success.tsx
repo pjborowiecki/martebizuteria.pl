@@ -8,12 +8,12 @@ import { formatInpostLockerAddress } from "~/src/integrations/inpost/inpost.util
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
-import { useCartStore } from "~/src/modules/cart/cart.store"
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 import { getOrderConfirmationQuery } from "~/src/modules/order/use-cases/get-order-confirmation"
 import { resetCartAbandonedTracking } from "~/src/modules/user/user.tracking"
 
+import { useCartStore } from "~/src/hooks/use-cart-store"
 import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"

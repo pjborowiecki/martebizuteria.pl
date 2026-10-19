@@ -6,9 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { useCartStore } from "~/src/modules/cart/cart.store"
 import { WISHLIST_QUERY_KEYS } from "~/src/modules/wishlist-item/wishlist-item.constants"
 import { type Wishlist } from "~/src/modules/wishlist-item/wishlist-item.types"
+
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 const calls = vi.hoisted(() => ({
   toastError: vi.fn<(message: string) => void>(),

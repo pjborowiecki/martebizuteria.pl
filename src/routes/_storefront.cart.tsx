@@ -9,10 +9,10 @@ import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { formatPrice } from "~/src/modules/_core/utils/currency"
-import { useCartStore } from "~/src/modules/cart/cart.store"
 import { getSalesStatusQuery } from "~/src/modules/store-setting/use-cases/get-sales-status"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
+import { useCartStore } from "~/src/hooks/use-cart-store"
 import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { type PageMeta, pageHead } from "~/src/lib/seo"

@@ -5,8 +5,9 @@ import { useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
-import { useCartHydrated, useCartStore } from "~/src/modules/cart/cart.store"
 import { type CheckoutSessionStatus, checkoutSessionStatusQuery } from "~/src/modules/checkout/use-cases/get-checkout-session-status"
+
+import { useCartHydrated, useCartStore } from "~/src/hooks/use-cart-store"
 
 import {
   forgetCheckoutSessionId,

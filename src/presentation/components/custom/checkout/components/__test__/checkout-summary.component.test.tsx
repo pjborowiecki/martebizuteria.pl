@@ -65,9 +65,10 @@ vi.mock("@tanstack/react-router", async () => {
 
 import { type CheckoutSession, buildCheckoutValuesFingerprint } from "~/src/integrations/stripe/stripe.checkout"
 
-import { useCartStore } from "~/src/modules/cart/cart.store"
 import { type Discount } from "~/src/modules/discount/discount.types"
 import { type OrderTotals } from "~/src/modules/order/order.totals"
+
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { CheckoutTextField } from "~/src/presentation/components/custom/checkout/components/checkout-fields"
 import { CheckoutFormProvider, useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"

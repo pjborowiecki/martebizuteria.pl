@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test"
 
 import { MIN_PRICE_CENTS } from "~/src/modules/_core/utils/currency"
-import { getCartLineTotalCents, getCartLineUnitPriceCents } from "~/src/modules/cart/cart.pricing"
+import { getCartLineTotalCents, getCartLineUnitPriceCents } from "~/src/modules/cart/cart.utils"
 
 describe("getCartLineUnitPriceCents", () => {
   it("trusts a stored minor-unit price at or above the payment floor", () => {

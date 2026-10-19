@@ -6,8 +6,8 @@ import { ProcessingCheckoutSessionError } from "~/src/integrations/stripe/stripe
 import { CHECKOUT_SESSION_LIFETIME_SECONDS } from "~/src/integrations/stripe/stripe.constants"
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
-import { type CartUnitPrice, getCartLineUnitPriceCents } from "~/src/modules/cart/cart.pricing"
-import { type CartItem } from "~/src/modules/cart/cart.store"
+import { type CartItem, type CartUnitPrice } from "~/src/modules/cart/cart.types"
+import { getCartLineUnitPriceCents } from "~/src/modules/cart/cart.utils"
 import { toInternationalCheckoutPhone } from "~/src/modules/checkout/checkout.validation.utils"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 import { type OrderTotals } from "~/src/modules/order/order.totals"

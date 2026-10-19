@@ -6,7 +6,7 @@ import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
 import { CHECKOUT_SESSION_ID_MAX_LENGTH } from "~/src/integrations/stripe/stripe.constants"
 
 import { CART_LINES_MAX, CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
-import { type CartUnitPrice } from "~/src/modules/cart/cart.pricing"
+import { type CartUnitPrice } from "~/src/modules/cart/cart.types"
 import { getAvailabilityByVariantIds } from "~/src/modules/inventory/inventory.accessors"
 import { sumHeldQuantity } from "~/src/modules/inventory/inventory.utils"
 import { getHeldLinesByTransactionId } from "~/src/modules/payment/payment.accessors"

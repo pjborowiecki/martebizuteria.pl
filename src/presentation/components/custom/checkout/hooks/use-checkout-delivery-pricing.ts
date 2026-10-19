@@ -3,11 +3,12 @@ import { useMemo, useSyncExternalStore } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useWatch } from "react-hook-form"
 
-import { useCartStore } from "~/src/modules/cart/cart.store"
 import { resolveDeliveryPrice, resolveFreeDeliveryShortfall } from "~/src/modules/delivery-method/delivery-method.utils"
 import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
 import { type DiscountCheckBasket, validateDiscountCodeQuery } from "~/src/modules/discount/use-cases/validate-discount-code"
 import { getFreeDeliveryQuery } from "~/src/modules/store-setting/use-cases/get-free-delivery"
+
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
 import {

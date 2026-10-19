@@ -96,7 +96,9 @@ vi.mock("~/src/presentation/components/custom/pages/cart-page/cart-summary", () 
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { type CartItem, useCartStore } from "~/src/modules/cart/cart.store"
+import { type CartItem } from "~/src/modules/cart/cart.types"
+
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { APP_NAME } from "~/src/presentation/branding/app"
 

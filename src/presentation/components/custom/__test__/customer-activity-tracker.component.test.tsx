@@ -32,8 +32,10 @@ vi.mock("@tanstack/react-router", async () => {
   }
 })
 
-import { type CartItem, useCartStore } from "~/src/modules/cart/cart.store"
+import { type CartItem } from "~/src/modules/cart/cart.types"
 import { CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY } from "~/src/modules/user/user.constants"
+
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { CustomerActivityTracker } from "~/src/presentation/components/custom/customer-activity-tracker"
 

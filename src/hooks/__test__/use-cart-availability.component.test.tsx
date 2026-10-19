@@ -6,9 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { TestProviders, createTestRouter } from "~/src/platform/testing/lib/render"
 
-import { type CartItem, useCartStore } from "~/src/modules/cart/cart.store"
+import { type CartItem } from "~/src/modules/cart/cart.types"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { saveCheckoutSession } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
 
