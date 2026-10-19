@@ -2,7 +2,7 @@ import "@tanstack/react-start/server-only"
 
 import { listContentPages } from "~/src/modules/content-page/content-page.accessors"
 import { CONTENT_PAGE_PATHS } from "~/src/modules/content-page/content-page.constants"
-import { getStorefrontCategoryHandlesQuery } from "~/src/modules/product-category/product-category.server"
+import { getStorefrontCategoryHandlesQuery } from "~/src/modules/product-category/product-category.accessors"
 import { getStorefrontCollectionsQuery } from "~/src/modules/product-collection/product-collection.accessors"
 import { getPublishedInStockProductHandlesQuery } from "~/src/modules/product/product.accessors"
 

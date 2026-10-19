@@ -11,7 +11,7 @@ import {
   buildListPaginationResult,
   listPaginationParamsFromPage,
 } from "~/src/modules/_core/utils/pagination"
-import { getCategoryHierarchyQuery, getStorefrontCategoryByHandleQuery } from "~/src/modules/product-category/product-category.server"
+import { getCategoryHierarchyQuery, getStorefrontCategoryByHandleQuery } from "~/src/modules/product-category/product-category.accessors"
 import { collectDescendantCategoryIds } from "~/src/modules/product-category/product-category.utils"
 import { getStorefrontCollectionByHandleQuery } from "~/src/modules/product-collection/product-collection.accessors"
 import {

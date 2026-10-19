@@ -9,9 +9,9 @@ import { scheduleCategoryCatalogInvalidation } from "~/src/integrations/realtime
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordCatalogCategoryUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { normalizeProductAttributeLocaleMapForSave } from "~/src/modules/product-attribute/product-attribute.utils"
+import { getAdminCategoriesQuery, getCategoryByHandleQuery } from "~/src/modules/product-category/product-category.accessors"
 import { CATEGORY_ERROR_CODES } from "~/src/modules/product-category/product-category.constants"
 import { productCategory } from "~/src/modules/product-category/product-category.schema"
-import { getAdminCategoriesQuery, getCategoryByHandleQuery } from "~/src/modules/product-category/product-category.server"
 import {
   normalizeCategoryParentIdForMutation,
   normalizeOptionalCategoryLocaleMapForSave,

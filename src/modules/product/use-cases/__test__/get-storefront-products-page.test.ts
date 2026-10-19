@@ -21,7 +21,7 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
   withRequest: {},
 }))
 
-vi.mock("~/src/modules/product-category/product-category.server", () => ({
+vi.mock("~/src/modules/product-category/product-category.accessors", () => ({
   getCategoryHierarchyQuery: { execute: access.hierarchy },
   getStorefrontCategoryByHandleQuery: { execute: access.categoryByHandle },
 }))

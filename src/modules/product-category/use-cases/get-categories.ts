@@ -3,8 +3,8 @@ import { createServerFn } from "@tanstack/react-start"
 
 import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
 
+import { getStorefrontRootCategoriesQuery } from "~/src/modules/product-category/product-category.accessors"
 import { CATEGORY_QUERY_KEYS, CATEGORY_QUERY_STALE_MS } from "~/src/modules/product-category/product-category.constants"
-import { getStorefrontRootCategoriesQuery } from "~/src/modules/product-category/product-category.server"
 import { withActiveSortedChildren } from "~/src/modules/product-category/product-category.utils"
 import { getPublishedProductCountsByRootCategory } from "~/src/modules/product/product.storefront-catalog.accessors"
 

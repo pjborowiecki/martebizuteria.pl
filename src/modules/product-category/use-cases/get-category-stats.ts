@@ -4,8 +4,8 @@ import { createServerFn } from "@tanstack/react-start"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { getCategoryProductTotalQuery } from "~/src/modules/category-on-product/category-on-product.accessors"
+import { getCategoryStatusCountsQuery } from "~/src/modules/product-category/product-category.accessors"
 import { CATEGORY_QUERY_KEYS, CATEGORY_QUERY_STALE_MS } from "~/src/modules/product-category/product-category.constants"
-import { getCategoryStatusCountsQuery } from "~/src/modules/product-category/product-category.server"
 import { computeCategoryStats } from "~/src/modules/product-category/product-category.utils"
 
 export const getCategoryStats = createServerFn({ method: "GET" })

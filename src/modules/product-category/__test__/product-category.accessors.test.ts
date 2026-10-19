@@ -8,7 +8,7 @@ import {
   getCategoriesByIds,
   getNextRankForParent,
   setCategoryRanks,
-} from "~/src/modules/product-category/product-category.server"
+} from "~/src/modules/product-category/product-category.accessors"
 
 const access = vi.hoisted(() => ({
   batch: vi.fn<(statements: readonly unknown[]) => Promise<unknown[]>>(),

@@ -4,8 +4,8 @@ import type * as zod from "zod"
 
 import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
 
+import { getStorefrontCategoryByHandleQuery } from "~/src/modules/product-category/product-category.accessors"
 import { CATEGORY_QUERY_KEYS, CATEGORY_QUERY_STALE_MS } from "~/src/modules/product-category/product-category.constants"
-import { getStorefrontCategoryByHandleQuery } from "~/src/modules/product-category/product-category.server"
 import { productCategoryZodSchemas } from "~/src/modules/product-category/product-category.zod"
 
 export const getStorefrontCategory = createServerFn({ method: "GET" })

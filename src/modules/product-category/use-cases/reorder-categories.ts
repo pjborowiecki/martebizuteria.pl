@@ -5,8 +5,8 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleCategoryCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
+import { getAdminCategoriesQuery, setCategoryRanks } from "~/src/modules/product-category/product-category.accessors"
 import { CATEGORY_MUTATION_KEYS } from "~/src/modules/product-category/product-category.constants"
-import { getAdminCategoriesQuery, setCategoryRanks } from "~/src/modules/product-category/product-category.server"
 import { buildCategoryRankUpdates } from "~/src/modules/product-category/product-category.utils"
 import { productCategoryZodSchemas } from "~/src/modules/product-category/product-category.zod"
 

@@ -14,7 +14,7 @@ const access = vi.hoisted(() => ({
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
-vi.mock("~/src/modules/product-category/product-category.server", () => ({
+vi.mock("~/src/modules/product-category/product-category.accessors", () => ({
   getAdminCategoriesQuery: { execute: access.query },
   getCategoryStatusCountsQuery: { execute: access.query },
 }))
