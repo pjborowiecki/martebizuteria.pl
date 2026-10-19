@@ -5,7 +5,7 @@ description: "Create a feature module: the Drizzle table, Zod schemas, constants
 
 A module is one feature built around one database table. It lives in `src/modules/{feature}/` and owns everything that is true about that table: its columns, its validation rules, its query keys, its row types and its operations. `src/modules/` currently holds 44 folders: `_core` and 43 feature modules, 40 of which define a table in `{feature}.schema.ts`. The smallest complete one to read first is `src/modules/address`; the richest is `src/modules/order` (53 source files, 30 of them in `use-cases/`), followed by `src/modules/product`.
 
-Server logic that belongs to no table does not get a module. Request-scoped helpers go in `src/lib/`, vendor adapters go in `src/integrations/{vendor}/`, and shared primitives that several modules need go in `src/modules/_core/`. Three existing folders have no table of their own — `admin-dashboard` and `customer-account` read other modules' tables, and `customer-activity` writes customer events into the audit log — so do not take them as the pattern for a new folder.
+Server logic that belongs to no table does not get a module. Request-scoped helpers go in `src/lib/`, vendor adapters go in `src/integrations/{vendor}/`, and shared primitives that several modules need go in `src/modules/_core/`. A folder in `src/modules` exists only for a database table of the same name, and `_core` is the one folder without a table. An operation that reads several tables goes to the module of the table it is about: the customer's order list is in `order`, the admin dashboard, the shop's sales overview, is in `order` too, and the browsing activity a customer records is in `user`.
 
 ## The files
 
@@ -17,7 +17,7 @@ Server logic that belongs to no table does not get a module. Request-scoped help
 | `{feature}.types.ts`              | Row types inferred from the table, exported as one interface per module                                    |
 | `{feature}.utils.ts`              | Pure functions — row mapping, normalisation, label resolution                                              |
 | `{feature}.accessors.ts`          | Reusable database reads and writes that carry real behaviour                                               |
-| `{feature}.accessors.server.ts`   | The same, kept server-only by its name (`customer-account`, `storefront-search`)                           |
+| `{feature}.accessors.server.ts`   | The same, kept server-only by its name (`storefront-search`)                                               |
 | `{feature}.*.server.ts`           | Server-only helpers: prepared queries, filter builders, aggregate loaders, audit and e-mail plumbing       |
 | `use-cases/{verb-noun}.ts`        | One server function per file, with its query or mutation options                                           |
 | `use-cases/{verb-noun}.server.ts` | One server-only operation per file, exported as a plain async function: e-mails, clean-ups, checkout steps |
@@ -138,7 +138,7 @@ const categoryCreateInputSchema = zod.object({
 
 ## 4. Declare the constants
 
-`{feature}.constants.ts` holds the values other layers need to agree on. Nothing in it may import from `src/presentation`. The one existing exception is `CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX`, a plain number from `src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-datagrid.constants.ts` that six constants files (`discount`, `newsletter`, `product-attribute`, `product-category`, `product-collection` and `user`) use as their admin grid's record-id column width; it is not a pattern to copy.
+`{feature}.constants.ts` holds the values other layers need to agree on. Nothing in it may import from `src/presentation`. The one existing exception is `CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX`, a plain number from `src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-datagrid.constants.ts` that six constants files (`discount`, `newsletter-subscriber`, `product-attribute`, `product-category`, `product-collection` and `user`) use as their admin grid's record-id column width; it is not a pattern to copy.
 
 ```ts
 export const ADDRESS_QUERY_KEYS = {

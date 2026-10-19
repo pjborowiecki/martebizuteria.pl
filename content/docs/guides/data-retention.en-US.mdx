@@ -71,14 +71,14 @@ The handler imports `src/lib/retention.ts` only when a run starts, the same way 
 
 `enforceRetentionPeriods` in `src/lib/retention.ts` holds the periods, `RETENTION_DAYS` and `RETENTION_MONTHS`, turns them into cut-off dates from the time the run was scheduled for, and runs one use case per kind of row:
 
-| Kind in the log         | Use case                                                              |
-| ----------------------- | --------------------------------------------------------------------- |
-| `auditLogEntries`       | `audit-log/use-cases/delete-expired-audit-logs.server.ts`             |
-| `endedCheckouts`        | `checkout/use-cases/anonymize-ended-checkouts.server.ts`              |
-| `newsletterSubscribers` | `newsletter/use-cases/delete-lapsed-newsletter-subscribers.server.ts` |
-| `rateLimits`            | `rate-limit/use-cases/delete-expired-rate-limits.server.ts`           |
-| `sessions`              | `session/use-cases/delete-expired-sessions.server.ts`                 |
-| `verifications`         | `verification/use-cases/delete-expired-verifications.server.ts`       |
+| Kind in the log         | Use case                                                                         |
+| ----------------------- | -------------------------------------------------------------------------------- |
+| `auditLogEntries`       | `audit-log/use-cases/delete-expired-audit-logs.server.ts`                        |
+| `endedCheckouts`        | `checkout/use-cases/anonymize-ended-checkouts.server.ts`                         |
+| `newsletterSubscribers` | `newsletter-subscriber/use-cases/delete-lapsed-newsletter-subscribers.server.ts` |
+| `rateLimits`            | `rate-limit/use-cases/delete-expired-rate-limits.server.ts`                      |
+| `sessions`              | `session/use-cases/delete-expired-sessions.server.ts`                            |
+| `verifications`         | `verification/use-cases/delete-expired-verifications.server.ts`                  |
 
 The six run at the same time, and D1 executes their statements one after another.
 

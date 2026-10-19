@@ -232,7 +232,7 @@ Zmianę adresu klienta rozpoczętą przez obsługę klienta na stronie klienta z
 
 ## Aktywność klienta
 
-`recordCustomerActivity` (`src/modules/customer-activity/use-cases/record-customer-activity.ts`) jest publiczne, ale bez sesji zwraca `{ ok: true, recorded: false }` bez zapisu, więc ruch anonimowy nigdy nie jest logowany. Stoi za `withRateLimit("record-customer-activity", RATE_LIMITS.BROWSING)`: 120 wywołań na minutę z jednego adresu klienta, we własnym koszyku limitu, czego wyświetlenia stron i dodania do koszyka przez klienta nigdy nie osiągają, a co nie pozwala jednemu adresowi zapełnić dziennika zdarzeń. Po przekroczeniu limitu odpowiada `TOO_MANY_REQUESTS` i niczego nie zapisuje.
+`recordCustomerActivity` (`src/modules/user/use-cases/record-customer-activity.ts`) jest publiczne, ale bez sesji zwraca `{ ok: true, recorded: false }` bez zapisu, więc ruch anonimowy nigdy nie jest logowany. Stoi za `withRateLimit("record-customer-activity", RATE_LIMITS.BROWSING)`: 120 wywołań na minutę z jednego adresu klienta, we własnym koszyku limitu, czego wyświetlenia stron i dodania do koszyka przez klienta nigdy nie osiągają, a co nie pozwala jednemu adresowi zapełnić dziennika zdarzeń. Po przekroczeniu limitu odpowiada `TOO_MANY_REQUESTS` i niczego nie zapisuje.
 
 Obsługuje trzy rodzaje zdarzeń, każde zapisywane jako działanie zalogowanego klienta, z jego adresem e-mail jako celem i identyfikatorem konta jako zasobem:
 
@@ -244,7 +244,7 @@ Obsługuje trzy rodzaje zdarzeń, każde zapisywane jako działanie zalogowanego
 
 Porzucone koszyki zapisane przed 17 października 2026 powtarzały w szczególe imię i nazwisko klienta. Migracja `20261017100000_cart_abandoned_without_name.sql` czyści szczegół każdego wpisu `customer.cart_abandoned`, którego szczegół jest dokładnie nazwą jego aktora (`actor_name`).
 
-Strona klienta to `customer-activity.tracking.ts`, którego `trackCartItemAdded`, `trackCartAbandoned` i `trackPageViewed` są owinięte w `createClientOnlyFn` i pochłaniają własne błędy (`fireAndForget`), więc śledzenie nigdy nie zepsuje strony. Odsłony i porzucenia są deduplikowane w obrębie sesji przez klucze `sessionStorage` z prefiksami `customer-activity:page-view:` i `customer-activity:cart-abandoned-sent`.
+Strona klienta to `user.tracking.ts`, którego `trackCartItemAdded`, `trackCartAbandoned` i `trackPageViewed` są owinięte w `createClientOnlyFn` i pochłaniają własne błędy (`fireAndForget`), więc śledzenie nigdy nie zepsuje strony. Odsłony i porzucenia są deduplikowane w obrębie sesji przez klucze `sessionStorage` z prefiksami `customer-activity:page-view:` i `customer-activity:cart-abandoned-sent`.
 
 To właśnie umożliwia wskaźnik „odsłony stron” na pulpicie — zobacz [Pulpit admina](/docs/features/admin-dashboard) — i oznacza też, że liczba dotyczy wyłącznie odrębnych stron na sesję dla zalogowanych klientów.
 

@@ -232,7 +232,7 @@ A change of a customer's address that customer care starts from the customer pag
 
 ## Customer activity
 
-`recordCustomerActivity` (`src/modules/customer-activity/use-cases/record-customer-activity.ts`) is public but returns `{ ok: true, recorded: false }` without writing when there is no session, so anonymous traffic is never logged. It sits behind `withRateLimit("record-customer-activity", RATE_LIMITS.BROWSING)`: 120 calls a minute per client address, in a bucket of its own, which a shopper's page views and basket additions never reach and which keeps one address from filling the audit log. Past the limit it answers `TOO_MANY_REQUESTS` and records nothing.
+`recordCustomerActivity` (`src/modules/user/use-cases/record-customer-activity.ts`) is public but returns `{ ok: true, recorded: false }` without writing when there is no session, so anonymous traffic is never logged. It sits behind `withRateLimit("record-customer-activity", RATE_LIMITS.BROWSING)`: 120 calls a minute per client address, in a bucket of its own, which a shopper's page views and basket additions never reach and which keeps one address from filling the audit log. Past the limit it answers `TOO_MANY_REQUESTS` and records nothing.
 
 It handles three kinds, each recorded against the signed-in customer with their email as the target and their account id as the resource:
 
@@ -244,7 +244,7 @@ It handles three kinds, each recorded against the signed-in customer with their 
 
 Abandoned carts recorded before 17 October 2026 repeated the customer's name as their detail. The migration `20261017100000_cart_abandoned_without_name.sql` clears the detail of every `customer.cart_abandoned` entry whose detail is exactly its actor's name (`actor_name`).
 
-The client side is `customer-activity.tracking.ts`, whose `trackCartItemAdded`, `trackCartAbandoned` and `trackPageViewed` are wrapped in `createClientOnlyFn` and swallow their own errors (`fireAndForget`), so tracking can never break a page. Page views and abandonment are de-duplicated per session through `sessionStorage` keys prefixed `customer-activity:page-view:` and `customer-activity:cart-abandoned-sent`.
+The client side is `user.tracking.ts`, whose `trackCartItemAdded`, `trackCartAbandoned` and `trackPageViewed` are wrapped in `createClientOnlyFn` and swallow their own errors (`fireAndForget`), so tracking can never break a page. Page views and abandonment are de-duplicated per session through `sessionStorage` keys prefixed `customer-activity:page-view:` and `customer-activity:cart-abandoned-sent`.
 
 This is what makes the dashboard's "page views" KPI possible — see [Admin dashboard](/docs/features/admin-dashboard) — and it also means the figure counts distinct pages per session for signed-in customers only.
 

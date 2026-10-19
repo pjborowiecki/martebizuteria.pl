@@ -121,7 +121,7 @@ Smooth scrolling itself is Lenis, mounted by `src/presentation/components/custom
 
 ## Newsletter section
 
-`newsletter-section.tsx` renders a react-hook-form form validated by `newsletterZodSchemas.subscribeFormValues`, which trims the address and checks that it is an email. A valid address goes to the `subscribeToNewsletter` mutation from `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts`:
+`newsletter-section.tsx` renders a react-hook-form form validated by `newsletterZodSchemas.subscribeFormValues`, which trims the address and checks that it is an email. A valid address goes to the `subscribeToNewsletter` mutation from `src/modules/newsletter-subscriber/use-cases/subscribe-to-newsletter.ts`:
 
 ```tsx
 subscribe.mutate({

@@ -117,7 +117,7 @@ trackCartItemAdded({ productTitle: product.title, quantity: addQuantity, variant
 
 `price` is the already formatted string and `rawPrice` the minor units; the cart prefers `rawPrice` and only falls back to parsing `price`. `variantTitle` is blanked when it equals `DEFAULT_VARIANT_TITLE` (`product-variant.utils.ts`), so single-variant products do not show a meaningless variant label. `isAdded` flips true for 2000 ms to drive the button's confirmation state.
 
-Tracking goes to `src/modules/customer-activity` and is recorded only for signed-in users. See [Audit log](/docs/features/audit-log).
+Tracking goes through `src/modules/user/user.tracking.ts` and is recorded only for signed-in users. See [Audit log](/docs/features/audit-log).
 
 ## Price display
 

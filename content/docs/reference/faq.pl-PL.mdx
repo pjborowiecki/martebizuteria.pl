@@ -35,7 +35,7 @@ Jeśli nie dotyka żadnej tabeli i potrzebuje go tylko jedna trasa, zdefiniuj to
 
 ## Kiedy tworzę nowy moduł?
 
-Zwykle tylko wtedy, gdy dodajesz tabelę w bazie danych. Cztery moduły istnieją bez tabeli — `_core`, `admin-dashboard`, `customer-account`, `customer-activity` — i każdy z nich zasługuje na to, grupując operacje czytające z kilku tabel. `storefront-search` jest właścicielem wirtualnej tabeli FTS5 `storefront_search`, którą tworzy jego migracja, a której `drizzle.schemas.ts` nie eksportuje. Nowy moduł bez tabeli wymaga takiego samego uzasadnienia.
+Tylko wtedy, gdy dodajesz tabelę w bazie danych: folder w `src/modules` istnieje tylko dla tabeli o tej samej nazwie. `_core` jest jedynym folderem bez tabeli i trzyma helpery wspólne dla kilku tabel. `storefront-search` jest właścicielem wirtualnej tabeli FTS5 `storefront_search`, którą tworzy jego migracja, a której `drizzle.schemas.ts` nie eksportuje. Operacja bez własnej tabeli trafia do modułu tabeli, którą czyta lub zapisuje, albo do `_core`, gdy obsługuje kilka tabel.
 
 ## Gdzie trafia nowy komponent?
 

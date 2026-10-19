@@ -71,14 +71,14 @@ Handler importuje `src/lib/retention.ts` dopiero wtedy, gdy uruchomienie się za
 
 `enforceRetentionPeriods` w `src/lib/retention.ts` trzyma okresy, `RETENTION_DAYS` i `RETENTION_MONTHS`, zamienia je na daty graniczne liczone od chwili, na którą zaplanowano uruchomienie, i uruchamia po jednym przypadku użycia na rodzaj wierszy:
 
-| Rodzaj w logu           | Przypadek użycia                                                      |
-| ----------------------- | --------------------------------------------------------------------- |
-| `auditLogEntries`       | `audit-log/use-cases/delete-expired-audit-logs.server.ts`             |
-| `endedCheckouts`        | `checkout/use-cases/anonymize-ended-checkouts.server.ts`              |
-| `newsletterSubscribers` | `newsletter/use-cases/delete-lapsed-newsletter-subscribers.server.ts` |
-| `rateLimits`            | `rate-limit/use-cases/delete-expired-rate-limits.server.ts`           |
-| `sessions`              | `session/use-cases/delete-expired-sessions.server.ts`                 |
-| `verifications`         | `verification/use-cases/delete-expired-verifications.server.ts`       |
+| Rodzaj w logu           | Przypadek użycia                                                                 |
+| ----------------------- | -------------------------------------------------------------------------------- |
+| `auditLogEntries`       | `audit-log/use-cases/delete-expired-audit-logs.server.ts`                        |
+| `endedCheckouts`        | `checkout/use-cases/anonymize-ended-checkouts.server.ts`                         |
+| `newsletterSubscribers` | `newsletter-subscriber/use-cases/delete-lapsed-newsletter-subscribers.server.ts` |
+| `rateLimits`            | `rate-limit/use-cases/delete-expired-rate-limits.server.ts`                      |
+| `sessions`              | `session/use-cases/delete-expired-sessions.server.ts`                            |
+| `verifications`         | `verification/use-cases/delete-expired-verifications.server.ts`                  |
 
 Sześć przypadków działa równocześnie, a D1 wykonuje ich instrukcje jedna po drugiej.
 

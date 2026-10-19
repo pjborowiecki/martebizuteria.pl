@@ -35,7 +35,7 @@ If it touches no table and only one route needs it, define it in that route file
 
 ## When do I create a new module?
 
-Normally only when you add a database table. Four modules exist without one — `_core`, `admin-dashboard`, `customer-account`, `customer-activity` — and each earns that by grouping operations that read across several tables. `storefront-search` owns the `storefront_search` FTS5 virtual table, which its migration creates and `drizzle.schemas.ts` does not export. A new table-less module needs the same justification.
+Only when you add a database table: a folder in `src/modules` exists only for a table of the same name. `_core` is the one folder without a table, and it holds the helpers that several tables share. `storefront-search` owns the `storefront_search` FTS5 virtual table, which its migration creates and `drizzle.schemas.ts` does not export. An operation without a table of its own goes to the module of the table it reads or writes, or to `_core` when it serves several.
 
 ## Where does a new component go?
 
