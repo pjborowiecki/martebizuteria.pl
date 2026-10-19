@@ -308,7 +308,7 @@ The Stripe Elements form is localised separately, by mapping the app locale to a
 4. Add the new locale to the `titles`, `descriptions`, `bodies` and `revised_ats` maps of every `content_page` row in a migration, starting from the Polish text. Then translate every page in the editor at `/admin/content`, which will not save a page until every locale has all three fields.
 5. Backfill the JSON locale maps in D1, `delivery_method.names` included; `coerceProductLocaleMap` keeps existing rows readable in the meantime, and `resolveLocalizedString` falls back to Polish. The delivery method form in Settings has one name field per locale in `NAME_FIELDS` (`delivery-method-fields.tsx`), so it needs one for the new locale too.
 6. Add a Stripe Elements locale in `STRIPE_LOCALES` (`stripe.client.ts`) — it is `satisfies Record<SupportedLocale, StripeElementLocale>`, so the type checker will point at it.
-7. Check `DELIVERY_COUNTRY_CODES` in `delivery-method.constants.ts`, which the checkout refuses every other shipping country by, and `POSTAL_CODE_PATTERNS` and the `libphonenumber-js` country in `checkout.validation.utils.ts`, if the new locale implies a new shipping country.
+7. Check `DELIVERY_COUNTRY_CODES` in `delivery-method.constants.ts`, which the checkout refuses every other shipping country by, and `POSTAL_CODE_PATTERNS` and the `libphonenumber-js` country in `checkout.zod.ts`, if the new locale implies a new shipping country.
 
 ## Related pages
 

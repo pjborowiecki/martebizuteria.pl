@@ -9,19 +9,19 @@ Logika serwerowa, która nie należy do żadnej tabeli, nie dostaje modułu. Fun
 
 ## Pliki
 
-| Plik                              | Zawartość                                                                                                                 |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `{feature}.schema.ts`             | Tabela Drizzle `sqliteTable`, jej indeksy i `relations(...)`                                                              |
-| `{feature}.zod.ts`                | Schematy insert/select/update z `drizzle-zod` plus po jednym ręcznym schemacie wejścia na operację                        |
-| `{feature}.constants.ts`          | Krotki kluczy zapytań i mutacji, limity długości kolumn, krotki wartości wyliczeniowych, czasy świeżości                  |
-| `{feature}.types.ts`              | Typy wierszy wywnioskowane z tabeli, eksportowane jako jeden interfejs na moduł                                           |
-| `{feature}.utils.ts`              | Czyste funkcje — mapowanie wierszy, normalizacja, wyznaczanie etykiet                                                     |
-| `{feature}.accessors.ts`          | Wielokrotnie używane odczyty i zapisy do bazy, które niosą prawdziwe zachowanie                                           |
-| `{feature}.accessors.server.ts`   | To samo, ale wyłącznie serwerowe dzięki nazwie (`storefront-search`)                                                      |
-| `{feature}.*.server.ts`           | Funkcje wyłącznie serwerowe: zapytania przygotowane, budowniki filtrów, ładowanie agregatów, obsługa audytu i e-maili     |
-| `use-cases/{verb-noun}.ts`        | Jedna funkcja serwerowa na plik, razem z opcjami zapytania lub mutacji                                                    |
-| `use-cases/{verb-noun}.server.ts` | Jedna operacja wyłącznie serwerowa na plik, eksportowana jako zwykła funkcja async: e-maile, sprzątanie, kroki zamówienia |
-| `__test__/`                       | Testy nazwane od pliku źródłowego                                                                                         |
+| Plik                              | Zawartość                                                                                                                                                                     |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `{feature}.schema.ts`             | Tabela Drizzle `sqliteTable`, jej indeksy i `relations(...)`                                                                                                                  |
+| `{feature}.zod.ts`                | Schematy insert/select/update z `drizzle-zod` plus po jednym ręcznym schemacie wejścia na operację                                                                            |
+| `{feature}.constants.ts`          | Krotki kluczy zapytań i mutacji, limity długości kolumn, krotki wartości wyliczeniowych, czasy świeżości                                                                      |
+| `{feature}.types.ts`              | Typy wierszy wywnioskowane z tabeli, eksportowane jako jeden interfejs na moduł                                                                                               |
+| `{feature}.utils.ts`              | Czyste funkcje — mapowanie wierszy, normalizacja, wyznaczanie etykiet                                                                                                         |
+| `{feature}.accessors.ts`          | Odczyty i zapisy do bazy, zapytania przygotowane i budowniki wsadów, tylko po stronie serwera                                                                                 |
+| `use-cases/{verb-noun}.ts`        | Jedna funkcja serwerowa na plik, razem z opcjami zapytania lub mutacji                                                                                                        |
+| `use-cases/{verb-noun}.server.ts` | Jedna operacja wyłącznie serwerowa na plik, eksportowana jako zwykła funkcja async: e-maile, sprzątanie, kroki zamówienia, konsumenci kolejek, rejestratory dziennika zdarzeń |
+| `__test__/`                       | Testy nazwane od pliku źródłowego                                                                                                                                             |
+
+Inne rodzaje plików nie należą do modułu: helper potrzebujący importów wyłącznie serwerowych trafia do akcesorów albo do use case'u, a kod działający tylko w przeglądarce do `src/presentation`.
 
 `.server.` w nazwie pliku to nie tylko etykieta: ochrona importów TanStack Start odrzuca każdy plik `*.server.*` w buildzie klienckim, więc taki plik można importować tylko z kodu, który wykonuje się na serwerze. Co to umożliwia, wyjaśniają [Funkcje serwerowe](/docs/guides/server-functions#kod-serwerowy-poza-pakietem-klienta).
 

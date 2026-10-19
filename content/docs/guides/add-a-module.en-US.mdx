@@ -9,19 +9,19 @@ Server logic that belongs to no table does not get a module. Request-scoped help
 
 ## The files
 
-| File                              | Contents                                                                                                   |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `{feature}.schema.ts`             | The Drizzle `sqliteTable`, its indexes, and its `relations(...)`                                           |
-| `{feature}.zod.ts`                | `drizzle-zod` insert/select/update schemas plus one hand-written input schema per operation                |
-| `{feature}.constants.ts`          | Query-key and mutation-key tuples, column length limits, enum tuples, stale times                          |
-| `{feature}.types.ts`              | Row types inferred from the table, exported as one interface per module                                    |
-| `{feature}.utils.ts`              | Pure functions — row mapping, normalisation, label resolution                                              |
-| `{feature}.accessors.ts`          | Reusable database reads and writes that carry real behaviour                                               |
-| `{feature}.accessors.server.ts`   | The same, kept server-only by its name (`storefront-search`)                                               |
-| `{feature}.*.server.ts`           | Server-only helpers: prepared queries, filter builders, aggregate loaders, audit and e-mail plumbing       |
-| `use-cases/{verb-noun}.ts`        | One server function per file, with its query or mutation options                                           |
-| `use-cases/{verb-noun}.server.ts` | One server-only operation per file, exported as a plain async function: e-mails, clean-ups, checkout steps |
-| `__test__/`                       | Tests named after the source file                                                                          |
+| File                              | Contents                                                                                                                                     |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `{feature}.schema.ts`             | The Drizzle `sqliteTable`, its indexes, and its `relations(...)`                                                                             |
+| `{feature}.zod.ts`                | `drizzle-zod` insert/select/update schemas plus one hand-written input schema per operation                                                  |
+| `{feature}.constants.ts`          | Query-key and mutation-key tuples, column length limits, enum tuples, stale times                                                            |
+| `{feature}.types.ts`              | Row types inferred from the table, exported as one interface per module                                                                      |
+| `{feature}.utils.ts`              | Pure functions — row mapping, normalisation, label resolution                                                                                |
+| `{feature}.accessors.ts`          | Database reads, writes, prepared queries and batch builders, server-side only                                                                |
+| `use-cases/{verb-noun}.ts`        | One server function per file, with its query or mutation options                                                                             |
+| `use-cases/{verb-noun}.server.ts` | One server-only operation per file, exported as a plain async function: e-mails, clean-ups, checkout steps, queue consumers, audit recorders |
+| `__test__/`                       | Tests named after the source file                                                                                                            |
+
+No other file kind belongs in a module: a helper that needs server-only imports goes to the accessors or a use case, and code that runs only in the browser goes to `src/presentation`.
 
 The `.server.` in a file name is not only a label: TanStack Start's import protection refuses any `*.server.*` file in the client build, so such a file may be imported only from code that runs on the server. [Server functions](/docs/guides/server-functions#keeping-server-code-out-of-the-browser) explains what that allows.
 

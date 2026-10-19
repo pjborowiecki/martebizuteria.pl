@@ -33,25 +33,25 @@ Projekty dziedziczą główny blok `test` (`extends: true`). `passWithNoTests: f
 
 | Źródło                                                                               | Test                                                                             |
 | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| `src/modules/_core/utils/download.ts`                                                | `src/modules/_core/utils/__test__/download.test.ts`                              |
+| `src/presentation/components/custom/datagrid/lib/download.ts`                        | `src/presentation/components/custom/datagrid/lib/__test__/download.test.ts`      |
 | `src/modules/address/use-cases/*.ts`                                                 | `src/modules/address/use-cases/__test__/address-use-cases.test.ts`               |
 | `src/routes/admin.catalog.categories.index.tsx`                                      | `src/routes/__test__/admin.catalog.categories.index.component.test.tsx`          |
 | Loader testowany osobno od komponentu                                                | `src/routes/__test__/account.addresses.loader.test.ts`                           |
 | Zapytanie wymagające prawdziwego SQL-a                                               | `src/modules/_core/utils/__test__/search-conditions.integration.test.ts`         |
 | `src/integrations/drizzle-orm/migrations/20261016140000_claim_past_guest_orders.sql` | `src/modules/order/__test__/order.past-guest-claim-backfill.integration.test.ts` |
 
-Małe moduły umieszczają wszystkie operacje w jednym pliku; duże dzielą się tematycznie, jak testy `_core/utils` (`currency.test.ts`, `currency.configuration.test.ts`, `currency.zero-decimal.test.ts` oraz `table-export.csv.test.ts`, `table-export.json.test.ts`, `table-export.xml.component.test.ts` i `table-export.txt.test.ts` obok `table-export.test.ts`). Wspólne dane testowe leżą w tym samym katalogu, bez przyrostka `.test`, jak `table-export.fixtures.ts`.
+Małe moduły umieszczają wszystkie operacje w jednym pliku; duże dzielą się tematycznie, jak testy `_core/utils` (`currency.test.ts`, `currency.configuration.test.ts` i `currency.zero-decimal.test.ts`) oraz testy `lib` siatki danych (`table-export.csv.test.ts`, `table-export.json.test.ts`, `table-export.xml.component.test.ts` i `table-export.txt.test.ts` obok `table-export.test.ts`). Wspólne dane testowe leżą w tym samym katalogu, bez przyrostka `.test`, jak `table-export.fixtures.ts`.
 
 Pliki testowe mają w `vite.config.ts` złagodzone reguły lintera — `no-await-in-loop`, `no-magic-numbers` i `unicorn/no-null` są wyłączone — ale wszystko pozostałe obowiązuje, w tym zakaz `any` i wyciszania reguł.
 
 ## Test jednostkowy
 
-Zwykłe funkcje nie wymagają ceremonii. `src/modules/_core/utils/__test__/table-export.csv.test.ts`:
+Zwykłe funkcje nie wymagają ceremonii. `src/presentation/components/custom/datagrid/lib/__test__/table-export.csv.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vite-plus/test"
 
-import { serializeTableExportCsv } from "~/src/modules/_core/utils/table-export"
+import { serializeTableExportCsv } from "~/src/presentation/components/custom/datagrid/lib/table-export"
 
 import { singleCellDocument } from "./table-export.fixtures"
 

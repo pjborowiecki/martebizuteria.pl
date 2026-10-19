@@ -282,14 +282,14 @@ The export server function lives with the list in `use-cases/export-<entity>.ts`
 
 Last, put `<Export />` in the toolbar, next to the refresh button. `Export` throws when the context value has no `exportSource`, so a grid that should not be exported simply leaves the component out.
 
-The serializers are plain functions in `src/modules/_core/utils/table-export.ts`, tested in its `__test__/` folder:
+The serializers are plain functions in `src/presentation/components/custom/datagrid/lib/table-export.ts`, tested in its `__test__/` folder:
 
 - **CSV**: a UTF-8 byte order mark so Excel reads Polish letters, CRLF line endings and RFC 4180 quoting. The fields are separated by semicolons when the admin's format locale writes decimals with a comma, as Polish does, so a double-clicked file opens in columns in a Polish Excel, and by commas otherwise; a field holding the separator is quoted. A value that starts with `=`, `+`, `-`, `@`, a tab or a carriage return gets a leading `'`, so a spreadsheet shows it instead of running it as a formula.
 - **JSON**: pretty-printed, a `metadata` object (`list`, `title`, `exportedAt` in ISO UTC, `timeZone`, `rowCount`, `filters`, `columns`) and `rows` keyed by column id.
 - **XML**: XML 1.0 with an `<export>` root holding `<metadata>` and `<rows>`, one `<row>` per row with an element per column id; the five special characters are escaped and characters XML 1.0 forbids are dropped.
 - **TXT**: a header with the title, the export time and time zone, the row count and the filters, then one record per row as `Column: value` lines, a blank line between records.
 
-Files are named `<list>-<YYYY-MM-DD-HHmm>.<ext>` on the admin's clock and saved through `downloadTextFile` from `src/modules/_core/utils/download.ts`. The menu's text lives under `export` in the `components.datagrid` namespace.
+Files are named `<list>-<YYYY-MM-DD-HHmm>.<ext>` on the admin's clock and saved through `downloadTextFile` from `src/presentation/components/custom/datagrid/lib/download.ts`. The menu's text lives under `export` in the `components.datagrid` namespace.
 
 ## 6. Add the row actions and bulk actions
 

@@ -7,7 +7,7 @@ Prawie każda reguła na tej stronie jest wymuszana przez narzędzia, nie przez 
 
 ## Kod
 
-- **Komentarze tylko dla nieoczywistych ograniczeń.** Intencję przenoszą nazwy i typy; nie ma narracji nad kodem, ozdobnych separatorów ani komentarzy powtarzających to, co mówi już nazwa. Nie sprawdza tego żadna reguła lintera, tylko recenzja. W praktyce TypeScript i CSS w katalogu `src` nie zawierają żadnego: nawet ograniczenie takie jak kolejność kolumn tabeli, którą musi zachować `INSERT ... SELECT` w `checkout/checkout.utils.ts`, niesie nazwa, `columnsInTableOrder`. Proza należy do plików `.mdx`, takich jak ten.
+- **Komentarze tylko dla nieoczywistych ograniczeń.** Intencję przenoszą nazwy i typy; nie ma narracji nad kodem, ozdobnych separatorów ani komentarzy powtarzających to, co mówi już nazwa. Nie sprawdza tego żadna reguła lintera, tylko recenzja. W praktyce TypeScript i CSS w katalogu `src` nie zawierają żadnego: nawet ograniczenie takie jak kolejność kolumn tabeli, którą musi zachować `INSERT ... SELECT` w `checkout/checkout.accessors.ts`, niesie nazwa, `columnsInTableOrder`. Proza należy do plików `.mdx`, takich jak ten.
 - **Żadnych obejść systemu typów.** Bez `any`, bez `as never`, bez `as unknown as`, bez `@ts-nocheck`, bez `@ts-expect-error` i bez wyciszania reguł lintera, żeby coś przeszło. Jedyne `as unknown as` w repozytorium to atrapa D1 w `src/platform/testing/mocks/d1.ts`, objęta wyjątkiem dla tego katalogu. Naprawiamy przyczynę. Ustawienie `reportUnusedDisableDirectives: "error"` powoduje, że nawet nieaktualne wyciszenie wywala build.
 - **Żadnych plików zbiorczych (barrels).** Importujemy z pliku, który definiuje symbol. Nie ma warstwy re-eksportów w `index.ts` ani obiektów, których jedynym zadaniem jest zebranie niepowiązanych funkcji.
 - **Żadnych warstw przekazujących.** Komponent, który tylko przekazuje propsy, funkcja, która tylko wywołuje jedną inną funkcję, albo alias na zwykłe `0` czy `1` — wszystko to odpada w recenzji, a zwykle i tak wcześniej pod presją `max-lines`.
@@ -109,7 +109,7 @@ Moduł jest właścicielem jednej tabeli Drizzle i wszystkiego, co z niej wynika
 
 - `*.schema.ts` definiuje tabelę i jej relacje — i nic więcej.
 - `*.accessors.ts` zawiera czysty dostęp do danych. Akcesory nie wiedzą, kto pyta; przyjmują argumenty i rozmawiają z `db`.
-- `*.server.ts` zawiera helpery wyłącznie serwerowe, zwykle przygotowane zapytania (prepared statements).
+- `*.accessors.ts` zawiera też przygotowane zapytania (prepared statements) i budowniki wsadów; operacja wyłącznie serwerowa, która nie jest endpointem RPC, to `use-cases/<czasownik>-<rzeczownik>.server.ts`. Moduł nie zawiera żadnego innego rodzaju pliku.
 - `use-cases/<czasownik>-<rzeczownik>.ts` zawiera jedną operację. Eksportuje funkcję serwerową `createServerFn` oraz `queryOptions` lub klucz mutacji, z których korzystają wywołujący. Loadery, komponenty i unieważnianie cache importują ten sam obiekt opcji, więc z konstrukcji dzielą jeden klucz zapytania.
 - Stałe — długości kolumn, enumy statusów, kody błędów, klucze zapytań, klucze mutacji, identyfikatory kolumn tabeli — leżą w `*.constants.ts` jako obiekty `SCREAMING_SNAKE_CASE` z prefiksem encji, na przykład `CATEGORY_QUERY_KEYS` i `CATEGORY_ERROR_CODES`.
 - `*.zod.ts` buduje schematy Zod, zwykle przez `createSchemaFactory` z `drizzle-zod`, i eksportuje je jako jeden obiekt `<encja>ZodSchemas` plus nazwane schematy wejściowe.

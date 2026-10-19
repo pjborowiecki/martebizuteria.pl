@@ -282,14 +282,14 @@ Serwerowa funkcja eksportu leży obok listy, w `use-cases/export-<entity>.ts`. J
 
 Na koniec wstaw `<Export />` na pasek narzędzi, obok przycisku odświeżania. `Export` rzuca błąd, gdy wartość kontekstu nie ma `exportSource`, więc tabela, której nie należy eksportować, po prostu pomija ten komponent.
 
-Serializatory to zwykłe funkcje w `src/modules/_core/utils/table-export.ts`, testowane w jego katalogu `__test__/`:
+Serializatory to zwykłe funkcje w `src/presentation/components/custom/datagrid/lib/table-export.ts`, testowane w jego katalogu `__test__/`:
 
 - **CSV**: znacznik kolejności bajtów UTF-8, żeby Excel poprawnie odczytał polskie litery, końce wierszy CRLF i cytowanie według RFC 4180. Pola rozdziela średnik, gdy format administratora zapisuje ułamki przecinkiem, jak polski, żeby dwukrotnie kliknięty plik otworzył się w polskim Excelu w kolumnach, a w przeciwnym razie przecinek; pole zawierające separator jest cytowane. Wartość zaczynająca się od `=`, `+`, `-`, `@`, tabulatora albo powrotu karetki dostaje na początku `'`, więc arkusz ją pokazuje, zamiast wykonywać jako formułę.
 - **JSON**: sformatowany, z obiektem `metadata` (`list`, `title`, `exportedAt` w ISO UTC, `timeZone`, `rowCount`, `filters`, `columns`) i `rows` z kluczami według identyfikatorów kolumn.
 - **XML**: XML 1.0 z korzeniem `<export>`, w którym są `<metadata>` i `<rows>`, a w nich jeden `<row>` na wiersz z elementem na każdą kolumnę; pięć znaków specjalnych jest zamienianych na encje, a znaki niedozwolone w XML 1.0 są usuwane.
 - **TXT**: nagłówek z tytułem, czasem eksportu i strefą czasową, liczbą wierszy i filtrami, a potem jeden rekord na wiersz jako linie `Kolumna: wartość`, rozdzielone pustą linią.
 
-Pliki mają nazwy `<list>-<RRRR-MM-DD-GGmm>.<rozszerzenie>` według zegara administratora i są zapisywane przez `downloadTextFile` z `src/modules/_core/utils/download.ts`. Teksty menu leżą pod `export` w przestrzeni `components.datagrid`.
+Pliki mają nazwy `<list>-<RRRR-MM-DD-GGmm>.<rozszerzenie>` według zegara administratora i są zapisywane przez `downloadTextFile` z `src/presentation/components/custom/datagrid/lib/download.ts`. Teksty menu leżą pod `export` w przestrzeni `components.datagrid`.
 
 ## 6. Dodaj akcje wiersza i akcje zbiorcze
 

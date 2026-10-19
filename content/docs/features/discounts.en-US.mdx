@@ -77,7 +77,7 @@ export const discountClaim = sqliteTable(
 )
 ```
 
-The three types are `percentage`, `fixed_amount` and `free_shipping` (`DISCOUNT_TYPES` in `discount.constants.ts`). `value` is a single integer: a whole percentage for `percentage`, an amount in minor units for `fixed_amount`, and ignored for `free_shipping`. The limit columns are nullable, and null means no limit: `usage_limit` caps redemptions overall, `per_customer_limit` caps them per customer, counted by e-mail address and by account (see [Rules](#rules)), `min_order_total` is the minimum item subtotal in minor units, and `max_discount_amount` caps what a percentage may take off. `toDiscountInsertValues` and `toDiscountUpdateValues` (`discount.persist.utils.ts`) store `max_discount_amount` only for a `percentage` code and leave it `null` for the other two types, whatever the form sends.
+The three types are `percentage`, `fixed_amount` and `free_shipping` (`DISCOUNT_TYPES` in `discount.constants.ts`). `value` is a single integer: a whole percentage for `percentage`, an amount in minor units for `fixed_amount`, and ignored for `free_shipping`. The limit columns are nullable, and null means no limit: `usage_limit` caps redemptions overall, `per_customer_limit` caps them per customer, counted by e-mail address and by account (see [Rules](#rules)), `min_order_total` is the minimum item subtotal in minor units, and `max_discount_amount` caps what a percentage may take off. `toDiscountInsertValues` (`discount.utils.ts`) and `toDiscountUpdateValues` (`discount.accessors.ts`) store `max_discount_amount` only for a `percentage` code and leave it `null` for the other two types, whatever the form sends.
 
 `discountRelations` declares `many(cart)`, `many(checkout)`, `many(discountClaim)`, `many(order)` and `many(discountRedemption)`. `cart`, `checkout` and `order` each carry a `discount_id` column, and `order` additionally has `discount_total`. The `description` column, the three rule columns, the `is_active` index and the `discount_redemption` table come from `20260930200000_discount_rules_and_redemptions.sql`. `20261003130000_query_indexes.sql` later dropped the `discount_redemption_discountId_idx` that migration created, because `discount_redemption_discountId_email_idx` starts with the same column, and added `discount_redemption_userId_idx` for the `user_id` foreign key. `query-plans.integration.test.ts` fails when a foreign key has no index, so deleting an account or a code never scans the redemptions.
 
@@ -89,44 +89,44 @@ A `discount_claim` row is a use of a code that an open checkout holds: the check
 src/modules/discount/
 ├── __test__/
 │   ├── discount.accessors.integration.test.ts
-│   ├── discount.checkout.server.test.ts
-│   ├── discount.claim.server.integration.test.ts
+│   ├── discount.accessors.update-values.test.ts
 │   ├── discount.delete.integration.test.ts
-│   ├── discount.persist.utils.test.ts
-│   ├── discount.redeem.server.integration.test.ts
 │   ├── discount.redemption-account-migration.integration.test.ts
 │   ├── discount.schema.test.ts
+│   ├── discount.utils.persist.test.ts
 │   ├── discount.utils.test.ts
 │   └── discount.zod.test.ts
 ├── discount.accessors.ts
-├── discount.checkout.server.ts
-├── discount.claim.server.ts
 ├── discount.constants.ts
-├── discount.persist.utils.ts
-├── discount.redeem.server.ts
 ├── discount.schema.ts
 ├── discount.types.ts
 ├── discount.utils.ts
 ├── discount.zod.ts
 └── use-cases/
     ├── __test__/
+    │   ├── claim-checkout-discount.server.integration.test.ts
     │   ├── create-discount.test.ts
     │   ├── delete-discounts.test.ts
     │   ├── discount-code-race.integration.test.ts
     │   ├── get-admin-discount-stats.test.ts
     │   ├── get-admin-discounts-page.test.ts
+    │   ├── redeem-discount.server.integration.test.ts
+    │   ├── resolve-checkout-discount.server.test.ts
     │   ├── update-discount.test.ts
     │   ├── validate-discount-code.integration.test.ts
     │   └── validate-discount-code.test.ts
+    ├── claim-checkout-discount.server.ts
     ├── create-discount.ts
     ├── delete-discounts.ts
     ├── get-admin-discount-stats.ts
     ├── get-admin-discounts-page.ts
+    ├── redeem-discount.server.ts
+    ├── resolve-checkout-discount.server.ts
     ├── update-discount.ts
     └── validate-discount-code.ts
 ```
 
-Each of the six use cases is one `createServerFn`. `validate-discount-code.ts` serves the storefront; the other five serve `/admin/coupons`.
+Six of the nine use cases are one `createServerFn` each. `validate-discount-code.ts` serves the storefront; the other five serve `/admin/coupons`. The three `.server.ts` use cases run inside the checkout: `resolve-checkout-discount.server.ts` prices the code a session applies, `claim-checkout-discount.server.ts` holds and releases its uses, and `redeem-discount.server.ts` records the redemption with the order.
 
 The `*.integration.test.ts` suites run their SQL against an in-memory `node:sqlite` database through `createTestD1Database` (`src/platform/testing/mocks/d1.ts`). The claim, redemption, validator and `discount-code-race` suites build it from the migration history with `applyMigrationHistory`, so the race for a code's last use, the redemption of a code deleted mid-payment and two admins saving the same code at once are tested with the SQL D1 runs.
 
@@ -172,13 +172,13 @@ While the form has a code, `CheckoutDiscountCode` (`checkout-discount-code.tsx`)
 
 A code that no longer applies stays in the form and the draft with its reason on screen, and the server drops it when it builds the session (below). From then on the summary shows the discount and total the server quoted for that session, so the total shown is the one charged. When the check fails the summary cannot know which total the server will charge, so it shows none until a retry answers. Removing the code clears `discountCode`. `checkoutSchema` declares `discountCode: zod.string().trim().max(DISCOUNT_CODE_MAX_LENGTH).optional()`, and no step validates it.
 
-The validation response is only a preview. `handleCreateCheckoutSession` and `handleUpdateCheckoutSession` call `resolveCheckoutDiscount` (`discount.checkout.server.ts`) with `checkoutValues.discountCode`, the e-mail the form carries (`checkoutValues.email`, for a signed-in shopper the account's current address in place of one it has replaced), the signed-in account, the item subtotal computed from database prices, and the shipping cost before any code. It skips the read for an empty code, reads the row with `getDiscountByCodeForCustomerQuery` in one statement, and passes it to `resolveAppliedCheckoutDiscount`, which applies the same rules again. A code that no longer applies is logged and dropped, and one that would take nothing off is dropped, instead of failing the checkout. A code that passes is then claimed for the checkout, below, and only a claimed code reaches the session and `checkout.discount_id`.
+The validation response is only a preview. `handleCreateCheckoutSession` and `handleUpdateCheckoutSession` call `resolveCheckoutDiscount` (`use-cases/resolve-checkout-discount.server.ts`) with `checkoutValues.discountCode`, the e-mail the form carries (`checkoutValues.email`, for a signed-in shopper the account's current address in place of one it has replaced), the signed-in account, the item subtotal computed from database prices, and the shipping cost before any code. It skips the read for an empty code, reads the row with `getDiscountByCodeForCustomerQuery` in one statement, and passes it to `resolveAppliedCheckoutDiscount`, which applies the same rules again. A code that no longer applies is logged and dropped, and one that would take nothing off is dropped, instead of failing the checkout. A code that passes is then claimed for the checkout, below, and only a claimed code reaches the session and `checkout.discount_id`.
 
 ## Holding a use while the shopper pays
 
 The rules compare `usage_count` with `usage_limit`, and redemptions with `per_customer_limit`, but both grow only once a session is paid. Checked alone, every checkout opened while a code had one use left would get the code, and so would every concurrent checkout of a customer limited to one use. So the checkout claims the use before Stripe sees the coupon, the way it reserves stock, and holds it in `discount_claim` while its session can be paid.
 
-`prepareDiscountClaim` in `discount.claim.server.ts` builds the claim as one statement, an `INSERT … SELECT … FROM discount WHERE id = ? … ON CONFLICT (checkout_id, discount_id) DO UPDATE`. The `SELECT` yields the code's row only while `usage_count` plus the claims of other checkouts is below `usage_limit`, and while the customer's redemptions plus their claims in other checkouts, picked by `redeemedByCustomer` and `claimedForCustomer` from the e-mail and the signed-in account `claimCheckoutDiscount` and the create batch pass in, are below `per_customer_limit`; a null limit always passes. It returns the claim it wrote, or nothing. D1 runs one statement at a time, so of two checkouts racing for a code's last use only one gets a row back. A checkout claiming a code it already holds updates the e-mail on its claim, and its own claims never count against it. SQLite finds the code by its primary key, counts the holds and the customer's redemptions from `discount_claim_discountId_email_idx` and `discount_redemption_discountId_email_idx`, and finds the customer's accounts and their checkouts through `user_email_unique` and `checkout_userId_idx`, which `query-plans.integration.test.ts` checks too.
+`prepareDiscountClaim` in `use-cases/claim-checkout-discount.server.ts` builds the claim as one statement, an `INSERT … SELECT … FROM discount WHERE id = ? … ON CONFLICT (checkout_id, discount_id) DO UPDATE`. The `SELECT` yields the code's row only while `usage_count` plus the claims of other checkouts is below `usage_limit`, and while the customer's redemptions plus their claims in other checkouts, picked by `redeemedByCustomer` and `claimedForCustomer` from the e-mail and the signed-in account `claimCheckoutDiscount` and the create batch pass in, are below `per_customer_limit`; a null limit always passes. It returns the claim it wrote, or nothing. D1 runs one statement at a time, so of two checkouts racing for a code's last use only one gets a row back. A checkout claiming a code it already holds updates the e-mail on its claim, and its own claims never count against it. SQLite finds the code by its primary key, counts the holds and the customer's redemptions from `discount_claim_discountId_email_idx` and `discount_redemption_discountId_email_idx`, and finds the customer's accounts and their checkouts through `user_email_unique` and `checkout_userId_idx`, which `query-plans.integration.test.ts` checks too.
 
 | Moment                                          | Where                                                                                                                                                                                     | The claim                                                                                                                              |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
@@ -228,9 +228,9 @@ Every session created or replaced with a code gets its own coupon, tagged in the
 
 ## On fulfilment
 
-`fulfillCheckout` (`src/modules/checkout/use-cases/fulfill-checkout.server.ts`) takes the discount the session was priced with from its `discountTotal` metadata, read by `resolveCheckoutSessionDiscountTotal` (`checkout-metadata.zod.ts`), the way it takes the delivery charge from `shippingTotal`, and passes it to `computeOrderTotals`, which caps the discount at items plus shipping. Only a session opened before that field existed has the amount recalculated: `calculateDiscountAmount` works it out from the code's current row in the checkout's `discount`, the session's lines, which `readCheckoutSessionLines` reads from `payment.lines` (see [Checkout](/docs/features/checkout#the-cart-on-the-payment-row)), and the delivery charge. `prepareFulfillCheckoutBatch` copies `discount_id` onto the order and writes `discount_total`. The rules are not checked again at this point, because the customer has already paid. A code changed or deleted while the shopper pays therefore changes nothing for that order: it records what Stripe took off.
+`fulfillCheckout` (`src/modules/checkout/use-cases/fulfill-checkout.server.ts`) takes the discount the session was priced with from its `discountTotal` metadata, read by `resolveCheckoutSessionDiscountTotal` (`checkout.utils.ts`), the way it takes the delivery charge from `shippingTotal`, and passes it to `computeOrderTotals`, which caps the discount at items plus shipping. Only a session opened before that field existed has the amount recalculated: `calculateDiscountAmount` works it out from the code's current row in the checkout's `discount`, the session's lines, which `readCheckoutSessionLines` reads from `payment.lines` (see [Checkout](/docs/features/checkout#the-cart-on-the-payment-row)), and the delivery charge. `prepareFulfillCheckoutBatch` copies `discount_id` onto the order and writes `discount_total`. The rules are not checked again at this point, because the customer has already paid. A code changed or deleted while the shopper pays therefore changes nothing for that order: it records what Stripe took off.
 
-`fulfillCheckout` appends the statements of `prepareDiscountRedemption` (`discount.redeem.server.ts`) to that batch, so the order and its redemption are one D1 transaction. They delete the checkout's claims, insert a `discount_redemption` row with the order's `discount_total`, the checkout e-mail, the order and the order's `user_id`, and increment `discount.usage_count`. The redemption is an `INSERT … SELECT … FROM discount WHERE id = ?`, so a code deleted while the customer paid writes nothing rather than breaking the foreign key, and none of the three checks a limit: a customer who has paid is never refused, even if the code ran out meanwhile. Because `order.checkout_id` is unique, the batch of a second delivery of the same payment fails as a whole, `fulfillCheckout` finds the order the first one placed and returns without an audit entry, and the use is counted once (see [Payments](/docs/features/payments#fulfilment)). A checkout without a code, or whose session took nothing off, only has its claims deleted. After the batch, `fulfillCheckout` records a `discount.redeemed` audit entry with the amount, also when D1 committed the batch but answered with an error and the order found afterwards is the one this delivery inserted.
+`fulfillCheckout` appends the statements of `prepareDiscountRedemption` (`use-cases/redeem-discount.server.ts`) to that batch, so the order and its redemption are one D1 transaction. They delete the checkout's claims, insert a `discount_redemption` row with the order's `discount_total`, the checkout e-mail, the order and the order's `user_id`, and increment `discount.usage_count`. The redemption is an `INSERT … SELECT … FROM discount WHERE id = ?`, so a code deleted while the customer paid writes nothing rather than breaking the foreign key, and none of the three checks a limit: a customer who has paid is never refused, even if the code ran out meanwhile. Because `order.checkout_id` is unique, the batch of a second delivery of the same payment fails as a whole, `fulfillCheckout` finds the order the first one placed and returns without an audit entry, and the use is counted once (see [Payments](/docs/features/payments#fulfilment)). A checkout without a code, or whose session took nothing off, only has its claims deleted. After the batch, `fulfillCheckout` records a `discount.redeemed` audit entry with the amount, also when D1 committed the batch but answered with an error and the order found afterwards is the one this delivery inserted.
 
 The redemption's `user_id` is read from the order the same batch inserts, so it is the account the order is filed under: the signed-in customer's, or, for a guest checkout, the verified account with the checkout's e-mail, and none otherwise. When `claimGuestOrdersForUser` links guest orders to an account afterwards, the same batch sets `user_id` on the redemptions of every order the account holds that are not yet filed under it (see [Orders](/docs/features/orders#customer-order-history)); SQLite finds them through the account's orders and `discount_redemption_orderId_unique`, which `query-plans.integration.test.ts` checks. `20261017130000_discount_redemption_order_account.sql` did the same once for the orders `20261016140000_claim_past_guest_orders.sql` and earlier fulfilments filed under an account. The per-customer limit reads `discount_redemption.user_id`: a redemption filed under an account counts against that account, whichever address its order was placed with, as well as against the address. Deleting an account sets the column to `null`.
 

@@ -43,11 +43,10 @@ src/
 │   ├── _core/
 │   │   ├── constants/                 api, currency, customer-account, errors, placeholder,
 │   │   │                              country, timezone, tax
-│   │   └── utils/                     pagination, zod-fields, table-export, download,
-│   │                                  currency, datetime, iso-date, iso-datetime, json,
-│   │                                  column-filters, datetime-column-filter,
-│   │                                  search-conditions, polish-deadline, tax,
-│   │                                  account-page-meta
+│   │   └── utils/                     pagination, zod-fields, currency, datetime,
+│   │                                  iso-date, iso-datetime, json, column-filters,
+│   │                                  datetime-column-filter, search-conditions,
+│   │                                  polish-deadline, tax
 │   └── <feature>/                     Jeden folder na tabelę bazy danych o tej samej nazwie
 │       ├── <feature>.schema.ts        Tabela Drizzle i relacje
 │       ├── <feature>.zod.ts           Schematy wejścia wspólne dla formularzy i funkcji serwerowych
@@ -55,7 +54,6 @@ src/
 │       ├── <feature>.types.ts         Typy wiersza i wejścia wyprowadzone ze schematu
 │       ├── <feature>.utils.ts         Czyste helpery
 │       ├── <feature>.accessors.ts     Dostęp do danych bez autoryzacji
-│       ├── <feature>.*.server.ts      Helpery wyłącznie serwerowe, które nie są przypadkami użycia
 │       └── use-cases/<verb-noun>.ts   createServerFn plus jego opcje zapytania lub mutacji
 │                                      albo operacja tylko serwerowa w <verb-noun>.server.ts
 ├── integrations/<vendor>/             <prefix>.<concern>.ts

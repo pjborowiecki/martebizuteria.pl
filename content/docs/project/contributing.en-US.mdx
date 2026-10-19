@@ -111,7 +111,7 @@ Five narrow overrides exist, and they are the only exceptions in the repository:
 
 Do not add a sixth override, and do not add an inline suppression. Outside generated files — `src/routeTree.gen.ts` and `src/types/worker-configuration.d.ts`, both of which the linter ignores — the repository contains **zero** suppressions, and exactly one `as unknown as` cast, in the D1 test mock at `src/platform/testing/mocks/d1.ts:93`, which is why that override exists. If a rule genuinely blocks correct code, split the function or name the value; that is almost always the actual fix.
 
-The same principle applies to comments, although no lint rule checks them. The TypeScript and CSS of `src/` have none. Where a constraint is not obvious, a name states it — for example `columnsInTableOrder` in `src/modules/checkout/checkout.utils.ts`, where an `INSERT ... SELECT` depends on the table's physical column order. Code narration, section banners and restatements of a name are removed by review.
+The same principle applies to comments, although no lint rule checks them. The TypeScript and CSS of `src/` have none. Where a constraint is not obvious, a name states it — for example `columnsInTableOrder` in `src/modules/checkout/checkout.accessors.ts`, where an `INSERT ... SELECT` depends on the table's physical column order. Code narration, section banners and restatements of a name are removed by review.
 
 Import order is not a matter of taste either: `vite.config.ts` declares 17 custom import groups, ordered by layer, and the formatter applies them. Never hand-sort imports; run `bun run check:fix`.
 

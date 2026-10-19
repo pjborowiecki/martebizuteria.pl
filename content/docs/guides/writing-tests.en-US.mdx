@@ -33,25 +33,25 @@ The projects inherit the top-level `test` block (`extends: true`). `passWithNoTe
 
 | Source                                                                               | Test                                                                             |
 | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| `src/modules/_core/utils/download.ts`                                                | `src/modules/_core/utils/__test__/download.test.ts`                              |
+| `src/presentation/components/custom/datagrid/lib/download.ts`                        | `src/presentation/components/custom/datagrid/lib/__test__/download.test.ts`      |
 | `src/modules/address/use-cases/*.ts`                                                 | `src/modules/address/use-cases/__test__/address-use-cases.test.ts`               |
 | `src/routes/admin.catalog.categories.index.tsx`                                      | `src/routes/__test__/admin.catalog.categories.index.component.test.tsx`          |
 | A loader, tested apart from its component                                            | `src/routes/__test__/account.addresses.loader.test.ts`                           |
 | A query that needs real SQL                                                          | `src/modules/_core/utils/__test__/search-conditions.integration.test.ts`         |
 | `src/integrations/drizzle-orm/migrations/20261016140000_claim_past_guest_orders.sql` | `src/modules/order/__test__/order.past-guest-claim-backfill.integration.test.ts` |
 
-Small modules put every operation in one file; large ones split by concern, as the `_core/utils` tests do (`currency.test.ts`, `currency.configuration.test.ts`, `currency.zero-decimal.test.ts`, and `table-export.csv.test.ts`, `table-export.json.test.ts`, `table-export.xml.component.test.ts` and `table-export.txt.test.ts` beside `table-export.test.ts`). A shared fixture sits in the same folder without the `.test` suffix, like `table-export.fixtures.ts`.
+Small modules put every operation in one file; large ones split by concern, as the `_core/utils` tests do (`currency.test.ts`, `currency.configuration.test.ts` and `currency.zero-decimal.test.ts`) and the data grid's `lib` tests (`table-export.csv.test.ts`, `table-export.json.test.ts`, `table-export.xml.component.test.ts` and `table-export.txt.test.ts` beside `table-export.test.ts`). A shared fixture sits in the same folder without the `.test` suffix, like `table-export.fixtures.ts`.
 
 Test files get a relaxed lint override in `vite.config.ts` — `no-await-in-loop`, `no-magic-numbers` and `unicorn/no-null` are off — but everything else still applies, including the ban on `any` and on suppressions.
 
 ## A unit test
 
-Plain functions need no ceremony. `src/modules/_core/utils/__test__/table-export.csv.test.ts`:
+Plain functions need no ceremony. `src/presentation/components/custom/datagrid/lib/__test__/table-export.csv.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vite-plus/test"
 
-import { serializeTableExportCsv } from "~/src/modules/_core/utils/table-export"
+import { serializeTableExportCsv } from "~/src/presentation/components/custom/datagrid/lib/table-export"
 
 import { singleCellDocument } from "./table-export.fixtures"
 
