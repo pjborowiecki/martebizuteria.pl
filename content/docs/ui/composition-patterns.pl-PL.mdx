@@ -200,7 +200,7 @@ Istnieją tylko dwaj dostawcy aplikacji i obaj montowani są raz, w `src/routes/
 }
 ```
 
-Wszystko pozostałe jest stanem, nie kontekstem globalnym: koszyk to store Zustanda (`src/modules/cart/cart.store.ts`), kontekst tabeli danych tworzy prywatnie `createDataGrid`, a formularz kasy używa własnego `CheckoutFormProvider`. Nie dodawaj globalnego dostawcy dla czegoś, czego potrzebuje jeden ekran.
+Wszystko pozostałe jest stanem, nie kontekstem globalnym: koszyk to store Zustanda (`src/hooks/use-cart-store.ts`), kontekst tabeli danych tworzy prywatnie `createDataGrid`, a formularz kasy używa własnego `CheckoutFormProvider`. Nie dodawaj globalnego dostawcy dla czegoś, czego potrzebuje jeden ekran.
 
 ## Stany ładowania, błędu i pustki
 

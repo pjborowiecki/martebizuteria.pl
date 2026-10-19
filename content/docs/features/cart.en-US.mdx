@@ -7,7 +7,7 @@ M'Arte has no server-side cart. The basket lives in `localStorage` under the key
 
 ## The store
 
-`src/modules/cart/cart.store.ts` creates `useCartStore` with zustand's `persist` middleware:
+`src/hooks/use-cart-store.ts` creates `useCartStore` with zustand's `persist` middleware:
 
 ```ts
 {
@@ -44,7 +44,7 @@ Actions: `addItem`, `applyCurrentPrices(prices)`, `removeItem(id)`, `updateQuant
 
 ## Pricing
 
-`src/modules/cart/cart.pricing.ts` holds the two functions the store and the UI share:
+`src/modules/cart/cart.utils.ts` holds the two functions the store and the UI share:
 
 ```ts
 export const getCartLineUnitPriceCents = (item: { readonly price: string; readonly rawPrice: number }): number => {

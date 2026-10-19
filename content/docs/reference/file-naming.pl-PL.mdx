@@ -9,33 +9,21 @@ Nazwy są złożone, a nie zagnieżdżone: pliki modułu leżą płasko obok sie
 
 ## Pliki modułu
 
-Moduł w `src/modules/<feature>/` nosi nazwę swojej funkcjonalności, a każdy plik w nim powtarza tę nazwę jako prefiks.
+Moduł w `src/modules/<table>/` nosi nazwę tabeli bazy danych, której jest właścicielem, a każdy plik w nim powtarza tę nazwę jako prefiks. To jedyne rodzaje plików, jakie moduł może zawierać:
 
-| Wzorzec                                        | Zawiera                                                                | Przykład                                          |
-| ---------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------- |
-| `<feature>.schema.ts`                          | Tabelę Drizzle i jej `relations`                                       | `order/order.schema.ts`                           |
-| `<feature>.types.ts`                           | Typy wyprowadzone z tabeli, zwykle jeden interfejs z `select`/`insert` | `address/address.types.ts`                        |
-| `<feature>.zod.ts`                             | Schematy Zod, głównie budowane przez `drizzle-zod`                     | `product/product.zod.ts`                          |
-| `<feature>.constants.ts`                       | Długości kolumn, enumy statusów, kody błędów, klucze zapytań i mutacji | `product-category/product-category.constants.ts`  |
-| `<feature>.utils.ts`                           | Czyste helpery bez operacji wejścia/wyjścia                            | `order/order.admin-actions.utils.ts`              |
-| `<feature>.accessors.ts`                       | Dostęp do danych bez autoryzacji: odczyty i zapisy do `db`             | `payment/payment.accessors.ts`                    |
-| `<feature>.server.ts`                          | Helpery wyłącznie serwerowe, zwykle przygotowane zapytania             | `product-collection/product-collection.server.ts` |
-| `use-cases/<czasownik>-<rzeczownik>.ts`        | Jedną operację, eksportującą funkcję serwerową i opcje zapytania       | `order/use-cases/ship-order.ts`                   |
-| `use-cases/<czasownik>-<rzeczownik>.server.ts` | Jedną operację bez endpointu RPC, wywoływaną tylko z kodu serwerowego  | `checkout/use-cases/fulfill-checkout.server.ts`   |
+| Wzorzec                                        | Zawiera                                                                                         | Przykład                                         |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `<table>.schema.ts`                            | Tabelę Drizzle i jej `relations`                                                                | `order/order.schema.ts`                          |
+| `<table>.types.ts`                             | Typy wyprowadzone z tabeli, zwykle jeden interfejs z `select`/`insert`                          | `address/address.types.ts`                       |
+| `<table>.zod.ts`                               | Schematy Zod, głównie budowane przez `drizzle-zod`                                              | `product/product.zod.ts`                         |
+| `<table>.constants.ts`                         | Długości kolumn, enumy statusów, kody błędów, klucze zapytań i mutacji                          | `product-category/product-category.constants.ts` |
+| `<table>.accessors.ts`                         | Dostęp do danych bez autoryzacji: odczyty, zapisy i buildery batchy do `db`                     | `payment/payment.accessors.ts`                   |
+| `<table>.utils.ts`                             | Czyste helpery bez dostępu do bazy, żądania i `cloudflare:workers`, bezpieczne dla przeglądarki | `order/order.utils.ts`                           |
+| `use-cases/<czasownik>-<rzeczownik>.ts`        | Jedną operację, eksportującą funkcję serwerową i opcje zapytania                                | `order/use-cases/ship-order.ts`                  |
+| `use-cases/<czasownik>-<rzeczownik>.server.ts` | Jedną operację bez endpointu RPC, wywoływaną tylko z kodu serwerowego                           | `order/use-cases/claim-guest-orders.server.ts`   |
+| `__test__/<plik>.test.ts`                      | Testy jednego pliku, opcjonalnie z tematem: `order.utils.totals.test.ts`                        | `order/__test__/order.utils.display.test.ts`     |
 
-Niektóre moduły potrzebują drugiej osi i łączą dwa sufiksy. Przedostatni segment zawęża zakres:
-
-| Plik                                              | Przeznaczenie                                                                                                         |
-| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `audit-log/audit-log.diff.utils.ts`               | Helpery porównujące migawki „przed" i „po" w dzienniku zdarzeń                                                        |
-| `audit-log/audit-log.queue.server.ts`             | Producent i konsument kolejki Cloudflare                                                                              |
-| `audit-log/audit-log.events.server.ts`            | Typowane funkcje rejestrujące, które wywołuje warstwa domenowa                                                        |
-| `inventory/inventory.availability.utils.ts`       | Arytmetyka dostępności, oddzielona od mapowania wierszy                                                               |
-| `product/product.admin-list.server.ts`            | Zapytanie listy w panelu, osobno od zapytania sklepu                                                                  |
-| `product/product.storefront-catalog.accessors.ts` | Odczyty katalogu dla sklepu                                                                                           |
-| `product-image/product-image.persist.utils.ts`    | Helpery utrwalania obrazów                                                                                            |
-| `order/order.settled.server.ts`                   | Wyszukiwanie zamówień, które już zostały rozliczone                                                                   |
-| `order/order.claim.server.ts`                     | Przypisywanie zamówień gości do konta, które używało ich adresu e-mail w chwili ich złożenia albo które go weryfikuje |
+Żaden inny sufiks nie jest w module dozwolony, a żaden plik nie łączy dwóch z nich. Gdzie trafia helper albo zapytanie, gdy plik przekroczyłby limit 800 linii, opisuje [Moduły i przypadki użycia](/docs/architecture/modules-and-use-cases#sufiksy-plików).
 
 ## Trasy
 

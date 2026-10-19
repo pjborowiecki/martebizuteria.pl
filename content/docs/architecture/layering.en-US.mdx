@@ -60,7 +60,7 @@ export const shipOrder = createServerFn({ method: "POST" })
   })
 ```
 
-`getAdminOrderActionRow`, `assertOrderActionState` and `transitionOrder` come from `src/modules/order/order.admin-action.server.ts`. `transitionOrder` is a conditional `UPDATE` that only moves an order whose fulfilment status is still one of `SHIPPABLE_FULFILLMENT_STATUSES` and which is not cancelled, and throws a conflict when no row matched. `announceOrderShipment` (`use-cases/announce-order-shipment.server.ts`) then claims and sends the shipped e-mail, or the tracking e-mail when a new tracking number follows an earlier shipped e-mail, and returns the e-mail notice that the admin order actions show as a toast.
+`getAdminOrderActionRow`, `assertOrderActionState` and `transitionOrder` come from `src/modules/order/use-cases/transition-order.server.ts`. `transitionOrder` is a conditional `UPDATE` that only moves an order whose fulfilment status is still one of `SHIPPABLE_FULFILLMENT_STATUSES` and which is not cancelled, and throws a conflict when no row matched. `announceOrderShipment` (`use-cases/announce-order-shipment.server.ts`) then claims and sends the shipped e-mail, or the tracking e-mail when a new tracking number follows an earlier shipped e-mail, and returns the e-mail notice that the admin order actions show as a toast.
 
 Because there is exactly one layer where `authorized()` can be forgotten, that layer is the one the tests target. A use case that reads the caller's own data compiles the ownership predicate into the SQL rather than fetching and filtering:
 

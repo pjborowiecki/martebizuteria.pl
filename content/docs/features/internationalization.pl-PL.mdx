@@ -290,7 +290,7 @@ format.number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "cur
 Kod, który formatuje poza komponentem, dostaje preferencje jako argumenty, bez wartości domyślnej:
 
 - `src/routes/_storefront.cart.tsx` formatuje swoje kwoty przez `formatPrice(…, STORE_CURRENCY_CODE, formatLocale)`, z `formatLocale` z `useFormatLocale()`
-- `formatAdminOrderDate(createdAt, { formatLocale, timeZone })` w `order.display.utils.ts` wymaga obu, a lista zamówień, jej eksport i ostatnie zamówienia w przeglądzie przekazują własne ustawienia administratora
+- `formatAdminOrderDate(createdAt, { formatLocale, timeZone })` w `order.utils.ts` wymaga obu, a lista zamówień, jej eksport i ostatnie zamówienia w przeglądzie przekazują własne ustawienia administratora
 
 Formularz Stripe Elements jest lokalizowany osobno, przez mapowanie języka aplikacji na język Stripe w `stripe.client.ts` (`pl-PL → pl`, `en-US → en`).
 

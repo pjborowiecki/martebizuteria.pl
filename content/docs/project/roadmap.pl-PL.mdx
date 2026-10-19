@@ -13,7 +13,7 @@ Te rzeczy zmieniają to, co widzą klienci i właściciel sklepu. Są pierwsze, 
 
 ### Kompensacja stanów magazynowych działa „najlepszym staraniem”
 
-`reserveInventoryForItems` w `src/modules/inventory/inventory.utils.ts` rezerwuje wszystkie pozycje koszyka jednym wsadem warunkowych `UPDATE`, a jeśli któraś pozycja nie przejdzie swojego warunku, zwalnia te, które się udały:
+`reserveInventoryForItems` w `src/modules/inventory/use-cases/reserve-inventory.server.ts` rezerwuje wszystkie pozycje koszyka jednym wsadem warunkowych `UPDATE`, a jeśli któraś pozycja nie przejdzie swojego warunku, zwalnia te, które się udały:
 
 ```ts
 await releaseInventoryForItems(reserved).catch((error: unknown) => {
@@ -25,11 +25,11 @@ Błąd samego wycofania jest przechwytywany i zapisywany do logu. Nieudane wycof
 
 ### Częściowy zwrot towaru nie ma ścieżki powrotu na stan
 
-Towar wraca na stan całym zamówieniem, wszystkie pozycje naraz: `returnOrderToStock` w `src/modules/order/order.restock.server.ts` działa, gdy administrator zaznaczy „Produkty wróciły na stan magazynowy” w oknie zwrotu albo naciśnie Przywróć na stan, a `canRestockAdminOrder` w `src/modules/order/order.admin-actions.utils.ts` oferuje Przywróć na stan tylko dla zamówienia o statusie `refunded`. Częściowy zwrot zrobiony w panelu Stripe zostawia zamówienie otwarte, więc gdy wróci jeden egzemplarz z większego zamówienia, administrator musi ręcznie podnieść stan tego wariantu w edytorze produktu.
+Towar wraca na stan całym zamówieniem, wszystkie pozycje naraz: `returnOrderToStock` w `src/modules/order/use-cases/return-order-to-stock.server.ts` działa, gdy administrator zaznaczy „Produkty wróciły na stan magazynowy” w oknie zwrotu albo naciśnie Przywróć na stan, a `canRestockAdminOrder` w `src/modules/order/order.utils.ts` oferuje Przywróć na stan tylko dla zamówienia o statusie `refunded`. Częściowy zwrot zrobiony w panelu Stripe zostawia zamówienie otwarte, więc gdy wróci jeden egzemplarz z większego zamówienia, administrator musi ręcznie podnieść stan tego wariantu w edytorze produktu.
 
 ### E-maile o zamówieniu nie mają skrzynki wyjściowej
 
-`deliverOrderEmail` w `src/modules/order/order.email-delivery.server.ts` wysyła e-mail dotyczący zamówienia raz w trakcie żądania i próbuje jeszcze dwa razy w ramach jego `waitUntil`, pod kluczem idempotencji Resend, a e-mail, który nadal nie wyszedł, czeka na przycisk **Wyślij ponownie** administratora w karcie „Aktywność” zamówienia. Nic nie przechowuje samego e-maila, więc Worker zatrzymany w trakcie ponowień zostawia go jako `email.deferred`, dopóki administrator nie wyśle go ponownie, a e-maila o nieudanej płatności, który należy do sesji Checkout, a nie do zamówienia, nie da się wysłać ponownie wcale; z takim klientem sklep musi skontaktować się ręcznie.
+`deliverOrderEmail` w `src/modules/order/use-cases/deliver-order-email.server.ts` wysyła e-mail dotyczący zamówienia raz w trakcie żądania i próbuje jeszcze dwa razy w ramach jego `waitUntil`, pod kluczem idempotencji Resend, a e-mail, który nadal nie wyszedł, czeka na przycisk **Wyślij ponownie** administratora w karcie „Aktywność” zamówienia. Nic nie przechowuje samego e-maila, więc Worker zatrzymany w trakcie ponowień zostawia go jako `email.deferred`, dopóki administrator nie wyśle go ponownie, a e-maila o nieudanej płatności, który należy do sesji Checkout, a nie do zamówienia, nie da się wysłać ponownie wcale; z takim klientem sklep musi skontaktować się ręcznie.
 
 ### Archiwizacja produktu może przeoczyć otwierający się checkout
 

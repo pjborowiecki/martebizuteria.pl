@@ -28,19 +28,21 @@ Folder w `src/modules` istnieje tylko dla tabeli bazy danych o tej samej nazwie:
 
 ## Sufiksy plików
 
-| Plik                              | Zawiera                                                                              |
-| --------------------------------- | ------------------------------------------------------------------------------------ |
-| `<feature>.schema.ts`             | Definicję `sqliteTable`, jej indeksy i `relations`                                   |
-| `<feature>.zod.ts`                | Schematy wejścia wspólne dla react-hook-form i walidatorów funkcji serwerowych       |
-| `<feature>.constants.ts`          | Klucze zapytań i mutacji, enumy, rozmiary stron, czasy stale, metadane kolumn        |
-| `<feature>.types.ts`              | Typy wiersza i wejścia wyprowadzone ze schematu i kształtów Zod                      |
-| `<feature>.utils.ts`              | Czyste helpery bez dostępu do bazy i żądania                                         |
-| `<feature>.accessors.ts`          | Dostęp do danych: zapytania Drizzle, prepared statements, buildery batchy            |
-| `<feature>.*.server.ts`           | Helpery wyłącznie serwerowe, które nie są endpointami RPC                            |
-| `use-cases/<verb-noun>.ts`        | Jedno `createServerFn` plus opcje zapytania lub mutacji, które je wołają             |
-| `use-cases/<verb-noun>.server.ts` | Jedną operację wyłącznie serwerową, wołaną przez inny kod serwera; bez endpointu RPC |
+| Plik                              | Zawiera                                                                                              |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `<module>.schema.ts`              | Definicję `sqliteTable`, jej indeksy i `relations`                                                   |
+| `<module>.types.ts`               | Typy wiersza i wejścia wyprowadzone ze schematu i kształtów Zod                                      |
+| `<module>.zod.ts`                 | Schematy wejścia wspólne dla react-hook-form i walidatorów funkcji serwerowych                       |
+| `<module>.constants.ts`           | Klucze zapytań i mutacji, enumy, kody błędów, rozmiary stron, czasy stale, metadane kolumn           |
+| `<module>.accessors.ts`           | Dostęp do danych po stronie serwera: zapytania Drizzle, prepared statements, buildery batchy         |
+| `<module>.utils.ts`               | Czyste helpery bez dostępu do bazy, żądania i `cloudflare:workers`, bezpieczne w paczce przeglądarki |
+| `use-cases/<verb-noun>.ts`        | Jedno `createServerFn` plus opcje zapytania lub mutacji, które je wołają                             |
+| `use-cases/<verb-noun>.server.ts` | Jedną operację wyłącznie serwerową, wołaną przez inny kod serwera; bez endpointu RPC                 |
+| `__test__/`                       | Testy, obok modułu i w `use-cases/__test__/`, każdy nazwany od pliku, który testuje                  |
 
-`order` to dobry moduł do przeczytania od początku do końca: `order.schema.ts`, `order.zod.ts`, `order.constants.ts`, `order.types.ts`, `order.utils.ts`, `order.totals.ts`, `order.display.utils.ts`, `order.detail.utils.ts`, `order.email.utils.ts`, `order.fulfillment-time.utils.ts`, `order.customer.utils.ts`, `order.dashboard.utils.ts`, `order.accessors.ts`, `order.dashboard.accessors.ts`, `order.admin-action.server.ts`, `order.admin-actions.utils.ts`, `order.settled.server.ts`, `order.number.server.ts`, `order.claim.server.ts`, `order.email-delivery.server.ts`, `order.refund.server.ts`, `order.restock.server.ts`, `order.shipment.server.ts`, `order-audit.utils.ts`, `order.admin-list-filters.ts` i trzydzieści pięć plików w `use-cases/`.
+Żaden inny rodzaj pliku nie jest dozwolony w folderze modułu. Gdy zapytanie służy jednej operacji, a accessors przekroczyłyby limit 800 linii, trafia do `use-cases/<verb-noun>.server.ts` tej operacji; gdy limit przekroczyłyby utils, helper potrzebny tylko jednemu przypadkowi użycia leży obok niego. Stan przeglądarki, jak store Zustanda koszyka w `src/hooks/use-cart-store.ts`, nie jest kodem modułu, a buildery treści e-maili zamówień leżą przy szablonach e-maili w `src/presentation/emails/order-email-content.ts`.
+
+`order` to dobry moduł do przeczytania od początku do końca: `order.schema.ts`, `order.types.ts`, `order.zod.ts`, `order.constants.ts`, `order.accessors.ts`, `order.utils.ts` i czterdzieści osiem plików w `use-cases/`.
 
 ## Przypadek użycia mutujący
 
@@ -90,9 +92,9 @@ Każdy element jest tu istotny:
 
 - **Middleware** pochodzi z `src/integrations/better-auth/auth.middleware.ts`. `withRequest` przechwytuje nagłówki żądania i normalizuje błędy; `authorized()` wymaga sesji; `authorized({ order: ["update"] })` sprawdza dodatkowo uprawnienie roli z `auth.access.ts` i odmawia z `FORBIDDEN`, dopóki zachodzi `needsTwoFactorSetup` — czyli dla konta z rolą administracyjną bez uwierzytelniania dwuskładnikowego w buildzie, który go wymaga (production i test); `withRateLimit(kind, RATE_LIMITS.SENSITIVE)` liczy próby na operację i adres IP.
 - **Walidacja** parsuje wejście schematem Zod modułu przed uruchomieniem handlera, więc handler otrzymuje typy `zod.output`.
-- **Guardy stanu** mieszkają w module, nie w komponencie. `assertOrderActionState` odrzuca przejścia, które `order.admin-actions.utils.ts` uznaje za niemożliwe, a `transitionOrder` z `order.admin-action.server.ts` powtarza to sprawdzenie w samym zapisie: jego `UPDATE` pasuje tylko do zamówienia, którego status realizacji nadal należy do `SHIPPABLE_FULFILLMENT_STATUSES` i które nie jest anulowane, a gdy żaden wiersz nie pasuje, rzuca błąd konfliktu.
+- **Guardy stanu** mieszkają w module, nie w komponencie. `assertOrderActionState` odrzuca przejścia, które `order.utils.ts` uznaje za niemożliwe, a `transitionOrder` z `transition-order.server.ts` powtarza to sprawdzenie w samym zapisie: jego `UPDATE` pasuje tylko do zamówienia, którego status realizacji nadal należy do `SHIPPABLE_FULFILLMENT_STATUSES` i które nie jest anulowane, a gdy żaden wiersz nie pasuje, rzuca błąd konfliktu.
 - **Linki idą za żądaniem.** `resolveRequestOrigin(getRequest())` działa na samym początku, więc żądanie na host, którego ten build nie obsługuje, jest odrzucane z `FORBIDDEN`, zanim zamówienie się zmieni, a e-mail o wysyłce linkuje do wdrożenia, z którego korzysta administrator. Zobacz [Model bezpieczeństwa](/docs/architecture/security-model).
-- **Audyt to praca w tle, a na e-mail handler czeka.** Rejestrator wysyła zdarzenie do kolejki Cloudflare, więc nie opóźnia odpowiedzi. Na e-mail handler czeka, bo administrator dowiaduje się, czy wyszedł. `announceOrderShipment` najpierw rezerwuje e-mail warunkowym `UPDATE` (`shippedEmailAt` dla e-maila o wysyłce, `trackingEmailNumber` dla późniejszego e-maila z numerem śledzenia), więc powtórne wywołanie zgłasza `alreadySent` zamiast wysyłać drugi raz. `sendOrderShippedEmail` przechodzi przez `deliverOrderEmail` z `order.email-delivery.server.ts`, który zapisuje wynik w dzienniku zdarzeń i zwraca `false` zamiast rzucać wyjątek; nieudana wysyłka jest ponawiana dwa razy w tle, a potem wywołuje alert o incydencie, i odrzucony e-mail nigdy nie cofa wysyłki zamówienia. `awaitOrderEmailNotice` przekazuje obietnicę wysyłki do `scheduleBackgroundWork`, więc wysyłka kończy się nawet wtedy, gdy administrator wcześniej się rozłączy, i zwraca `{ kind, status }` ze `status` równym `sent` lub `failed`, co akcje zamówień w panelu pokazują jako toast.
+- **Audyt to praca w tle, a na e-mail handler czeka.** Rejestrator wysyła zdarzenie do kolejki Cloudflare, więc nie opóźnia odpowiedzi. Na e-mail handler czeka, bo administrator dowiaduje się, czy wyszedł. `announceOrderShipment` najpierw rezerwuje e-mail warunkowym `UPDATE` (`shippedEmailAt` dla e-maila o wysyłce, `trackingEmailNumber` dla późniejszego e-maila z numerem śledzenia), więc powtórne wywołanie zgłasza `alreadySent` zamiast wysyłać drugi raz. `sendOrderShippedEmail` przechodzi przez `deliverOrderEmail` z `deliver-order-email.server.ts`, który zapisuje wynik w dzienniku zdarzeń i zwraca `false` zamiast rzucać wyjątek; nieudana wysyłka jest ponawiana dwa razy w tle, a potem wywołuje alert o incydencie, i odrzucony e-mail nigdy nie cofa wysyłki zamówienia. `awaitOrderEmailNotice` przekazuje obietnicę wysyłki do `scheduleBackgroundWork`, więc wysyłka kończy się nawet wtedy, gdy administrator wcześniej się rozłączy, i zwraca `{ kind, status }` ze `status` równym `sent` lub `failed`, co akcje zamówień w panelu pokazują jako toast.
 - **Opcje mutacji są eksportowane obok funkcji**, z kluczem `ORDER_MUTATION_KEYS.SHIP`.
 
 ## Przypadek użycia odczytujący

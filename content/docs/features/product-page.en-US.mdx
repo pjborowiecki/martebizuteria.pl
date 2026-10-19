@@ -56,7 +56,7 @@ if (prod === undefined || !isProductInStock(prod.variants)) {
 return attachPriceReductions(mapPublishedProductForStorefront(prod, locale), await getPriceReductions(prod.variants))
 ```
 
-Note the return type. **A missing product and an out-of-stock product are both `false`**, and the route turns `false` into `notFound()`. There is no separate "sold out" page: a product whose variants all sit at zero available is a 404 on the storefront. `isProductInStock` lives in `src/modules/inventory/inventory.availability.utils.ts`.
+Note the return type. **A missing product and an out-of-stock product are both `false`**, and the route turns `false` into `notFound()`. There is no separate "sold out" page: a product whose variants all sit at zero available is a 404 on the storefront. `isProductInStock` lives in `src/modules/inventory/inventory.utils.ts`.
 
 `getPublishedProductByHandleQuery` is a prepared Drizzle relational query in `product.accessors.ts` that loads the product with its variants, images, options and option values, categories, collections and attribute values in one round trip. `getPriceReductions` adds a second read only when one of the variants is reduced (see [Reduced prices](#reduced-prices-and-the-lowest-price-of-the-30-days-before)).
 

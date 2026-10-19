@@ -71,7 +71,7 @@ Zwraca `undefined` przy sukcesie i komunikat błędu w przeciwnym razie. SDK Res
 
 ### Załączniki
 
-`attachments` trafia do Resend bez zmian. Resend potrafi pobrać załącznik z adresu `path`, ale nie z `localhost` ani `127.0.0.1`, więc plik serwowany przez sklep jest czytany w Workerze i wysyłany jako `content` w base64. Tak potwierdzenie zamówienia dołącza wzór formularza odstąpienia od umowy: `loadWithdrawalFormAttachment(seller, origin)` z `src/modules/order-withdrawal/order-withdrawal.form.server.ts` tworzy go przez `pdf-lib` z danych sprzedawcy, z fontami pobieranymi z `env.ASSETS`, bindingu zasobów statycznych, który deklaruje każde środowisko w `wrangler.jsonc`. `vp dev` odpowiada na nie z `public/` przez Vite, a wdrożony Worker z przesłanych zasobów. Font, którego binding nie zwróci, kończy się wyjątkiem, a potwierdzenie zostaje zapisane jako nieudane, zamiast wyjść bez formularza.
+`attachments` trafia do Resend bez zmian. Resend potrafi pobrać załącznik z adresu `path`, ale nie z `localhost` ani `127.0.0.1`, więc plik serwowany przez sklep jest czytany w Workerze i wysyłany jako `content` w base64. Tak potwierdzenie zamówienia dołącza wzór formularza odstąpienia od umowy: `loadWithdrawalFormAttachment(seller, origin)` z `src/modules/order-withdrawal/use-cases/load-withdrawal-form-attachment.server.ts` tworzy go przez `pdf-lib` z danych sprzedawcy, z fontami pobieranymi z `env.ASSETS`, bindingu zasobów statycznych, który deklaruje każde środowisko w `wrangler.jsonc`. `vp dev` odpowiada na nie z `public/` przez Vite, a wdrożony Worker z przesłanych zasobów. Font, którego binding nie zwróci, kończy się wyjątkiem, a potwierdzenie zostaje zapisane jako nieudane, zamiast wyjść bez formularza.
 
 Zdjęcia produktów w potwierdzeniu zamówienia trafiają tą samą drogą, jako załączniki inline z `contentId`, do których HTML odwołuje się przez `cid:`; `embedEmailImages` odczytuje je z bucketu `IMAGES` (zob. [E-mail](/docs/features/email)).
 
@@ -202,7 +202,7 @@ W webhooku odrzucony host albo sesja bez `return_url` zatrzymuje tylko próbę w
 
 ## Budowniki e-maili o zamówieniu
 
-Plik `src/modules/order/order.email.utils.ts` zamienia wiersze bazy na właściwości szablonów:
+Plik `src/presentation/emails/order-email-content.ts`, obok szablonów, zamienia wiersze bazy na właściwości szablonów:
 
 | Eksport                                                                                         | Przeznaczenie                                                                                                                                                            |
 | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -214,18 +214,19 @@ Plik `src/modules/order/order.email.utils.ts` zamienia wiersze bazy na właściw
 | `buildOrderConfirmationItems(lines, locale, origin)`                                            | Wiersze pozycji, ze sformatowanymi cenami i adresami produktów                                                                                                           |
 | `buildOrderAccountCta({ isGuest, locale, messages, orderId, origin })`                          | Albo „załóż konto i śledź zamówienie", albo link do `/account/orders/<id>`                                                                                               |
 | `buildOrderLegalLinks(origin, locale)`                                                          | Linki do regulaminu, strony wymiany i zwrotów oraz polityki prywatności                                                                                                  |
-| `resolveStripePaymentMethodLabel(session, messages)`                                            | Czyta PaymentIntent, aby nazwać metodę faktycznie użytą przez klienta (karta, BLIK, P24)                                                                                 |
 
-Plik `src/modules/order/order.fulfillment-time.utils.ts` zamienia atrybut `czas-realizacji` zamówionych produktów na czas realizacji, który podaje potwierdzenie:
+`resolveStripePaymentMethodLabel(session, messages)` czyta PaymentIntent, aby nazwać metodę faktycznie użytą przez klienta (karta, BLIK, P24). Woła Stripe, więc leży w `src/modules/order/use-cases/send-order-confirmation-email.server.ts`, jedynym e-mailu, który ją podaje.
+
+Atrybut `czas-realizacji` zamówionych produktów staje się czasem realizacji, który podaje potwierdzenie, przez `resolveOrderLineFulfillmentTimes` w tym samym przypadku użycia i `describeOrderFulfillmentTime` w `src/modules/order/order.utils.ts`:
 
 | Eksport                                                                  | Przeznaczenie                                                                                                                                                 |
 | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `resolveOrderLineFulfillmentTimes(lines, attributesByVariantId, locale)` | Nazwa każdej pozycji z czasem, który pokazuje strona jej produktu, w języku zamówienia, albo `undefined`, gdy go nie ma                                       |
 | `describeOrderFulfillmentTime(lines, messages)`                          | Najdłuższy z tych czasów, 10 dni roboczych dla pozycji bez czasu, a po nim uwaga, od kiedy biegnie; czas każdego produktu osobno, gdy nie da się ich porównać |
 
-Plik `order.email.utils.ts` używa też budowników potwierdzenia ponownie dla e-maila o wysyłce: `buildOrderShippedDetails` wybiera tekst o czasie dostawy według `type` metody (`courier`, `locker` lub `in_store`), a `buildOrderShippedAccountCta` deleguje do `buildOrderAccountCta`. `resolveOrderTracking`, wspólne dla e-maili o wysyłce i z numerem przesyłki, podaje przewoźnika metody przy każdym zamówieniu kurierem albo do paczkomatu, a przy odbiorze żadnego, i łączy numer z adresem zapisanym w zamówieniu albo, tylko przy metodzie, której przewoźnikiem jest InPost, ze stroną śledzenia InPost.
+Plik `order-email-content.ts` używa też budowników potwierdzenia ponownie dla e-maila o wysyłce: `buildOrderShippedDetails` wybiera tekst o czasie dostawy według `type` metody (`courier`, `locker` lub `in_store`), a `buildOrderShippedAccountCta` deleguje do `buildOrderAccountCta`. `resolveOrderTracking`, wspólne dla e-maili o wysyłce i z numerem przesyłki, podaje przewoźnika metody przy każdym zamówieniu kurierem albo do paczkomatu, a przy odbiorze żadnego, i łączy numer z adresem zapisanym w zamówieniu albo, tylko przy metodzie, której przewoźnikiem jest InPost, ze stroną śledzenia InPost.
 
-Plik `src/modules/order/use-cases/send-order-shipped-email.server.ts` zawiera cały przepływ e-maila o wysyłce. `attemptOrderShippedEmail(orderId, origin, idempotencyKey)` ładuje zamówienie przez `getOrderForShippedEmail`, ustala język z `order.metadata` przez `resolveOrderLocale`, ładuje kontekst zamówienia, gdy istnieje `checkoutId`, renderuje i wysyła pod otrzymanym kluczem. Zwraca wynik zamiast go zapisywać, a brak zamówienia albo pusty adres też jest wynikiem. `sendOrderShippedEmail(orderId, origin)` przekazuje ją do `deliverOrderEmail` z `src/modules/order/order.email-delivery.server.ts`, przez który przechodzi każdy e-mail o zamówieniu:
+Plik `src/modules/order/use-cases/send-order-shipped-email.server.ts` zawiera cały przepływ e-maila o wysyłce. `attemptOrderShippedEmail(orderId, origin, idempotencyKey)` ładuje zamówienie przez `getOrderForShippedEmail`, ustala język z `order.metadata` przez `resolveOrderLocale`, ładuje kontekst zamówienia, gdy istnieje `checkoutId`, renderuje i wysyła pod otrzymanym kluczem. Zwraca wynik zamiast go zapisywać, a brak zamówienia albo pusty adres też jest wynikiem. `sendOrderShippedEmail(orderId, origin)` przekazuje ją do `deliverOrderEmail` z `src/modules/order/use-cases/deliver-order-email.server.ts`, przez który przechodzi każdy e-mail o zamówieniu:
 
 ```ts
 export const sendOrderShippedEmail = (orderId: string, origin: string): Promise<boolean> =>
