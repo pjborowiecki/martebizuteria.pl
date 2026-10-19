@@ -21,6 +21,7 @@ import {
   ADMIN_ORDER_PAYMENT_UI_KEY,
   ADMIN_ORDER_STATUSES,
   ADMIN_ORDER_STAT_FILTER,
+  CUSTOMER_ACCOUNT_ORDER_FILTERS,
   ORDER_EMAIL_KIND,
   ORDER_TABS,
   ORDER_TRACKING_NUMBER_MAX_LENGTH,
@@ -31,6 +32,8 @@ import { order } from "~/src/modules/order/order.schema"
 const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
   zodInstance: zod,
 })
+
+const FIRST_ORDERS_PAGE = 1
 
 const adminOrdersExportInput = zod.object({
   createdAt: dateColumnFilterField.optional(),
@@ -107,6 +110,13 @@ export const orderZodSchemas = {
   adminStepBackOrderInput: zod.object({
     fromStep: zod.enum(ADMIN_ORDER_ADVANCED_STEPS),
     orderId: uuidField,
+  }),
+  customerOrderIdInput: zod.object({
+    orderId: zod.string().min(1),
+  }),
+  customerOrdersPageInput: zod.object({
+    filter: zod.enum(CUSTOMER_ACCOUNT_ORDER_FILTERS).default("all"),
+    page: zod.coerce.number().int().min(FIRST_ORDERS_PAGE).default(FIRST_ORDERS_PAGE),
   }),
   disputeMetadata,
   email,

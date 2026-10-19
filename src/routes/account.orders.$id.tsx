@@ -5,10 +5,10 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
-import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
-import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
-import { getCustomerOrderQuery } from "~/src/modules/customer-account/use-cases/get-customer-order"
+import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/_core/constants/customer-account"
+import { accountPageMeta } from "~/src/modules/_core/utils/account-page-meta"
 import { getCustomerOrderWithdrawalQuery } from "~/src/modules/order-withdrawal/use-cases/get-customer-order-withdrawal"
+import { getCustomerOrderQuery } from "~/src/modules/order/use-cases/get-customer-order"
 
 import { useFormatter } from "~/src/hooks/use-display-format"
 

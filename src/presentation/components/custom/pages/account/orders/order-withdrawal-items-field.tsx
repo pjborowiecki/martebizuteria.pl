@@ -3,8 +3,8 @@ import { type JSX } from "react"
 import { type Control, useController } from "react-hook-form"
 import { useTranslations } from "use-intl/react"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
+import { type Order } from "~/src/modules/order/order.types"
 
 import { Checkbox } from "~/src/presentation/components/shadcn/checkbox"
 import { FieldLegend, FieldSet } from "~/src/presentation/components/shadcn/field"
@@ -48,5 +48,5 @@ export const OrderWithdrawalItemsField = ({ control, items }: Readonly<OrderWith
 
 interface OrderWithdrawalItemsFieldProps {
   readonly control: Control<OrderWithdrawal["customerFormValues"]>
-  readonly items: readonly CustomerAccount["orderItem"][]
+  readonly items: readonly Order["customerOrderItem"][]
 }

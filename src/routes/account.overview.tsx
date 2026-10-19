@@ -5,12 +5,13 @@ import { createFileRoute } from "@tanstack/react-router"
 import { ArrowRight, Heart, Package, Sparkles } from "lucide-react"
 import { useLocale, useTranslations } from "use-intl/react"
 
+import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/_core/constants/customer-account"
+import { accountPageMeta } from "~/src/modules/_core/utils/account-page-meta"
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { formatRelativeFromNow } from "~/src/modules/_core/utils/datetime"
-import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
-import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
-import { getCustomerOverviewQuery } from "~/src/modules/customer-account/use-cases/get-customer-overview"
+import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
+import { type Order } from "~/src/modules/order/order.types"
+import { getCustomerOverviewQuery } from "~/src/modules/order/use-cases/get-customer-overview"
 
 import { Route as AccountRoute } from "~/src/routes/account"
 
@@ -71,7 +72,7 @@ const StatsGrid = ({
 const ActivityFeed = ({
   activity,
 }: Readonly<{
-  activity: readonly CustomerAccount["activityItem"][]
+  activity: readonly AuditLog["customerActivityItem"][]
 }>): JSX.Element => {
   const t = useTranslations("pages.account.overview")
   const locale = useLocale()
@@ -111,7 +112,7 @@ const ActivityFeed = ({
 const RecentOrders = ({
   orders,
 }: Readonly<{
-  orders: readonly CustomerAccount["orderSummary"][]
+  orders: readonly Order["customerOrderSummary"][]
 }>): JSX.Element => {
   const t = useTranslations("pages.account.overview")
   const format = useFormatter()
@@ -166,7 +167,7 @@ const RecentOrderLink = ({
 }: Readonly<{
   createdAt: Date
   displayId: string
-  filterStatus: CustomerAccount["orderSummary"]["filterStatus"]
+  filterStatus: Order["customerOrderSummary"]["filterStatus"]
   orderId: string
   totalLabel: string
 }>): JSX.Element => {
@@ -358,7 +359,7 @@ export const Route = createFileRoute("/account/overview")({
   staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS,
 })
 
-const ACTIVITY_ICONS: Record<CustomerAccount["activityItem"]["actionKey"], typeof Package> = {
+const ACTIVITY_ICONS: Record<AuditLog["customerActivityItem"]["actionKey"], typeof Package> = {
   cartItemAdded: Heart,
   loginFailed: Sparkles,
   loginSuccess: Sparkles,

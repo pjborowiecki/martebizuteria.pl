@@ -5,7 +5,7 @@ import { Pencil, Save, X } from "lucide-react"
 import { type Control, useController } from "react-hook-form"
 import { useTranslations } from "use-intl/react"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type User } from "~/src/modules/user/user.types"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Input } from "~/src/presentation/components/shadcn/input"
@@ -83,7 +83,7 @@ export const ProfileField = ({
   onSave,
   type,
 }: Readonly<{
-  control: Control<CustomerAccount["profileForm"]>
+  control: Control<User["customerProfileForm"]>
   editing: boolean
   field: EditableField
   label: string

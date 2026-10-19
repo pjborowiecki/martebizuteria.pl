@@ -6,7 +6,7 @@ import { Plus } from "lucide-react"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
-import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
+import { accountPageMeta } from "~/src/modules/_core/utils/account-page-meta"
 import { createCardSetupIntentMutation } from "~/src/modules/payment/use-cases/create-card-setup-intent"
 import { listSavedPaymentMethodsQuery } from "~/src/modules/payment/use-cases/list-saved-payment-methods"
 

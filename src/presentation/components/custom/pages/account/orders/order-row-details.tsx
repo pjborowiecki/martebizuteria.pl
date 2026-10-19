@@ -2,7 +2,7 @@ import { type JSX, useMemo } from "react"
 
 import { useTranslations } from "use-intl/react"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type Order } from "~/src/modules/order/order.types"
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 import { OrderRowItem } from "~/src/presentation/components/custom/pages/account/orders/order-row-item"
@@ -12,7 +12,7 @@ import { ROUTES } from "~/src/routes"
 export const OrderRowDetails = ({
   order,
 }: Readonly<{
-  order: CustomerAccount["orderSummary"]
+  order: Order["customerOrderSummary"]
 }>): JSX.Element => {
   const t = useTranslations("pages.account.orders")
   const orderParams = useMemo(

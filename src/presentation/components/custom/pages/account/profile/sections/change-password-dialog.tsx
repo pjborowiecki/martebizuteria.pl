@@ -12,7 +12,7 @@ import { useTranslations } from "use-intl/react"
 import { authClient } from "~/src/integrations/better-auth/auth.client"
 import { type ChangePasswordFormValues, changePasswordSchema } from "~/src/integrations/better-auth/auth.zod"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
+import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
 
 import { useActionError } from "~/src/hooks/use-action-error"
 
@@ -56,7 +56,7 @@ export const ChangePasswordDialog = ({ onOpenChange, open, variant = "editorial"
             toast.error(t("errorTitle"), { description: actionError(ctx.error) })
           },
           onSuccess: () => {
-            void queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS })
+            void queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.CUSTOMER.SESSIONS })
             toast.success(t("successTitle"), { description: t("successDescription") })
             form.reset()
             onOpenChange(false)

@@ -178,6 +178,10 @@ export const USER_ERROR_CODES = {
   STRIPE_CUSTOMER_NOT_DELETED: "STRIPE_CUSTOMER_NOT_DELETED",
 } as const
 
+export const CUSTOMER_ACCOUNT_NAME_MAX_LENGTH = 120
+
+export const CUSTOMER_ACCOUNT_PHONE_MAX_LENGTH = 32
+
 export const USER_QUERY_KEYS = {
   ADMIN: {
     CUSTOMERS: ["admin", "users", "customers"] as const,
@@ -187,6 +191,9 @@ export const USER_QUERY_KEYS = {
     TEAM: ["admin", "users", "team"] as const,
     TEAM_CANDIDATES: ["admin", "users", "team", "candidates"] as const,
   },
+  CUSTOMER: {
+    PROFILE: ["customer-account", "profile"] as const,
+  },
 } as const
 
 export const USER_MUTATION_KEYS = {
@@ -195,5 +202,6 @@ export const USER_MUTATION_KEYS = {
   REQUEST_CUSTOMER_EMAIL_CHANGE: ["user", "requestCustomerEmailChange"] as const,
   REVOKE_ADMIN_ACCESS: ["user", "revokeAdminAccess"] as const,
   UPDATE_CUSTOMER: ["user", "updateCustomer"] as const,
+  UPDATE_CUSTOMER_PHONE: ["customer-account", "updateCustomerPhone"] as const,
   UPDATE_DISPLAY_PREFERENCE: ["user", "updateDisplayPreference"] as const,
 } as const

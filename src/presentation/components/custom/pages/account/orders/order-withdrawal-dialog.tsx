@@ -7,7 +7,6 @@ import { useForm, useWatch } from "react-hook-form"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 import {
   ORDER_WITHDRAWAL_OUTCOME,
   ORDER_WITHDRAWAL_QUERY_KEYS,
@@ -16,6 +15,7 @@ import {
 import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
 import { orderWithdrawalZodSchemas } from "~/src/modules/order-withdrawal/order-withdrawal.zod"
 import { withdrawFromCustomerOrderMutation } from "~/src/modules/order-withdrawal/use-cases/withdraw-from-customer-order"
+import { type Order } from "~/src/modules/order/order.types"
 import { getSellerDetailsQuery } from "~/src/modules/store-setting/use-cases/get-seller-details"
 
 import { useActionError } from "~/src/hooks/use-action-error"
@@ -141,6 +141,6 @@ export const OrderWithdrawalDialog = ({ onOpenChange, open, order, withdrawal }:
 interface OrderWithdrawalDialogProps {
   readonly onOpenChange: (open: boolean) => void
   readonly open: boolean
-  readonly order: CustomerAccount["orderDetail"]
+  readonly order: Order["customerOrderDetail"]
   readonly withdrawal: OrderWithdrawal["customerOrder"]
 }

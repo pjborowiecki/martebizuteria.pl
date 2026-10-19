@@ -93,6 +93,18 @@ interface TeamCandidate {
   readonly twoFactorEnabled: boolean
 }
 
+interface CustomerAccountProfile {
+  readonly createdAt: Date
+  readonly email: string
+  readonly emailVerified: boolean
+  readonly hasGoogle: boolean
+  readonly hasPassword: boolean
+  readonly name: string
+  readonly phone?: string | undefined
+  readonly timezone?: string | undefined
+  readonly twoFactorEnabled: boolean
+}
+
 export interface User {
   adminCustomerAddressForm: z.infer<(typeof userZodSchemas)["adminCustomerAddressForm"]>
   adminCustomerAggregateStatsInput: AdminCustomerAggregateStatsInput
@@ -114,6 +126,8 @@ export interface User {
   customerEmailChangeForm: z.infer<(typeof userZodSchemas)["customerEmailChangeForm"]>
   customerLocationRow: CustomerLocationRow
   customerOrderStats: CustomerOrderStats
+  customerProfile: CustomerAccountProfile
+  customerProfileForm: z.infer<(typeof userZodSchemas)["customerProfileForm"]>
   emailHistoryRow: Pick<typeof userEmailHistory.$inferSelect, "addedAt" | "email" | "replacedAt">
   insert: typeof user.$inferInsert
   select: typeof user.$inferSelect

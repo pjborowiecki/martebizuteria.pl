@@ -5,9 +5,9 @@ import { LogOut, MoreHorizontal } from "lucide-react"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
-import { revokeCustomerSessionMutation } from "~/src/modules/customer-account/use-cases/revoke-customer-session"
+import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
+import { type Session } from "~/src/modules/session/session.types"
+import { revokeCustomerSessionMutation } from "~/src/modules/session/use-cases/revoke-customer-session"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import {
@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "~/src/presentation/components/shadcn/dropdown-menu"
 
-export const SessionsRowActions = ({ session }: Readonly<{ session: CustomerAccount["session"] }>): JSX.Element | undefined => {
+export const SessionsRowActions = ({ session }: Readonly<{ session: Session["customerSession"] }>): JSX.Element | undefined => {
   const t = useTranslations("pages.admin.settings.security.sessions")
   const tSessions = useTranslations("pages.account.sessions")
   const queryClient = useQueryClient()
@@ -27,7 +27,7 @@ export const SessionsRowActions = ({ session }: Readonly<{ session: CustomerAcco
       toast.error(tSessions("revokeError"))
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS })
+      await queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.CUSTOMER.SESSIONS })
       toast.success(tSessions("revokeSuccess"))
     },
   })

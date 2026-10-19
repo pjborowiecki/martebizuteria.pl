@@ -7,16 +7,16 @@ import { MapPin, Pencil, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
+import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/_core/constants/customer-account"
+import { accountPageMeta } from "~/src/modules/_core/utils/account-page-meta"
 import { ADDRESS_QUERY_KEYS } from "~/src/modules/address/address.constants"
+import { type Address } from "~/src/modules/address/address.types"
 import { COUNTRY_CODE_LENGTH } from "~/src/modules/address/address.zod"
 import { createUserAddress } from "~/src/modules/address/use-cases/create-user-address"
 import { deleteUserAddressMutation } from "~/src/modules/address/use-cases/delete-user-address"
 import { listUserAddressesQuery } from "~/src/modules/address/use-cases/list-user-addresses"
 import { setDefaultUserAddressMutation } from "~/src/modules/address/use-cases/set-default-user-address"
 import { updateUserAddress } from "~/src/modules/address/use-cases/update-user-address"
-import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
-import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 
 import { pageHead } from "~/src/lib/seo"
 
@@ -122,7 +122,7 @@ const splitRecipientName = (name: string): { firstName?: string | undefined; las
   }
 }
 
-const formStateFromAddress = (addr: CustomerAccount["address"] | undefined): AddressFormState => {
+const formStateFromAddress = (addr: Address["select"] | undefined): AddressFormState => {
   if (addr === undefined) {
     return EMPTY_FORM
   }
@@ -154,7 +154,7 @@ const AddressForm = ({
   const queryClient = useQueryClient()
   const [form, setForm] = useState(initial)
   const addressesShouldDefault = (): boolean => {
-    const cached = queryClient.getQueryData<CustomerAccount["address"][]>(ADDRESS_QUERY_KEYS.ALL)
+    const cached = queryClient.getQueryData<Address["select"][]>(ADDRESS_QUERY_KEYS.ALL)
 
     return cached === undefined || cached.length === 0
   }
@@ -276,7 +276,7 @@ const AddressCard = ({
   addr,
   onEdit,
 }: Readonly<{
-  addr: CustomerAccount["address"]
+  addr: Address["select"]
   onEdit: (addressId: string) => void
 }>): JSX.Element => {
   const t = useTranslations("pages.account.addresses")

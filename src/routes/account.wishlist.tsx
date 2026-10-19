@@ -4,7 +4,7 @@ import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { useLocale, useTranslations } from "use-intl/react"
 
-import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
+import { accountPageMeta } from "~/src/modules/_core/utils/account-page-meta"
 import { listWishlistItemsQuery } from "~/src/modules/wishlist/use-cases/list-wishlist-items"
 
 import { pageHead } from "~/src/lib/seo"

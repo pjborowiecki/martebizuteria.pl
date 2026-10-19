@@ -6,8 +6,8 @@ import { useTranslations } from "use-intl/react"
 
 import { isAdminTwoFactorRequired } from "~/src/integrations/better-auth/auth.access"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
 import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
+import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
@@ -26,8 +26,8 @@ export const SettingsTwoFactorCard = ({ enabled, hasPassword }: Readonly<Setting
 
   const refresh = useCallback(() => {
     void Promise.all([
-      queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE }),
-      queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS }),
+      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.CUSTOMER.PROFILE }),
+      queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.CUSTOMER.SESSIONS }),
       queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.CURRENT }),
     ])
   }, [queryClient])

@@ -9,8 +9,8 @@ import { useTranslations } from "use-intl/react"
 import { isAdminTwoFactorRequired } from "~/src/integrations/better-auth/auth.access"
 import { signOut } from "~/src/integrations/better-auth/auth.client"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
-import { getCustomerProfileQuery } from "~/src/modules/customer-account/use-cases/get-customer-profile"
+import { getCustomerProfileQuery } from "~/src/modules/user/use-cases/get-customer-profile"
+import { type User } from "~/src/modules/user/user.types"
 
 import { useAdminLightTheme } from "~/src/presentation/theme/use-admin-light-theme"
 
@@ -24,7 +24,7 @@ import { ROUTES } from "~/src/routes"
 
 const signOutRequest = createClientOnlyFn((input: Parameters<typeof signOut>[0]) => signOut(input))
 
-const securityIntroKey = ({ hasPassword, twoFactorEnabled }: Readonly<CustomerAccount["profile"]>): SecurityIntroKey => {
+const securityIntroKey = ({ hasPassword, twoFactorEnabled }: Readonly<User["customerProfile"]>): SecurityIntroKey => {
   if (twoFactorEnabled) {
     return "security.enabled"
   }

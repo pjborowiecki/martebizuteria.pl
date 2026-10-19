@@ -5,7 +5,7 @@ import { ChevronDown } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type Order } from "~/src/modules/order/order.types"
 
 import { useFormatter } from "~/src/hooks/use-display-format"
 
@@ -31,7 +31,7 @@ export const OrderRowHeader = ({
 }: Readonly<{
   detailsId: string
   expanded: boolean
-  order: CustomerAccount["orderSummary"]
+  order: Order["customerOrderSummary"]
   toggleExpanded: () => void
 }>): JSX.Element => {
   const t = useTranslations("pages.account.orders")

@@ -2,7 +2,7 @@ import { type JSX } from "react"
 
 import { useTranslations } from "use-intl/react"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type Order } from "~/src/modules/order/order.types"
 
 import { PLACEHOLDER_IMAGE } from "~/src/lib/image"
 
@@ -15,7 +15,7 @@ export const OrderItem = ({
   item,
 }: Readonly<{
   currencyCode: string
-  item: CustomerAccount["orderItem"]
+  item: Order["customerOrderItem"]
 }>): JSX.Element => {
   const t = useTranslations("pages.account.orderDetail")
   const money = useOrderMoney(currencyCode)

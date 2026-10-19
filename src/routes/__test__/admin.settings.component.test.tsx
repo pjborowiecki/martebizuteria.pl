@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type User } from "~/src/modules/user/user.types"
 
 interface QueryRequest {
   readonly queryKey: readonly unknown[]
@@ -31,16 +31,16 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
     return { options }
   },
 }))
-vi.mock("~/src/modules/customer-account/use-cases/get-customer-profile", () => ({
+vi.mock("~/src/modules/user/use-cases/get-customer-profile", () => ({
   getCustomerProfileQuery: () => ({
     queryFn: () => Promise.reject(new Error("the profile is seeded by the test")),
     queryKey: ["customer-account", "profile"],
   }),
 }))
-vi.mock("~/src/modules/customer-account/use-cases/list-customer-sessions", () => ({
+vi.mock("~/src/modules/session/use-cases/list-customer-sessions", () => ({
   listCustomerSessionsQuery: () => ({ queryKey: ["customer-account", "sessions"] }),
 }))
-vi.mock("~/src/modules/customer-account/use-cases/get-customer-login-history-page", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/get-customer-login-history-page", () => ({
   getCustomerLoginHistoryPageQuery: (input: unknown) => ({ queryKey: ["customer-account", "login-history", input] }),
 }))
 vi.mock("~/src/presentation/components/custom/pages/admin/settings/settings-page-layout", () => ({
@@ -119,7 +119,7 @@ const routeAt = (path: string): RouteDefinition => {
   return route
 }
 
-const render = (path: string, profile?: Partial<CustomerAccount["profile"]>) => {
+const render = (path: string, profile?: Partial<User["customerProfile"]>) => {
   const Page = routeAt(path).component
   if (Page === undefined) {
     throw new Error(`the route at ${path} renders no component`)

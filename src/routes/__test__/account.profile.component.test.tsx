@@ -10,7 +10,7 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type User } from "~/src/modules/user/user.types"
 
 import polishAccountMessages from "~/messages/pl-PL/pages.account.json"
 
@@ -40,7 +40,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   }
 })
 
-vi.mock("~/src/modules/customer-account/use-cases/get-customer-profile", () => ({
+vi.mock("~/src/modules/user/use-cases/get-customer-profile", () => ({
   getCustomerProfileQuery: () => ({ queryFn: state.fetchProfile, queryKey: ["customer-account", "profile"] }),
 }))
 vi.mock("~/src/modules/newsletter/use-cases/get-own-newsletter-subscription", async () => {
@@ -54,7 +54,7 @@ vi.mock("~/src/modules/newsletter/use-cases/get-own-newsletter-subscription", as
   }
 })
 vi.mock("~/src/presentation/components/custom/pages/account/profile/sections/personal-info-section", () => ({
-  PersonalInfoSection: ({ profile }: Readonly<{ profile: CustomerAccount["profile"] | undefined }>): JSX.Element => (
+  PersonalInfoSection: ({ profile }: Readonly<{ profile: User["customerProfile"] | undefined }>): JSX.Element => (
     <section>personal info for {profile?.email ?? "nobody"}</section>
   ),
 }))
@@ -73,7 +73,7 @@ vi.mock("~/src/presentation/components/custom/pages/account/profile/sections/clo
   CloseAccountSection: (): JSX.Element => <section>close account</section>,
 }))
 
-import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
+import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/_core/constants/customer-account"
 import { NEWSLETTER_QUERY_KEYS, NEWSLETTER_STATUS } from "~/src/modules/newsletter/newsletter.constants"
 
 await import("~/src/routes/account.profile")
@@ -93,7 +93,7 @@ const ProfilePage = (): JSX.Element => {
   return <Page />
 }
 
-const profile: CustomerAccount["profile"] = {
+const profile: User["customerProfile"] = {
   createdAt: new Date("2024-01-10T00:00:00.000Z"),
   email: "anna@example.com",
   emailVerified: true,

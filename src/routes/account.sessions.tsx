@@ -5,16 +5,14 @@ import { createFileRoute } from "@tanstack/react-router"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
+import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/_core/constants/customer-account"
+import { accountPageMeta } from "~/src/modules/_core/utils/account-page-meta"
 import { LIST_PAGE_FIRST } from "~/src/modules/_core/utils/pagination"
-import {
-  CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE,
-  CUSTOMER_ACCOUNT_QUERY_KEYS,
-  CUSTOMER_ACCOUNT_QUERY_STALE_MS,
-} from "~/src/modules/customer-account/customer-account.constants"
-import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
-import { getCustomerLoginHistoryPageQuery } from "~/src/modules/customer-account/use-cases/get-customer-login-history-page"
-import { listCustomerSessionsQuery } from "~/src/modules/customer-account/use-cases/list-customer-sessions"
-import { revokeOtherCustomerSessionsMutation } from "~/src/modules/customer-account/use-cases/revoke-other-customer-sessions"
+import { CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE } from "~/src/modules/audit-log/audit-log.constants"
+import { getCustomerLoginHistoryPageQuery } from "~/src/modules/audit-log/use-cases/get-customer-login-history-page"
+import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
+import { listCustomerSessionsQuery } from "~/src/modules/session/use-cases/list-customer-sessions"
+import { revokeOtherCustomerSessionsMutation } from "~/src/modules/session/use-cases/revoke-other-customer-sessions"
 
 import { pageHead } from "~/src/lib/seo"
 
@@ -35,7 +33,7 @@ const SessionsPage = (): JSX.Element => {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS,
+        queryKey: SESSION_QUERY_KEYS.CUSTOMER.SESSIONS,
       })
       toast.success(t("revokeOtherDevicesSuccess"))
     },

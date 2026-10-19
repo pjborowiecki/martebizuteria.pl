@@ -7,23 +7,23 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type User } from "~/src/modules/user/user.types"
 
 import { ProfileField } from "~/src/presentation/components/custom/pages/account/profile/profile-field"
 import { type EditableField } from "~/src/presentation/components/custom/pages/account/profile/profile-form.types"
 
 interface HarnessProps {
   readonly editing: boolean
-  readonly errors: FieldErrors<CustomerAccount["profileForm"]>
+  readonly errors: FieldErrors<User["customerProfileForm"]>
   readonly field: EditableField
   readonly onCancel: (field: EditableField) => void
   readonly onEdit: (field: EditableField) => void
   readonly onSave: (field: EditableField) => Promise<void>
-  readonly values: CustomerAccount["profileForm"]
+  readonly values: User["customerProfileForm"]
 }
 
 const Harness = ({ editing, errors, field, onCancel, onEdit, onSave, values }: HarnessProps): JSX.Element => {
-  const { control } = useForm<CustomerAccount["profileForm"]>({ defaultValues: values, errors })
+  const { control } = useForm<User["customerProfileForm"]>({ defaultValues: values, errors })
 
   return (
     <ProfileField

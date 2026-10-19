@@ -7,16 +7,16 @@ import { useTranslations } from "use-intl/react"
 
 import { authClient } from "~/src/integrations/better-auth/auth.client"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
-import { updateCustomerPhoneMutation } from "~/src/modules/customer-account/use-cases/update-customer-phone"
 import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
+import { updateCustomerPhoneMutation } from "~/src/modules/user/use-cases/update-customer-phone"
+import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
+import { type User } from "~/src/modules/user/user.types"
 
 const updateUser = createClientOnlyFn((input: Parameters<typeof authClient.updateUser>[0]) => authClient.updateUser(input))
 
 const samePhone = (next: string, stored: string | undefined): boolean => (stored === undefined ? next === "" : next === stored)
 
-export const useSaveProfile = (profile: Pick<CustomerAccount["profile"], "name" | "phone">): SaveProfile => {
+export const useSaveProfile = (profile: Pick<User["customerProfile"], "name" | "phone">): SaveProfile => {
   const t = useTranslations("pages.admin.settings.account.profile")
   const queryClient = useQueryClient()
   const updatePhone = useMutation(updateCustomerPhoneMutation)
@@ -42,7 +42,7 @@ export const useSaveProfile = (profile: Pick<CustomerAccount["profile"], "name" 
       }
 
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE }),
+        queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.CUSTOMER.PROFILE }),
         queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.CURRENT }),
       ])
       toast.success(t("saved"))

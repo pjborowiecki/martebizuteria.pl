@@ -3,12 +3,9 @@ import { type JSX, type SubmitEventHandler, useCallback, useState } from "react"
 import { UserRound } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
-import {
-  CUSTOMER_ACCOUNT_NAME_MAX_LENGTH,
-  CUSTOMER_ACCOUNT_PHONE_MAX_LENGTH,
-} from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
-import { customerAccountZodSchemas } from "~/src/modules/customer-account/customer-account.zod"
+import { CUSTOMER_ACCOUNT_NAME_MAX_LENGTH, CUSTOMER_ACCOUNT_PHONE_MAX_LENGTH } from "~/src/modules/user/user.constants"
+import { type User } from "~/src/modules/user/user.types"
+import { userZodSchemas } from "~/src/modules/user/user.zod"
 
 import { Field } from "~/src/presentation/components/shadcn/field"
 import { Input } from "~/src/presentation/components/shadcn/input"
@@ -37,7 +34,7 @@ export const SettingsProfileSheet = ({ onClose, profile }: Readonly<SettingsProf
     (event) => {
       event.preventDefault()
       const data = new FormData(event.currentTarget)
-      const parsed = customerAccountZodSchemas.profileForm.safeParse({ name: data.get("name"), phone: data.get("phone") })
+      const parsed = userZodSchemas.customerProfileForm.safeParse({ name: data.get("name"), phone: data.get("phone") })
       if (!parsed.success) {
         setErrors(Object.fromEntries(parsed.error.issues.toReversed().map((issue) => [String(issue.path[0]), issue.message])))
 
@@ -112,5 +109,5 @@ export const SettingsProfileSheet = ({ onClose, profile }: Readonly<SettingsProf
 
 interface SettingsProfileSheetProps {
   readonly onClose: () => void
-  readonly profile: CustomerAccount["profile"]
+  readonly profile: User["customerProfile"]
 }

@@ -179,3 +179,109 @@ export const serializeAuditMetadata = (metadata: Record<string, unknown> | undef
 
   return JSON.stringify(metadata)
 }
+
+export const mapAuditLogToActivityItem = (
+  row: {
+    readonly action: string
+    readonly createdAt: Date
+    readonly detail: string | null
+    readonly metadata: string | null
+    readonly resourceId?: string | null | undefined
+  },
+  orderNumberByOrderId: ReadonlyMap<string, string> = new Map(),
+): AuditLog["customerActivityItem"] | undefined => {
+  const metadata = parseActivityMetadata(row.metadata)
+  const metadataOrderId = typeof metadata["orderId"] === "string" ? metadata["orderId"].trim() : ""
+  const referencedOrderId = metadataOrderId === "" ? (row.resourceId ?? "") : metadataOrderId
+  const orderId = referencedOrderId === "" ? undefined : orderNumberByOrderId.get(referencedOrderId)
+  switch (row.action) {
+    case AUDIT_LOG_ACTION.AUTH_LOGIN: {
+      return {
+        actionKey: "loginSuccess",
+        createdAt: row.createdAt,
+        params: {},
+      }
+    }
+    case AUDIT_LOG_ACTION.AUTH_LOGOUT: {
+      return {
+        actionKey: "logout",
+        createdAt: row.createdAt,
+        params: {},
+      }
+    }
+    case AUDIT_LOG_ACTION.AUTH_LOGIN_FAILED: {
+      return {
+        actionKey: "loginFailed",
+        createdAt: row.createdAt,
+        params: {},
+      }
+    }
+    case AUDIT_LOG_ACTION.CUSTOMER_CART_ITEM_ADDED: {
+      const item = typeof metadata["productTitle"] === "string" ? metadata["productTitle"] : (row.detail ?? "")
+
+      return item === ""
+        ? undefined
+        : {
+            actionKey: "cartItemAdded",
+            createdAt: row.createdAt,
+            params: {
+              item,
+            },
+          }
+    }
+    case AUDIT_LOG_ACTION.ORDER_PLACED: {
+      return orderId === undefined
+        ? undefined
+        : {
+            actionKey: "orderPlaced",
+            createdAt: row.createdAt,
+            params: {
+              id: orderId,
+            },
+          }
+    }
+    case AUDIT_LOG_ACTION.ORDER_SHIPPED: {
+      return orderId === undefined
+        ? undefined
+        : {
+            actionKey: "orderShipped",
+            createdAt: row.createdAt,
+            params: {
+              id: orderId,
+            },
+          }
+    }
+    case AUDIT_LOG_ACTION.ORDER_DELIVERED:
+    case AUDIT_LOG_ACTION.ORDER_RELEASED: {
+      return orderId === undefined
+        ? undefined
+        : {
+            actionKey: "orderDelivered",
+            createdAt: row.createdAt,
+            params: {
+              id: orderId,
+            },
+          }
+    }
+    default: {
+      return undefined
+    }
+  }
+}
+
+const isActivityMetadataRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value)
+
+const parseActivityMetadata = (raw: string | null): Record<string, unknown> => {
+  if (raw === null || raw === "") {
+    return {}
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(raw)
+
+    return isActivityMetadataRecord(parsed) ? parsed : {}
+  } catch {
+    return {}
+  }
+}

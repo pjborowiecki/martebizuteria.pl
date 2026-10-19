@@ -5,15 +5,12 @@ import { type PaginationState } from "@tanstack/react-table"
 import { useTranslations } from "use-intl/react"
 
 import { LIST_PAGE_FIRST, LIST_PAGE_SIZE_MAX, LIST_PAGE_STEP } from "~/src/modules/_core/utils/pagination"
-import {
-  CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE,
-  type CustomerAccountLoginStatus,
-} from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE, type CustomerAccountLoginStatus } from "~/src/modules/audit-log/audit-log.constants"
+import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import {
   getCustomerLoginHistoryPage,
   getCustomerLoginHistoryPageQuery,
-} from "~/src/modules/customer-account/use-cases/get-customer-login-history-page"
+} from "~/src/modules/audit-log/use-cases/get-customer-login-history-page"
 
 import { useAdminDebouncedTableSearch } from "~/src/presentation/components/custom/datagrid/hooks/use-admin-debounced-table-search"
 import { useDataGridInstance } from "~/src/presentation/components/custom/datagrid/hooks/use-data-grid-instance"
@@ -27,7 +24,10 @@ export const LOGIN_HISTORY_EXPORT_LIST = "sign-in-history"
 
 const EMPTY_PAGE = { items: [], total: 0 }
 
-const loadLoginHistoryPages = async (input: LoginHistoryFilters, page: number): Promise<readonly CustomerAccount["loginHistoryItem"][]> => {
+const loadLoginHistoryPages = async (
+  input: LoginHistoryFilters,
+  page: number,
+): Promise<readonly AuditLog["customerLoginHistoryItem"][]> => {
   const result = await getCustomerLoginHistoryPage({ data: { ...input, page, pageSize: LIST_PAGE_SIZE_MAX } })
 
   return result.hasMore ? [...result.items, ...(await loadLoginHistoryPages(input, page + LIST_PAGE_STEP))] : result.items
@@ -76,7 +76,7 @@ export const useLoginHistoryDataGrid = (): LoginHistoryDataGridValue => {
     setPagination((previous) => ({ ...previous, pageIndex: 0 }))
   }, [])
 
-  const exportSource = useMemo<DataGridExportSource<CustomerAccount["loginHistoryItem"]>>(
+  const exportSource = useMemo<DataGridExportSource<AuditLog["customerLoginHistoryItem"]>>(
     () => ({
       filters: exportFilter(t("columns.status"), status === undefined ? undefined : t(`status.${status}`)),
       list: LOGIN_HISTORY_EXPORT_LIST,
@@ -117,7 +117,7 @@ export const useLoginHistoryDataGrid = (): LoginHistoryDataGridValue => {
 }
 
 const isLoginHistoryDataGridValue = (
-  value: DataGridContextValue<CustomerAccount["loginHistoryItem"]>,
+  value: DataGridContextValue<AuditLog["customerLoginHistoryItem"]>,
 ): value is LoginHistoryDataGridValue => "applyStatusFilter" in value
 
 export const useLoginHistoryDataGridContext = (): LoginHistoryDataGridValue => {
@@ -134,7 +134,7 @@ interface LoginHistoryFilters {
   readonly status: CustomerAccountLoginStatus | undefined
 }
 
-export interface LoginHistoryDataGridValue extends DataGridContextValue<CustomerAccount["loginHistoryItem"]> {
+export interface LoginHistoryDataGridValue extends DataGridContextValue<AuditLog["customerLoginHistoryItem"]> {
   readonly activeStatus: CustomerAccountLoginStatus | undefined
   readonly applyStatusFilter: (status?: CustomerAccountLoginStatus) => void
 }

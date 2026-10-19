@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 
 interface PageInput {
   readonly page: number
@@ -15,7 +15,7 @@ interface PageInput {
 
 const mocks = vi.hoisted(() => ({
   download: vi.fn<(file: { content: string }) => void>(),
-  history: [] as CustomerAccount["loginHistoryItem"][],
+  history: [] as AuditLog["customerLoginHistoryItem"][],
   page: vi.fn<(input: PageInput) => void>(),
 }))
 
@@ -38,7 +38,7 @@ const loadPage = (input: PageInput) => {
 }
 
 vi.mock("~/src/modules/_core/utils/download", () => ({ downloadTextFile: mocks.download }))
-vi.mock("~/src/modules/customer-account/use-cases/get-customer-login-history-page", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/get-customer-login-history-page", () => ({
   getCustomerLoginHistoryPage: ({ data }: { data: PageInput }) => loadPage(data),
   getCustomerLoginHistoryPageQuery: (input: PageInput) => ({
     queryFn: () => loadPage(input),
@@ -49,7 +49,7 @@ vi.mock("~/src/modules/customer-account/use-cases/get-customer-login-history-pag
 const { SettingsLoginHistoryGrid } =
   await import("~/src/presentation/components/custom/pages/admin/settings/security/components/settings-login-history-grid")
 
-const entry = (index: number, overrides: Partial<CustomerAccount["loginHistoryItem"]> = {}): CustomerAccount["loginHistoryItem"] => ({
+const entry = (index: number, overrides: Partial<AuditLog["customerLoginHistoryItem"]> = {}): AuditLog["customerLoginHistoryItem"] => ({
   createdAt: new Date(Date.UTC(2026, 9, 16, 12, 0) - index * 3_600_000),
   id: `audit-${String(index)}`,
   ipAddress: `198.51.100.${String(index)}`,

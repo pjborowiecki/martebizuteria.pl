@@ -9,10 +9,10 @@ import { useTranslations } from "use-intl/react"
 
 import { authClient } from "~/src/integrations/better-auth/auth.client"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
-import { customerAccountZodSchemas } from "~/src/modules/customer-account/customer-account.zod"
-import { updateCustomerPhoneMutation } from "~/src/modules/customer-account/use-cases/update-customer-phone"
+import { updateCustomerPhoneMutation } from "~/src/modules/user/use-cases/update-customer-phone"
+import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
+import { type User } from "~/src/modules/user/user.types"
+import { userZodSchemas } from "~/src/modules/user/user.zod"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
@@ -27,7 +27,7 @@ const updateUser = createClientOnlyFn((input: Parameters<typeof authClient.updat
 export const PersonalInfoSection = ({
   profile,
 }: Readonly<{
-  profile: CustomerAccount["profile"]
+  profile: User["customerProfile"]
 }>): JSX.Element => {
   const t = useTranslations("pages.account.profile")
   const queryClient = useQueryClient()
@@ -38,12 +38,12 @@ export const PersonalInfoSection = ({
     setChangingEmail(true)
   }, [])
 
-  const form = useForm<CustomerAccount["profileForm"]>({
+  const form = useForm<User["customerProfileForm"]>({
     defaultValues: {
       name: profile.name,
       phone: profile.phone ?? "",
     },
-    resolver: zodResolver(customerAccountZodSchemas.profileForm),
+    resolver: zodResolver(userZodSchemas.customerProfileForm),
   })
 
   const updatePhoneMutation = useMutation({
@@ -53,7 +53,7 @@ export const PersonalInfoSection = ({
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE,
+        queryKey: USER_QUERY_KEYS.CUSTOMER.PROFILE,
       })
       toast.success(t("saved"))
     },
@@ -93,7 +93,7 @@ export const PersonalInfoSection = ({
         }
 
         await queryClient.invalidateQueries({
-          queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE,
+          queryKey: USER_QUERY_KEYS.CUSTOMER.PROFILE,
         })
         toast.success(t("saved"))
       }

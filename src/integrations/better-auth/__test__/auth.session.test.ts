@@ -10,8 +10,8 @@ import {
 import { DISPLAY_PREFERENCES_QUERY_KEY } from "~/src/integrations/use-intl/i18n.display"
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
 import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
+import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 interface SessionLookupResult {
   readonly session?: { readonly id: string; readonly token: string; readonly userId: string }
@@ -123,7 +123,7 @@ const sessionFor = (userId: string, sessionId = `session-${userId}`) => ({
 const watchedClient = () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const stopWatching = clearCacheOnUserChange(queryClient)
-  queryClient.setQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE, { email: "ada@store.test" })
+  queryClient.setQueryData(USER_QUERY_KEYS.CUSTOMER.PROFILE, { email: "ada@store.test" })
   queryClient.setQueryData(MESSAGES_KEY, { title: "M'Arte" })
 
   return { queryClient, stopWatching }
@@ -140,7 +140,7 @@ describe("clearing the cache when the signed-in user changes", () => {
 
     queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-1"))
 
-    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE)).toStrictEqual({ email: "ada@store.test" })
+    expect(queryClient.getQueryData(USER_QUERY_KEYS.CUSTOMER.PROFILE)).toStrictEqual({ email: "ada@store.test" })
   })
 
   it("forgets the previous user's data when someone else signs in, keeping the new session and the message catalogues", () => {
@@ -149,7 +149,7 @@ describe("clearing the cache when the signed-in user changes", () => {
 
     queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-2"))
 
-    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE)).toBeUndefined()
+    expect(queryClient.getQueryData(USER_QUERY_KEYS.CUSTOMER.PROFILE)).toBeUndefined()
     expect(queryClient.getQueryData(MESSAGES_KEY)).toStrictEqual({ title: "M'Arte" })
     expect(queryClient.getQueryData(SESSION_QUERY_KEYS.CURRENT)).toStrictEqual(sessionFor("customer-2"))
   })
@@ -172,7 +172,7 @@ describe("clearing the cache when the signed-in user changes", () => {
 
     queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-1"))
 
-    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE)).toBeUndefined()
+    expect(queryClient.getQueryData(USER_QUERY_KEYS.CUSTOMER.PROFILE)).toBeUndefined()
   })
 
   it("forgets a user's data once their session has ended", () => {
@@ -181,7 +181,7 @@ describe("clearing the cache when the signed-in user changes", () => {
 
     queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, null)
 
-    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE)).toBeUndefined()
+    expect(queryClient.getQueryData(USER_QUERY_KEYS.CUSTOMER.PROFILE)).toBeUndefined()
   })
 
   it("keeps the data when the same user's session is renewed", () => {
@@ -190,7 +190,7 @@ describe("clearing the cache when the signed-in user changes", () => {
 
     queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-1", "session-renewed"))
 
-    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE)).toStrictEqual({ email: "ada@store.test" })
+    expect(queryClient.getQueryData(USER_QUERY_KEYS.CUSTOMER.PROFILE)).toStrictEqual({ email: "ada@store.test" })
   })
 
   it("notices the change however the session was fetched, not only in route guards", async () => {
@@ -203,7 +203,7 @@ describe("clearing the cache when the signed-in user changes", () => {
 
     await queryClient.query({ ...getCurrentSessionQuery, staleTime: 0 })
 
-    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE)).toBeUndefined()
+    expect(queryClient.getQueryData(USER_QUERY_KEYS.CUSTOMER.PROFILE)).toBeUndefined()
   })
 
   it("does not mistake a dropped session entry for a different user", () => {
@@ -213,7 +213,7 @@ describe("clearing the cache when the signed-in user changes", () => {
     queryClient.removeQueries({ queryKey: SESSION_QUERY_KEYS.CURRENT })
     queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-1"))
 
-    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE)).toStrictEqual({ email: "ada@store.test" })
+    expect(queryClient.getQueryData(USER_QUERY_KEYS.CUSTOMER.PROFILE)).toStrictEqual({ email: "ada@store.test" })
   })
 
   it("stops clearing once it is unsubscribed", () => {
@@ -223,6 +223,6 @@ describe("clearing the cache when the signed-in user changes", () => {
     stopWatching()
     queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-2"))
 
-    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE)).toStrictEqual({ email: "ada@store.test" })
+    expect(queryClient.getQueryData(USER_QUERY_KEYS.CUSTOMER.PROFILE)).toStrictEqual({ email: "ada@store.test" })
   })
 })

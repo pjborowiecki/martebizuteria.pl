@@ -34,27 +34,27 @@ vi.mock("~/src/lib/url", () => ({
   isAssetCdnUrl: () => false,
   resolveAssetURL: (path: string) => path,
 }))
-vi.mock("~/src/modules/customer-account/use-cases/get-customer-overview", () => ({
+vi.mock("~/src/modules/order/use-cases/get-customer-overview", () => ({
   getCustomerOverviewQuery: (locale: string) => ({ queryKey: ["customer-account", "overview", locale] }),
 }))
-vi.mock("~/src/modules/customer-account/use-cases/list-customer-orders", () => ({
+vi.mock("~/src/modules/order/use-cases/list-customer-orders", () => ({
   listCustomerOrdersQuery: () => ({ queryKey: ["customer-account", "orders"] }),
 }))
-vi.mock("~/src/modules/customer-account/use-cases/get-customer-order", () => ({
+vi.mock("~/src/modules/order/use-cases/get-customer-order", () => ({
   getCustomerOrderQuery: (id: string) => ({ queryKey: ["customer-account", "order", id] }),
 }))
 vi.mock("~/src/modules/order-withdrawal/use-cases/get-customer-order-withdrawal", () => ({
   getCustomerOrderWithdrawalQuery: (id: string) => ({ queryKey: ["order-withdrawal", "customerOrder", id] }),
 }))
 vi.mock("~/src/modules/order-withdrawal/use-cases/withdraw-from-customer-order", () => ({ withdrawFromCustomerOrderMutation: {} }))
-vi.mock("~/src/modules/customer-account/use-cases/list-customer-sessions", () => ({
+vi.mock("~/src/modules/session/use-cases/list-customer-sessions", () => ({
   listCustomerSessionsQuery: () => ({ queryKey: ["customer-account", "sessions"] }),
 }))
-vi.mock("~/src/modules/customer-account/use-cases/get-customer-login-history-page", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/get-customer-login-history-page", () => ({
   getCustomerLoginHistoryPageQuery: (input: unknown) => ({ queryKey: ["customer-account", "login-history", input] }),
 }))
-vi.mock("~/src/modules/customer-account/use-cases/revoke-customer-session", () => ({ revokeCustomerSessionMutation: {} }))
-vi.mock("~/src/modules/customer-account/use-cases/revoke-other-customer-sessions", () => ({ revokeOtherCustomerSessionsMutation: {} }))
+vi.mock("~/src/modules/session/use-cases/revoke-customer-session", () => ({ revokeCustomerSessionMutation: {} }))
+vi.mock("~/src/modules/session/use-cases/revoke-other-customer-sessions", () => ({ revokeOtherCustomerSessionsMutation: {} }))
 
 await import("~/src/routes/account.overview")
 await import("~/src/routes/account.orders.index")

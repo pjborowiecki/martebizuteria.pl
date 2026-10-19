@@ -10,8 +10,8 @@ import { useTranslations } from "use-intl/react"
 
 import { authClient } from "~/src/integrations/better-auth/auth.client"
 
-import { type CloseAccountFormValues, closeAccountFormSchema } from "~/src/modules/customer-account/customer-account.zod"
 import { USER_ERROR_CODES } from "~/src/modules/user/user.constants"
+import { type CloseAccountFormValues, closeAccountFormSchema } from "~/src/modules/user/user.zod"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import {

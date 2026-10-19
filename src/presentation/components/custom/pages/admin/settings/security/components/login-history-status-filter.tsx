@@ -3,7 +3,7 @@ import { type JSX, useMemo } from "react"
 import { ListFilter } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
-import { CUSTOMER_ACCOUNT_LOGIN_STATUSES } from "~/src/modules/customer-account/customer-account.constants"
+import { CUSTOMER_ACCOUNT_LOGIN_STATUSES } from "~/src/modules/audit-log/audit-log.constants"
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/presentation/components/shadcn/select"
 

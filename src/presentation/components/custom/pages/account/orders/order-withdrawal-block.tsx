@@ -3,9 +3,9 @@ import { type JSX, useState } from "react"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { useTranslations } from "use-intl/react"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 import { ORDER_WITHDRAWAL_SCOPE } from "~/src/modules/order-withdrawal/order-withdrawal.constants"
 import { getCustomerOrderWithdrawalQuery } from "~/src/modules/order-withdrawal/use-cases/get-customer-order-withdrawal"
+import { type Order } from "~/src/modules/order/order.types"
 
 import { useFormatter } from "~/src/hooks/use-display-format"
 
@@ -14,7 +14,7 @@ import { Separator } from "~/src/presentation/components/shadcn/separator"
 
 import { OrderWithdrawalDialog } from "~/src/presentation/components/custom/pages/account/orders/order-withdrawal-dialog"
 
-export const OrderWithdrawalBlock = ({ order }: Readonly<{ order: CustomerAccount["orderDetail"] }>): JSX.Element | undefined => {
+export const OrderWithdrawalBlock = ({ order }: Readonly<{ order: Order["customerOrderDetail"] }>): JSX.Element | undefined => {
   const t = useTranslations("pages.withdrawal")
   const format = useFormatter()
   const { data: withdrawal } = useSuspenseQuery(getCustomerOrderWithdrawalQuery(order.id))

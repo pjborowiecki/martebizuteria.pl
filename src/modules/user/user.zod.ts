@@ -10,6 +10,8 @@ import {
   ADMIN_CUSTOMER_DETAIL_TAGS,
   ADMIN_CUSTOMER_FORM_FIELD_MAX,
   ADMIN_CUSTOMER_STAT_FILTER,
+  CUSTOMER_ACCOUNT_NAME_MAX_LENGTH,
+  CUSTOMER_ACCOUNT_PHONE_MAX_LENGTH,
   TEAM_CANDIDATE_SEARCH_MAX_LENGTH,
   TEAM_CANDIDATE_SEARCH_MIN_LENGTH,
 } from "~/src/modules/user/user.constants"
@@ -230,6 +232,16 @@ const teamCandidateSearchInputSchema = zod.object({
   search: zod.string().trim().min(TEAM_CANDIDATE_SEARCH_MIN_LENGTH).max(TEAM_CANDIDATE_SEARCH_MAX_LENGTH),
 })
 
+const CLOSE_ACCOUNT_CONFIRMATION = "delete"
+
+export const closeAccountFormSchema = (hasPassword: boolean) =>
+  zod.object({
+    confirmation: zod.string().refine((value) => value.trim().toLowerCase() === CLOSE_ACCOUNT_CONFIRMATION, "confirmationMismatch"),
+    password: hasPassword ? zod.string().min(1, "passwordRequired") : zod.string(),
+  })
+
+export type CloseAccountFormValues = zod.infer<ReturnType<typeof closeAccountFormSchema>>
+
 export const userZodSchemas = {
   adminCustomerAddressForm: adminCustomerAddressFormSchema,
   adminCustomerDetail: adminCustomerDetailSchema,
@@ -244,6 +256,13 @@ export const userZodSchemas = {
   adminUserMetadata: adminUserMetadataSchema,
   customerEmailChangeForm: customerEmailChangeFormSchema,
   customerEmailChangeInput: customerEmailChangeInputSchema,
+  customerPhoneInput: zod.object({
+    phone: zod.string().trim().max(CUSTOMER_ACCOUNT_PHONE_MAX_LENGTH),
+  }),
+  customerProfileForm: zod.object({
+    name: zod.string().trim().min(1, "nameRequired").max(CUSTOMER_ACCOUNT_NAME_MAX_LENGTH, "nameMaxLength"),
+    phone: zod.string().trim().max(CUSTOMER_ACCOUNT_PHONE_MAX_LENGTH, "phoneMaxLength"),
+  }),
   deleteCustomerInput: deleteCustomerInputSchema,
   displayPreferenceInput: displayPreferenceInputSchema,
   insert: userInsertSchema,

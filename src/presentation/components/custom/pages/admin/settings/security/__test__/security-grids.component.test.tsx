@@ -6,16 +6,16 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { TestProviders, createTestRouter } from "~/src/platform/testing/lib/render"
 
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type Session } from "~/src/modules/session/session.types"
 
-vi.mock("~/src/modules/customer-account/use-cases/get-customer-login-history-page", () => ({
+vi.mock("~/src/modules/audit-log/use-cases/get-customer-login-history-page", () => ({
   getCustomerLoginHistoryPage: vi.fn(),
   getCustomerLoginHistoryPageQuery: (input: unknown) => ({
     queryFn: () => Promise.resolve({ hasMore: false, items: [], limit: 10, offset: 0, total: 0 }),
     queryKey: ["customer-account", "login-history", input],
   }),
 }))
-vi.mock("~/src/modules/customer-account/use-cases/revoke-customer-session", () => ({
+vi.mock("~/src/modules/session/use-cases/revoke-customer-session", () => ({
   revokeCustomerSessionMutation: { mutationFn: vi.fn(), mutationKey: ["customer-account", "revoke-session"] },
 }))
 
@@ -33,7 +33,7 @@ const Wrapper = ({ children }: Readonly<{ children: ReactNode }>): JSX.Element =
   </TestProviders>
 )
 
-const SESSION: CustomerAccount["session"] = {
+const SESSION: Session["customerSession"] = {
   browser: "Chrome 140",
   createdAt: new Date("2026-10-01T09:00:00.000Z"),
   device: "iPhone",

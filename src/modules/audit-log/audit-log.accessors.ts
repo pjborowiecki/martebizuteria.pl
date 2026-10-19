@@ -7,11 +7,22 @@ import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 import { type DateTimeColumnFilterValue } from "~/src/modules/_core/utils/datetime-column-filter"
 import { buildAdminDateTimeFilterSql } from "~/src/modules/_core/utils/datetime-column-filter.server"
 import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
-import { buildAdminSearchOrCondition, normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
-import { type AuditLogCategory, type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
+import {
+  buildAdminSearchOrCondition,
+  containsAdminSearchTerm,
+  normalizeAdminSearchTerm,
+} from "~/src/modules/_core/utils/search-conditions.server"
+import {
+  AUDIT_LOG_ACTION,
+  type AuditLogCategory,
+  type AuditLogSeverity,
+  CUSTOMER_ACCOUNT_LOGIN_STATUS,
+  type CustomerAccountLoginStatus,
+} from "~/src/modules/audit-log/audit-log.constants"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import { buildAuditLogDayFilter } from "~/src/modules/audit-log/audit-log.utils"
+import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/customer-activity/customer-activity.constants"
 import {
   accountsWithAddressContaining,
   addressesOfAccountsWithAddressContaining,
@@ -192,3 +203,74 @@ export const deleteAuditLogs = async (ids: readonly string[]): Promise<string[]>
 
   return deleted.map(({ id }) => id)
 }
+
+const NO_ROWS = 0
+
+export const getCustomerActivityAuditRows = (userId: string, orderIds: readonly string[] = []) =>
+  db
+    .select({
+      action: auditLog.action,
+      createdAt: auditLog.createdAt,
+      detail: auditLog.detail,
+      metadata: auditLog.metadata,
+      resourceId: auditLog.resourceId,
+    })
+    .from(auditLog)
+    .where(and(inJsonList(auditLog.resourceId, [userId, ...orderIds]), inArray(auditLog.action, [...CUSTOMER_ACCOUNT_ACTIVITY_ACTIONS])))
+    .orderBy(desc(auditLog.createdAt))
+    .limit(CUSTOMER_AUDIT_TIMELINE_LIMIT)
+
+const LOGIN_AUDIT_ACTIONS = {
+  [CUSTOMER_ACCOUNT_LOGIN_STATUS.FAILED]: [AUDIT_LOG_ACTION.AUTH_LOGIN_FAILED],
+  [CUSTOMER_ACCOUNT_LOGIN_STATUS.SUCCESS]: [AUDIT_LOG_ACTION.AUTH_LOGIN],
+} as const
+
+const customerLoginAuditWhere = ({ search, status, userId }: Readonly<CustomerLoginAuditFilter>) =>
+  and(
+    eq(auditLog.resourceId, userId),
+    inArray(
+      auditLog.action,
+      status === undefined ? [AUDIT_LOG_ACTION.AUTH_LOGIN, AUDIT_LOG_ACTION.AUTH_LOGIN_FAILED] : LOGIN_AUDIT_ACTIONS[status],
+    ),
+    search === undefined ? undefined : containsAdminSearchTerm(auditLog.ip, search),
+  )
+
+export const getCustomerLoginAuditRows = ({ limit, offset, ...filter }: Readonly<CustomerLoginAuditFilter & ListPaginationParams>) =>
+  db
+    .select({
+      action: auditLog.action,
+      createdAt: auditLog.createdAt,
+      id: auditLog.id,
+      ip: auditLog.ip,
+    })
+    .from(auditLog)
+    .where(customerLoginAuditWhere(filter))
+    .orderBy(desc(auditLog.createdAt), desc(auditLog.id))
+    .limit(limit)
+    .offset(offset)
+
+export const getCustomerLoginAuditPage = async (params: Readonly<CustomerLoginAuditFilter & ListPaginationParams>) => {
+  const [[countRow], rows] = await db.batch([
+    db.select({ count: count() }).from(auditLog).where(customerLoginAuditWhere(params)),
+    getCustomerLoginAuditRows(params),
+  ])
+
+  return { rows, total: countRow?.count ?? NO_ROWS }
+}
+
+interface CustomerLoginAuditFilter {
+  readonly search?: string | undefined
+  readonly status?: CustomerAccountLoginStatus | undefined
+  readonly userId: string
+}
+
+const CUSTOMER_ACCOUNT_ACTIVITY_ACTIONS = [
+  AUDIT_LOG_ACTION.AUTH_LOGIN,
+  AUDIT_LOG_ACTION.AUTH_LOGIN_FAILED,
+  AUDIT_LOG_ACTION.AUTH_LOGOUT,
+  AUDIT_LOG_ACTION.CUSTOMER_CART_ITEM_ADDED,
+  AUDIT_LOG_ACTION.ORDER_DELIVERED,
+  AUDIT_LOG_ACTION.ORDER_PLACED,
+  AUDIT_LOG_ACTION.ORDER_RELEASED,
+  AUDIT_LOG_ACTION.ORDER_SHIPPED,
+] as const

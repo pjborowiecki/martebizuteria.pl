@@ -1,7 +1,7 @@
 import { type JSX } from "react"
 
-import { type CustomerAccountOrderFilter } from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { type CustomerAccountOrderFilter } from "~/src/modules/order/order.constants"
+import { type Order } from "~/src/modules/order/order.types"
 
 import { OrderRow } from "~/src/presentation/components/custom/pages/account/orders/order-row"
 import { OrdersEmptyState } from "~/src/presentation/components/custom/pages/account/orders/orders-empty-state"
@@ -11,7 +11,7 @@ export const OrdersList = ({
   orders,
 }: Readonly<{
   filter: CustomerAccountOrderFilter
-  orders: readonly CustomerAccount["orderSummary"][]
+  orders: readonly Order["customerOrderSummary"][]
 }>): JSX.Element => {
   if (orders.length === 0) {
     return <OrdersEmptyState filter={filter} />
