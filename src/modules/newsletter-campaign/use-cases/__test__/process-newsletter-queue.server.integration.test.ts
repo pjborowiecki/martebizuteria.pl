@@ -48,7 +48,7 @@ vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
 }))
 
 const { enqueueNewsletterCampaign, processNewsletterQueueBatch } =
-  await import("~/src/modules/newsletter-campaign/newsletter-campaign.queue.server")
+  await import("~/src/modules/newsletter-campaign/use-cases/process-newsletter-queue.server")
 
 const CAMPAIGN_ID = "0192f3a4-5b6c-7d8e-9fab-cdef01234567"
 

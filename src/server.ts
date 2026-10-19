@@ -117,7 +117,7 @@ const server: ExportedHandler<Env, WorkerQueueMessage> = {
   },
   async queue(batch: MessageBatch<WorkerQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
     if (isNewsletterQueueBatch(batch)) {
-      const { processNewsletterQueueBatch } = await import("~/src/modules/newsletter-campaign/newsletter-campaign.queue.server")
+      const { processNewsletterQueueBatch } = await import("~/src/modules/newsletter-campaign/use-cases/process-newsletter-queue.server")
       await processNewsletterQueueBatch(batch)
     }
 
