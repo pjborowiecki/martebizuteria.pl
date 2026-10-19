@@ -121,7 +121,7 @@ Samo płynne przewijanie to Lenis, montowany przez `src/presentation/components/
 
 ## Sekcja newslettera
 
-`newsletter-section.tsx` renderuje formularz react-hook-form walidowany przez `newsletterZodSchemas.subscribeFormValues`, który przycina adres i sprawdza, czy jest adresem e-mail. Poprawny adres trafia do mutacji `subscribeToNewsletter` z `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts`:
+`newsletter-section.tsx` renderuje formularz react-hook-form walidowany przez `newsletterZodSchemas.subscribeFormValues`, który przycina adres i sprawdza, czy jest adresem e-mail. Poprawny adres trafia do mutacji `subscribeToNewsletter` z `src/modules/newsletter-subscriber/use-cases/subscribe-to-newsletter.ts`:
 
 ```tsx
 subscribe.mutate({

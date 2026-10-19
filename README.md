@@ -228,7 +228,7 @@ src/
   router.tsx                  Per-request QueryClient, SSR integration, locale rewrite, default components
   routes.ts                   Route constants shared by links, guards and head metadata
   routes/                     78 locale-free route files (including __root and the two PDF form routes) + 5 API handlers
-  modules/{feature}/          43 domain modules — schema, Zod, types, constants, utils
+  modules/{feature}/          40 modules, one per database table of the same name — schema, Zod, types, constants, utils
     *.accessors.ts              unauthenticated data access (reads and writes), 28 files
     use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 177 files
                                 (138 server functions; 39 server-side operations — e-mail senders, webhook steps, retention clean-ups)

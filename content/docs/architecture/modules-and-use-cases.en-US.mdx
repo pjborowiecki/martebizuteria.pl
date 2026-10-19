@@ -7,12 +7,11 @@ description: "How a feature module is laid out, what each file suffix means, and
 
 ```text
 _core                   account                 address
-admin-dashboard         attribute-on-product    audit-log
-cart                    cart-item               category-on-product
-checkout                collection-on-product   content-page
-courier                 customer-account        customer-activity
+attribute-on-product    audit-log               cart
+cart-item               category-on-product     checkout
+collection-on-product   content-page            courier
 delivery-method         discount                inventory
-newsletter              newsletter-campaign     option-on-variant
+newsletter-campaign     newsletter-subscriber   option-on-variant
 order                   order-address           order-item
 order-withdrawal        payment                 price-history
 product                 product-attribute       product-category
@@ -20,10 +19,12 @@ product-collection      product-image           product-option
 product-option-value    product-variant         rate-limit
 session                 store-setting           storefront-search
 two-factor              user                    user-email-history
-verification            wishlist
+verification            wishlist-item
 ```
 
-39 of them export Drizzle tables, 42 in all, and `src/integrations/drizzle-orm/drizzle.schemas.ts` re-exports every one so that the Drizzle client, the Better Auth adapter and `drizzle-kit` see one schema registry. `storefront-search` declares the FTS5 virtual table `storefront_search`, which a hand-written migration creates and which stays out of that registry. `admin-dashboard`, `customer-account` and `customer-activity` are read models over other modules' tables and have no schema of their own; `_core` is the shared kernel.
+A folder in `src/modules` exists only for a database table of the same name: `product-category` owns `product_category`, `wishlist-item` owns `wishlist_item`. Shared helpers that serve several tables go to `_core`, never to a folder of their own. A use case lives in the module of the table it reads or writes, so the customer's order list sits in `order`, the signed-in devices in `session`, the sign-in history in `audit-log` and the profile in `user`, and the admin dashboard, the shop's sales overview, sits in `order`.
+
+39 of them export Drizzle tables, 42 in all, and `src/integrations/drizzle-orm/drizzle.schemas.ts` re-exports every one so that the Drizzle client, the Better Auth adapter and `drizzle-kit` see one schema registry. `storefront-search` declares the FTS5 virtual table `storefront_search`, which a hand-written migration creates and which stays out of that registry. `_core` is the shared kernel and the one folder without a table.
 
 ## File suffixes
 
@@ -39,7 +40,7 @@ verification            wishlist
 | `use-cases/<verb-noun>.ts`        | One `createServerFn` plus the query or mutation options that call it       |
 | `use-cases/<verb-noun>.server.ts` | One server-only operation that other server code calls; no RPC endpoint    |
 
-`order` is a good module to read end to end: `order.schema.ts`, `order.zod.ts`, `order.constants.ts`, `order.types.ts`, `order.utils.ts`, `order.totals.ts`, `order.display.utils.ts`, `order.detail.utils.ts`, `order.email.utils.ts`, `order.fulfillment-time.utils.ts`, `order.accessors.ts`, `order.admin-action.server.ts`, `order.admin-actions.utils.ts`, `order.settled.server.ts`, `order.number.server.ts`, `order.claim.server.ts`, `order.email-delivery.server.ts`, `order.refund.server.ts`, `order.restock.server.ts`, `order.shipment.server.ts`, `order-audit.utils.ts`, `order.admin-list-filters.ts` and thirty files under `use-cases/`.
+`order` is a good module to read end to end: `order.schema.ts`, `order.zod.ts`, `order.constants.ts`, `order.types.ts`, `order.utils.ts`, `order.totals.ts`, `order.display.utils.ts`, `order.detail.utils.ts`, `order.email.utils.ts`, `order.fulfillment-time.utils.ts`, `order.customer.utils.ts`, `order.dashboard.utils.ts`, `order.accessors.ts`, `order.dashboard.accessors.ts`, `order.admin-action.server.ts`, `order.admin-actions.utils.ts`, `order.settled.server.ts`, `order.number.server.ts`, `order.claim.server.ts`, `order.email-delivery.server.ts`, `order.refund.server.ts`, `order.restock.server.ts`, `order.shipment.server.ts`, `order-audit.utils.ts`, `order.admin-list-filters.ts` and thirty-five files under `use-cases/`.
 
 ## A mutation use case
 

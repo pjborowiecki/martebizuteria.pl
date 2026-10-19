@@ -5,7 +5,7 @@ description: "Utwórz moduł funkcjonalny: tabelę Drizzle, schematy Zod, stałe
 
 Moduł to jedna funkcjonalność zbudowana wokół jednej tabeli bazy danych. Mieszka w `src/modules/{feature}/` i jest właścicielem wszystkiego, co jest prawdą o tej tabeli: jej kolumn, reguł walidacji, kluczy zapytań, typów wierszy i operacji. W `src/modules/` są obecnie 44 foldery: `_core` i 43 moduły funkcjonalne, z których 40 definiuje tabelę w `{feature}.schema.ts`. Najmniejszy kompletny moduł, od którego warto zacząć lekturę, to `src/modules/address`; najbogatszy to `src/modules/order` (53 pliki źródłowe, w tym 30 w `use-cases/`), a po nim `src/modules/product`.
 
-Logika serwerowa, która nie należy do żadnej tabeli, nie dostaje modułu. Funkcje pomocnicze związane z żądaniem trafiają do `src/lib/`, adaptery dostawców do `src/integrations/{vendor}/`, a wspólne elementy potrzebne wielu modułom do `src/modules/_core/`. Trzy istniejące foldery nie mają własnej tabeli — `admin-dashboard` i `customer-account` czytają tabele innych modułów, a `customer-activity` zapisuje zdarzenia klientów do dziennika audytu — więc nie traktuj ich jako wzoru dla nowego folderu.
+Logika serwerowa, która nie należy do żadnej tabeli, nie dostaje modułu. Funkcje pomocnicze związane z żądaniem trafiają do `src/lib/`, adaptery dostawców do `src/integrations/{vendor}/`, a wspólne elementy potrzebne wielu modułom do `src/modules/_core/`. Folder w `src/modules` istnieje tylko dla tabeli bazy danych o tej samej nazwie, a `_core` jest jedynym folderem bez tabeli. Operacja czytająca kilka tabel trafia do modułu tabeli, której dotyczy: lista zamówień klienta jest w `order`, panel administratora, czyli przegląd sprzedaży sklepu, także w `order`, a aktywność przeglądania zapisywana przez klienta w `user`.
 
 ## Pliki
 
@@ -17,7 +17,7 @@ Logika serwerowa, która nie należy do żadnej tabeli, nie dostaje modułu. Fun
 | `{feature}.types.ts`              | Typy wierszy wywnioskowane z tabeli, eksportowane jako jeden interfejs na moduł                                           |
 | `{feature}.utils.ts`              | Czyste funkcje — mapowanie wierszy, normalizacja, wyznaczanie etykiet                                                     |
 | `{feature}.accessors.ts`          | Wielokrotnie używane odczyty i zapisy do bazy, które niosą prawdziwe zachowanie                                           |
-| `{feature}.accessors.server.ts`   | To samo, ale wyłącznie serwerowe dzięki nazwie (`customer-account`, `storefront-search`)                                  |
+| `{feature}.accessors.server.ts`   | To samo, ale wyłącznie serwerowe dzięki nazwie (`storefront-search`)                                                      |
 | `{feature}.*.server.ts`           | Funkcje wyłącznie serwerowe: zapytania przygotowane, budowniki filtrów, ładowanie agregatów, obsługa audytu i e-maili     |
 | `use-cases/{verb-noun}.ts`        | Jedna funkcja serwerowa na plik, razem z opcjami zapytania lub mutacji                                                    |
 | `use-cases/{verb-noun}.server.ts` | Jedna operacja wyłącznie serwerowa na plik, eksportowana jako zwykła funkcja async: e-maile, sprzątanie, kroki zamówienia |
@@ -138,7 +138,7 @@ const categoryCreateInputSchema = zod.object({
 
 ## 4. Zadeklaruj stałe
 
-`{feature}.constants.ts` przechowuje wartości, co do których pozostałe warstwy muszą się zgadzać. Nic w tym pliku nie może importować z `src/presentation`. Jedynym istniejącym wyjątkiem jest `CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX` — zwykła liczba z `src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-datagrid.constants.ts`, której sześć plików stałych (`discount`, `newsletter`, `product-attribute`, `product-category`, `product-collection` i `user`) używa jako szerokości kolumny z identyfikatorem rekordu w swojej tabeli panelu; to nie jest wzorzec do naśladowania.
+`{feature}.constants.ts` przechowuje wartości, co do których pozostałe warstwy muszą się zgadzać. Nic w tym pliku nie może importować z `src/presentation`. Jedynym istniejącym wyjątkiem jest `CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX` — zwykła liczba z `src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-datagrid.constants.ts`, której sześć plików stałych (`discount`, `newsletter-subscriber`, `product-attribute`, `product-category`, `product-collection` i `user`) używa jako szerokości kolumny z identyfikatorem rekordu w swojej tabeli panelu; to nie jest wzorzec do naśladowania.
 
 ```ts
 export const ADDRESS_QUERY_KEYS = {

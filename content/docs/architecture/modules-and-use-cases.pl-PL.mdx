@@ -7,12 +7,11 @@ description: "Jak zbudowany jest moduł funkcjonalny, co oznacza każdy sufiks p
 
 ```text
 _core                   account                 address
-admin-dashboard         attribute-on-product    audit-log
-cart                    cart-item               category-on-product
-checkout                collection-on-product   content-page
-courier                 customer-account        customer-activity
+attribute-on-product    audit-log               cart
+cart-item               category-on-product     checkout
+collection-on-product   content-page            courier
 delivery-method         discount                inventory
-newsletter              newsletter-campaign     option-on-variant
+newsletter-campaign     newsletter-subscriber   option-on-variant
 order                   order-address           order-item
 order-withdrawal        payment                 price-history
 product                 product-attribute       product-category
@@ -20,10 +19,12 @@ product-collection      product-image           product-option
 product-option-value    product-variant         rate-limit
 session                 store-setting           storefront-search
 two-factor              user                    user-email-history
-verification            wishlist
+verification            wishlist-item
 ```
 
-39 z nich eksportuje tabele Drizzle, łącznie 42, a `src/integrations/drizzle-orm/drizzle.schemas.ts` re-eksportuje każdą z nich, żeby klient Drizzle, adapter Better Auth i `drizzle-kit` widziały jeden rejestr schematu. `storefront-search` deklaruje wirtualną tabelę FTS5 `storefront_search`, którą tworzy ręcznie napisana migracja i która pozostaje poza tym rejestrem. `admin-dashboard`, `customer-account` i `customer-activity` to modele odczytu nad tabelami innych modułów i nie mają własnego schematu; `_core` jest współdzielonym jądrem.
+Folder w `src/modules` istnieje tylko dla tabeli bazy danych o tej samej nazwie: `product-category` jest właścicielem `product_category`, a `wishlist-item` tabeli `wishlist_item`. Wspólne helpery, które obsługują kilka tabel, trafiają do `_core`, nigdy do osobnego folderu. Przypadek użycia mieszka w module tabeli, którą czyta lub zapisuje, więc lista zamówień klienta jest w `order`, zalogowane urządzenia w `session`, historia logowań w `audit-log`, a profil w `user`; panel administratora, czyli przegląd sprzedaży sklepu, jest w `order`.
+
+39 z nich eksportuje tabele Drizzle, łącznie 42, a `src/integrations/drizzle-orm/drizzle.schemas.ts` re-eksportuje każdą z nich, żeby klient Drizzle, adapter Better Auth i `drizzle-kit` widziały jeden rejestr schematu. `storefront-search` deklaruje wirtualną tabelę FTS5 `storefront_search`, którą tworzy ręcznie napisana migracja i która pozostaje poza tym rejestrem. `_core` jest współdzielonym jądrem i jedynym folderem bez tabeli.
 
 ## Sufiksy plików
 
@@ -39,7 +40,7 @@ verification            wishlist
 | `use-cases/<verb-noun>.ts`        | Jedno `createServerFn` plus opcje zapytania lub mutacji, które je wołają             |
 | `use-cases/<verb-noun>.server.ts` | Jedną operację wyłącznie serwerową, wołaną przez inny kod serwera; bez endpointu RPC |
 
-`order` to dobry moduł do przeczytania od początku do końca: `order.schema.ts`, `order.zod.ts`, `order.constants.ts`, `order.types.ts`, `order.utils.ts`, `order.totals.ts`, `order.display.utils.ts`, `order.detail.utils.ts`, `order.email.utils.ts`, `order.fulfillment-time.utils.ts`, `order.accessors.ts`, `order.admin-action.server.ts`, `order.admin-actions.utils.ts`, `order.settled.server.ts`, `order.number.server.ts`, `order.claim.server.ts`, `order.email-delivery.server.ts`, `order.refund.server.ts`, `order.restock.server.ts`, `order.shipment.server.ts`, `order-audit.utils.ts`, `order.admin-list-filters.ts` i trzydzieści plików w `use-cases/`.
+`order` to dobry moduł do przeczytania od początku do końca: `order.schema.ts`, `order.zod.ts`, `order.constants.ts`, `order.types.ts`, `order.utils.ts`, `order.totals.ts`, `order.display.utils.ts`, `order.detail.utils.ts`, `order.email.utils.ts`, `order.fulfillment-time.utils.ts`, `order.customer.utils.ts`, `order.dashboard.utils.ts`, `order.accessors.ts`, `order.dashboard.accessors.ts`, `order.admin-action.server.ts`, `order.admin-actions.utils.ts`, `order.settled.server.ts`, `order.number.server.ts`, `order.claim.server.ts`, `order.email-delivery.server.ts`, `order.refund.server.ts`, `order.restock.server.ts`, `order.shipment.server.ts`, `order-audit.utils.ts`, `order.admin-list-filters.ts` i trzydzieści pięć plików w `use-cases/`.
 
 ## Przypadek użycia mutujący
 
