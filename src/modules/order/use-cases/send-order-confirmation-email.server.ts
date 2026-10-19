@@ -11,10 +11,8 @@ import { resolveStripeObjectId } from "~/src/integrations/stripe/stripe.utils"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
-import {
-  type FulfillmentTimeAttribute,
-  getFulfillmentTimeAttributesByVariantId,
-} from "~/src/modules/attribute-on-product/attribute-on-product.server"
+import { getFulfillmentTimeAttributesByVariantId } from "~/src/modules/attribute-on-product/attribute-on-product.accessors"
+import { type FulfillmentTimeAttribute } from "~/src/modules/attribute-on-product/attribute-on-product.types"
 import {
   type CheckoutFulfillmentLine,
   resolveCheckoutSessionCurrency,

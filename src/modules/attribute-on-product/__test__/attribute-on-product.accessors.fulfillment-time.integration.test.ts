@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vite-plus/test"
 
 import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 
-import { getFulfillmentTimeAttributesByVariantId } from "~/src/modules/attribute-on-product/attribute-on-product.server"
+import { getFulfillmentTimeAttributesByVariantId } from "~/src/modules/attribute-on-product/attribute-on-product.accessors"
 
 const { sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")

@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { type TestD1Query } from "~/src/platform/testing/mocks/d1"
 
-import { setProductAttributeRanks } from "~/src/modules/product-attribute/product-attribute.server"
+import { setProductAttributeRanks } from "~/src/modules/product-attribute/product-attribute.accessors"
 import { getProductVariantSkuRowsQuery, getProductVariantStatsQuery } from "~/src/modules/product/product.accessors"
 import { getPublishedProductCountsByRootCategory } from "~/src/modules/product/product.storefront-catalog.accessors"
 

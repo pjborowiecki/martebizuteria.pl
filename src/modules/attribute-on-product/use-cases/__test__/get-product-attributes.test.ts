@@ -11,7 +11,7 @@ const { getByProductId } = vi.hoisted(() => ({
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
-vi.mock("~/src/modules/attribute-on-product/attribute-on-product.server", () => ({
+vi.mock("~/src/modules/attribute-on-product/attribute-on-product.accessors", () => ({
   getByProductIdQuery: { execute: getByProductId },
 }))
 vi.mock("@tanstack/react-start", () => ({

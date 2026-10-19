@@ -59,10 +59,10 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
 vi.mock("~/src/modules/audit-log/audit-log.record.server", () => ({
   resolveRequestAuditIp: () => "203.0.113.7",
 }))
-vi.mock("~/src/modules/attribute-on-product/attribute-on-product.server", () => ({
+vi.mock("~/src/modules/attribute-on-product/attribute-on-product.accessors", () => ({
   countForAttributeIds: server.countForAttributeIds,
 }))
-vi.mock("~/src/modules/product-attribute/product-attribute.server", () => ({
+vi.mock("~/src/modules/product-attribute/product-attribute.accessors", () => ({
   deleteProductAttributes: server.deleteProductAttributes,
   getAdminProductAttributeListItems: server.getAdminProductAttributeListItems,
   getNextProductAttributeRank: server.getNextProductAttributeRank,

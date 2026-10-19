@@ -32,7 +32,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({ runDrizzleBatch
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleProductCatalogInvalidation: operations.invalidate,
 }))
-vi.mock("~/src/modules/attribute-on-product/attribute-on-product.utils", () => ({
+vi.mock("~/src/modules/attribute-on-product/attribute-on-product.accessors", () => ({
   loadAttributeOnProductRows: operations.loadAttributes,
   prepareAttributeOnProductBatch: operations.attributes,
 }))

@@ -30,10 +30,10 @@ vi.mock("~/src/modules/collection-on-product/collection-on-product.accessors", (
   getCollectionProductTotalQuery: { execute: access.query },
   getProductCountsQuery: { execute: access.query },
 }))
-vi.mock("~/src/modules/product-attribute/product-attribute.server", () => ({
+vi.mock("~/src/modules/product-attribute/product-attribute.accessors", () => ({
   getAdminProductAttributeListItems: access.query,
 }))
-vi.mock("~/src/modules/attribute-on-product/attribute-on-product.server", () => ({
+vi.mock("~/src/modules/attribute-on-product/attribute-on-product.accessors", () => ({
   getByProductIdQuery: { execute: access.query },
 }))
 vi.mock("~/src/modules/product-image/product-image.accessors", () => ({

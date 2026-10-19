@@ -1,19 +1,7 @@
-import { describe, expect, it, vi } from "vite-plus/test"
+import { describe, expect, it } from "vite-plus/test"
 
 import { normalizeAttributeOnProductRows } from "~/src/modules/attribute-on-product/attribute-on-product.utils"
 import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
-
-const { sqlite } = await vi.hoisted(async () => {
-  const { DatabaseSync } = await import("node:sqlite")
-
-  return { sqlite: new DatabaseSync(":memory:") }
-})
-
-vi.mock("cloudflare:workers", async () => {
-  const { createTestD1Database } = await import("~/src/platform/testing/mocks/d1")
-
-  return { env: { DB: createTestD1Database(sqlite) } }
-})
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/u
 

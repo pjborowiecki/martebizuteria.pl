@@ -8,7 +8,7 @@ const { loadAttributeOnProductRows, prepareAttributeOnProductBatch, runDrizzleBa
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({ runDrizzleBatch }))
-vi.mock("~/src/modules/attribute-on-product/attribute-on-product.utils", () => ({
+vi.mock("~/src/modules/attribute-on-product/attribute-on-product.accessors", () => ({
   loadAttributeOnProductRows,
   prepareAttributeOnProductBatch,
 }))

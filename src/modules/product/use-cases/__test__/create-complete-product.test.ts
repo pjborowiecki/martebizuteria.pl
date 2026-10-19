@@ -22,7 +22,7 @@ const operations = vi.hoisted(() => ({
 vi.mock("uuid", () => ({ v7: operations.uuid }))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: operations.authorized }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({ runDrizzleBatch: operations.batch }))
-vi.mock("~/src/modules/attribute-on-product/attribute-on-product.utils", () => ({
+vi.mock("~/src/modules/attribute-on-product/attribute-on-product.accessors", () => ({
   loadAttributeOnProductRows: operations.loadAttributes,
   prepareAttributeOnProductBatch: operations.attributes,
 }))

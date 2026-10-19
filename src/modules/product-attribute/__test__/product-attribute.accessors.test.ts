@@ -6,7 +6,7 @@ import {
   getNextProductAttributeRank,
   getProductAttributesByIds,
   setProductAttributeRanks,
-} from "~/src/modules/product-attribute/product-attribute.server"
+} from "~/src/modules/product-attribute/product-attribute.accessors"
 
 interface Chain extends Promise<unknown> {
   from: () => Chain
@@ -58,7 +58,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.batch"), async (importOri
   runDrizzleBatch: batch.run,
 }))
 
-vi.mock("~/src/modules/attribute-on-product/attribute-on-product.server", () => ({
+vi.mock("~/src/modules/attribute-on-product/attribute-on-product.accessors", () => ({
   getProductCountsByAttributeId: counts.byAttributeId,
 }))
 

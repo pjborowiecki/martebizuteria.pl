@@ -6,7 +6,7 @@ const { paymentIntentsRetrieve } = vi.hoisted(() => ({
 }))
 
 vi.mock("cloudflare:workers", () => ({ DurableObject: Object, env: {} }))
-vi.mock("~/src/modules/attribute-on-product/attribute-on-product.server", () => ({ getFulfillmentTimeAttributesByVariantId: vi.fn() }))
+vi.mock("~/src/modules/attribute-on-product/attribute-on-product.accessors", () => ({ getFulfillmentTimeAttributesByVariantId: vi.fn() }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({
   stripe: { paymentIntents: { retrieve: paymentIntentsRetrieve } },
 }))
@@ -18,7 +18,7 @@ vi.mock("~/src/lib/url", () => ({
 
 import { paymentIntent } from "~/src/integrations/stripe/__test__/fixtures/stripe-webhook-events"
 
-import { type FulfillmentTimeAttribute } from "~/src/modules/attribute-on-product/attribute-on-product.server"
+import { type FulfillmentTimeAttribute } from "~/src/modules/attribute-on-product/attribute-on-product.types"
 import {
   resolveOrderLineFulfillmentTimes,
   resolveStripePaymentMethodLabel,

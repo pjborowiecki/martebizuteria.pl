@@ -5,8 +5,8 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleProductAttributeCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
+import { setProductAttributeRanks } from "~/src/modules/product-attribute/product-attribute.accessors"
 import { PRODUCT_ATTRIBUTE_MUTATION_KEYS } from "~/src/modules/product-attribute/product-attribute.constants"
-import { setProductAttributeRanks } from "~/src/modules/product-attribute/product-attribute.server"
 import { productAttributeZodSchemas } from "~/src/modules/product-attribute/product-attribute.zod"
 
 export const reorderProductAttributes = createServerFn({ method: "POST" })

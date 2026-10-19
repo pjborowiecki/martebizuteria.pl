@@ -4,7 +4,10 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 
-import { loadAttributeOnProductRows, prepareAttributeOnProductBatch } from "~/src/modules/attribute-on-product/attribute-on-product.utils"
+import {
+  loadAttributeOnProductRows,
+  prepareAttributeOnProductBatch,
+} from "~/src/modules/attribute-on-product/attribute-on-product.accessors"
 import { attributeOnProductZodSchemas } from "~/src/modules/attribute-on-product/attribute-on-product.zod"
 
 export const setAllProductAttributes = createServerFn({ method: "POST" })

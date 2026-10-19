@@ -13,7 +13,7 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: (
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleProductAttributeCatalogInvalidation: audit.schedule,
 }))
-vi.mock("~/src/modules/attribute-on-product/attribute-on-product.server", () => ({
+vi.mock("~/src/modules/attribute-on-product/attribute-on-product.accessors", () => ({
   countForAttributeIds: server.countForAttributeIds,
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
@@ -21,7 +21,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   resolveAuthAuditActor: (user: { email: string }) => `actor:${user.email}`,
 }))
 vi.mock("~/src/modules/audit-log/audit-log.record.server", () => ({ resolveRequestAuditIp: () => "198.51.100.4" }))
-vi.mock("~/src/modules/product-attribute/product-attribute.server", () => ({
+vi.mock("~/src/modules/product-attribute/product-attribute.accessors", () => ({
   deleteProductAttributes: server.deleteProductAttributes,
   getProductAttributesByIds: server.getProductAttributesByIds,
 }))

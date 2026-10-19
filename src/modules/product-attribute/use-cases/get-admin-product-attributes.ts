@@ -3,8 +3,8 @@ import { createServerFn } from "@tanstack/react-start"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
+import { getAdminProductAttributeListItems } from "~/src/modules/product-attribute/product-attribute.accessors"
 import { PRODUCT_ATTRIBUTE_QUERY_KEYS, PRODUCT_ATTRIBUTE_QUERY_STALE_MS } from "~/src/modules/product-attribute/product-attribute.constants"
-import { getAdminProductAttributeListItems } from "~/src/modules/product-attribute/product-attribute.server"
 
 export const getAdminProductAttributes = createServerFn({ method: "GET" })
   .middleware([authorized({ product: ["read"] })])
