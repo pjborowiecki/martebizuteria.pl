@@ -7,6 +7,13 @@ import { productImage } from "~/src/modules/product-image/product-image.schema"
 import { type ProductImageInput, buildProductImageRows } from "~/src/modules/product-image/product-image.utils"
 import { product } from "~/src/modules/product/product.schema"
 
+export const getProductImagesQuery = db.query.productImage
+  .findMany({
+    orderBy: (images, { asc: ascOrder }) => [ascOrder(images.rank), ascOrder(images.createdAt)],
+    where: eq(productImage.productId, sql.placeholder("productId")),
+  })
+  .prepare()
+
 export const prepareProductImagesBatch = (productId: string, images: readonly ProductImageInput[]): DrizzleBatchStatement[] => {
   const [thumbnail] = images.toSorted((left, right) => left.rank - right.rank)
 

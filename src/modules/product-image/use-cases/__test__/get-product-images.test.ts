@@ -12,7 +12,7 @@ const server = vi.hoisted(() => ({
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
-vi.mock("~/src/modules/product-image/product-image.server", () => ({ getProductImagesQuery: { execute: server.execute } }))
+vi.mock("~/src/modules/product-image/product-image.accessors", () => ({ getProductImagesQuery: { execute: server.execute } }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {

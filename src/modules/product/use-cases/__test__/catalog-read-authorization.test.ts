@@ -36,7 +36,7 @@ vi.mock("~/src/modules/product-attribute/product-attribute.server", () => ({
 vi.mock("~/src/modules/attribute-on-product/attribute-on-product.server", () => ({
   getByProductIdQuery: { execute: access.query },
 }))
-vi.mock("~/src/modules/product-image/product-image.server", () => ({
+vi.mock("~/src/modules/product-image/product-image.accessors", () => ({
   getProductImagesQuery: { execute: access.query },
 }))
 vi.mock("@tanstack/react-start", () => ({
