@@ -40,7 +40,7 @@ const { getDiscountByCodeForCustomerQuery, getDiscountByCodeForPreviewQuery } = 
 const { prepareDiscountClaim } = await import("~/src/modules/discount/discount.claim.server")
 const { getAdminSubscribersPage } = await import("~/src/modules/newsletter-subscriber/newsletter-subscriber.accessors")
 const { getAdminOrderTimelineRows, getOrderByTransactionId } = await import("~/src/modules/order/order.accessors")
-const { claimGuestOrdersForUser } = await import("~/src/modules/order/order.claim.server")
+const { claimGuestOrdersForUser } = await import("~/src/modules/order/use-cases/claim-guest-orders.server")
 const { getPriceReductions } = await import("~/src/modules/price-history/price-history.accessors")
 const { getPublishedProductsByCategoryIds, getPublishedProductsByCollectionHandle, getPublishedRelatedProducts } =
   await import("~/src/modules/product/product.accessors")

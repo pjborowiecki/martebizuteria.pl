@@ -5,9 +5,9 @@ import { useTranslations } from "use-intl/react"
 
 import { INPOST_CANCELED_SHIPMENT_STATUS } from "~/src/integrations/inpost/inpost.constants"
 
-import { resolveAdminOrderStepBack } from "~/src/modules/order/order.admin-actions.utils"
 import { ADMIN_ORDER_FULFILLMENT_LABEL_KEYS } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
+import { resolveAdminOrderStepBack } from "~/src/modules/order/order.utils"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 

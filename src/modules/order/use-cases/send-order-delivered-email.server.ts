@@ -7,13 +7,13 @@ import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { getOrderForProgressEmail } from "~/src/modules/order/order.accessors"
 import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
-import { resolveOrderLocale } from "~/src/modules/order/order.display.utils"
-import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
-import { buildOrderDeliveredLinks, buildOrderShippedAccountCta } from "~/src/modules/order/order.email.utils"
+import { resolveOrderLocale } from "~/src/modules/order/order.utils"
+import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/use-cases/deliver-order-email.server"
 import { readSellerDetails } from "~/src/modules/store-setting/store-setting.accessors"
 
 import type orderDeliveredMessages from "~/messages/en-US/emails.order-delivered.json"
 import { ORDER_DELIVERED_NAMESPACE, OrderDelivered } from "~/src/presentation/emails/order-delivered"
+import { buildOrderDeliveredLinks, buildOrderShippedAccountCta } from "~/src/presentation/emails/order-email-content"
 
 const ORDER_DELIVERED_LABEL = "Order delivered"
 

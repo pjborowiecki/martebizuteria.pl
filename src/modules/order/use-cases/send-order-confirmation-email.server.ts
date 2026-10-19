@@ -6,10 +6,15 @@ import { createTranslator } from "use-intl"
 
 import { embedEmailImages } from "~/src/integrations/cloudflare-r2/media.email.server"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
+import { stripe } from "~/src/integrations/stripe/stripe.server"
+import { resolveStripeObjectId } from "~/src/integrations/stripe/stripe.utils"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
-import { getFulfillmentTimeAttributesByVariantId } from "~/src/modules/attribute-on-product/attribute-on-product.server"
+import {
+  type FulfillmentTimeAttribute,
+  getFulfillmentTimeAttributesByVariantId,
+} from "~/src/modules/attribute-on-product/attribute-on-product.server"
 import {
   type CheckoutFulfillmentLine,
   resolveCheckoutSessionCurrency,
@@ -17,24 +22,85 @@ import {
 } from "~/src/modules/checkout/checkout-metadata.zod"
 import { getCheckoutEmailContext } from "~/src/modules/checkout/checkout.accessors"
 import { readCheckoutSessionLines } from "~/src/modules/checkout/checkout.session-lines.server"
+import { type FulfillmentLine } from "~/src/modules/checkout/checkout.utils"
 import { loadWithdrawalFormAttachment } from "~/src/modules/order-withdrawal/use-cases/load-withdrawal-form-attachment.server"
 import { getOrderTotalsForEmail } from "~/src/modules/order/order.accessors"
 import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
-import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
-import {
-  buildOrderAccountCta,
-  buildOrderConfirmationDetails,
-  buildOrderConfirmationItems,
-  buildOrderLegalLinks,
-  resolveStripePaymentMethodLabel,
-} from "~/src/modules/order/order.email.utils"
-import { resolveOrderLineFulfillmentTimes } from "~/src/modules/order/order.fulfillment-time.utils"
+import { type OrderLineFulfillmentTime } from "~/src/modules/order/order.types"
+import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/use-cases/deliver-order-email.server"
+import { formatProductAttributeValueForDisplay } from "~/src/modules/product-attribute/product-attribute.utils"
 import { readSellerDetails } from "~/src/modules/store-setting/store-setting.accessors"
 
 import { resolveDeploymentOrigin } from "~/src/lib/request"
 
 import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
 import { ORDER_CONFIRMATION_NAMESPACE, OrderConfirmation } from "~/src/presentation/emails/order-confirmation"
+import {
+  buildOrderAccountCta,
+  buildOrderConfirmationDetails,
+  buildOrderConfirmationItems,
+  buildOrderLegalLinks,
+} from "~/src/presentation/emails/order-email-content"
+
+export const resolveOrderLineFulfillmentTimes = (
+  lines: readonly FulfillmentLine[],
+  attributesByVariantId: ReadonlyMap<string, FulfillmentTimeAttribute>,
+  locale: SupportedLocale,
+): OrderLineFulfillmentTime[] =>
+  lines.map((line) => {
+    const attribute = attributesByVariantId.get(line.variantId)
+
+    return {
+      time:
+        attribute === undefined
+          ? undefined
+          : formatProductAttributeValueForDisplay(attribute.type, attribute.value, {
+              allowedValues: attribute.allowedValues,
+              locale,
+              unit: attribute.unit,
+            }),
+      title: line.title,
+    }
+  })
+
+export const resolveStripePaymentMethodLabel = async (
+  session: StripeType.Checkout.Session,
+  messages: typeof orderConfirmationMessages,
+): Promise<string> => {
+  const labels = messages.paymentMethods
+  const fallback = messages.paymentMethodUnknown
+  const paymentIntentId = resolveStripeObjectId(session.payment_intent)
+  if (paymentIntentId === undefined) {
+    return fallback
+  }
+
+  try {
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ["payment_method"],
+    })
+
+    const paymentMethod = paymentIntent.payment_method
+    if (paymentMethod === null || typeof paymentMethod === "string") {
+      return fallback
+    }
+
+    if (paymentMethod.type === "card") {
+      return labels.card
+    }
+
+    if (paymentMethod.type === "blik") {
+      return labels.blik
+    }
+
+    if (paymentMethod.type === "p24") {
+      return labels.p24
+    }
+
+    return fallback
+  } catch {
+    return fallback
+  }
+}
 
 interface OrderConfirmationEmailPayload {
   readonly attachments: Attachment[]

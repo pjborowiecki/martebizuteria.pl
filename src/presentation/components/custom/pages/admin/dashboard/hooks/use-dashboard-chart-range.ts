@@ -2,8 +2,8 @@ import { useMemo, useState } from "react"
 
 import { useQuery } from "@tanstack/react-query"
 
-import { isAdminDashboardCustomChartRangeValid } from "~/src/modules/order/order.dashboard.utils"
 import { type AdminDashboard } from "~/src/modules/order/order.types"
+import { isAdminDashboardCustomChartRangeValid } from "~/src/modules/order/order.utils"
 import { getDashboardChartRangeQuery } from "~/src/modules/order/use-cases/get-dashboard-chart-range"
 
 import { useAdminDashboardSnapshot } from "~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-admin-dashboard-snapshot"

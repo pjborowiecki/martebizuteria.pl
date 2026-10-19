@@ -7,12 +7,12 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { assertOrderActionState } from "~/src/modules/order/order.admin-action.server"
-import { canRestockAdminOrder } from "~/src/modules/order/order.admin-actions.utils"
 import { ORDER_ERROR_CODES, ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
-import { returnOrderToStock } from "~/src/modules/order/order.restock.server"
 import { order } from "~/src/modules/order/order.schema"
+import { canRestockAdminOrder } from "~/src/modules/order/order.utils"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
+import { returnOrderToStock } from "~/src/modules/order/use-cases/return-order-to-stock.server"
+import { assertOrderActionState } from "~/src/modules/order/use-cases/transition-order.server"
 
 export const restockOrder = createServerFn({ method: "POST" })
   .middleware([authorized({ order: ["update"] })])

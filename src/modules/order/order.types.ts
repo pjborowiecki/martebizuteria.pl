@@ -3,9 +3,11 @@ import { type z } from "zod/v4"
 import { type InpostLockerPoint } from "~/src/integrations/inpost/inpost.zod"
 
 import { type DateColumnFilterValue, type NumericColumnFilterValue } from "~/src/modules/_core/utils/column-filters"
+import { type CalendarDate, type CalendarPeriod } from "~/src/modules/_core/utils/datetime"
 import { type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import { type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
+import { type DeliveryMethod } from "~/src/modules/delivery-method/delivery-method.types"
 import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
 import {
   type AdminOrderAdvancedStep,
@@ -18,6 +20,7 @@ import {
   type AdminOrderTab,
   type AdminOrderTimelineKind,
   type CustomerAccountOrderStatus,
+  type InpostDeliveryType,
   type OrderEmailKind,
   type OrderEmailNoticeStatus,
 } from "~/src/modules/order/order.constants"
@@ -466,4 +469,214 @@ export interface AdminDashboard {
   snapshotInput: z.infer<(typeof adminDashboardZodSchemas)["snapshotInput"]>
   topProductItem: AdminDashboardTopProductItem
   weeklyOrderPoint: AdminDashboardWeeklyOrderPoint
+}
+
+export type OrderActionSnapshot = Pick<Order["adminListItem"], "fulfillmentStatus" | "paymentUiKey" | "status">
+
+export interface InpostDeliverySource {
+  readonly courierCode: string | undefined
+  readonly type: DeliveryMethodType | undefined
+}
+
+export interface InpostDelivery extends InpostDeliverySource {
+  readonly type: InpostDeliveryType
+}
+
+export interface InpostShipmentSnapshot extends Pick<OrderActionSnapshot, "fulfillmentStatus" | "status"> {
+  readonly courierCode: string | undefined
+  readonly deliveryType: DeliveryMethodType | undefined
+  readonly inpostShipmentId: string | undefined
+  readonly inpostShipmentStatus: string | undefined
+}
+
+export interface AdminOrderRefundBlockerSnapshot {
+  readonly hasOpenDispute: boolean
+  readonly totalMinorUnits: number
+}
+
+export interface AdminOrderCancelBlockerSnapshot extends AdminOrderRefundBlockerSnapshot {
+  readonly paymentUiKey: Order["adminListItem"]["paymentUiKey"]
+}
+
+export interface OrderTrackingLinkSource {
+  readonly courierCode: string | undefined
+  readonly deliveryType: DeliveryMethodType | undefined
+  readonly trackingNumber: string | null | undefined
+  readonly trackingUrl: string | null | undefined
+}
+
+export interface OrderStepEmailClaims {
+  readonly deliveredEmailAt: Date | null
+  readonly inProgressEmailAt: Date | null
+  readonly shippedEmailAt: Date | null
+}
+
+export interface AdminOrderListSourceRow extends OrderStepEmailClaims {
+  readonly createdAt: Date
+  readonly currencyCode: string
+  readonly customerName: string | null
+  readonly email: string
+  readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
+  readonly id: string
+  readonly itemCount: number | null
+  readonly metadata: string | null
+  readonly orderNumber: string
+  readonly paymentStatus: string | null
+  readonly status: Order["select"]["status"]
+  readonly total: number
+  readonly userId: string | null
+}
+
+export interface OrderAddressLocality {
+  readonly city: string
+  readonly countryCode: string
+  readonly postalCode: string | null | undefined
+  readonly province: string | null | undefined
+}
+
+export type AdminOrderColumnFilterHandler = (filters: Order["adminListFilters"], value: unknown) => Order["adminListFilters"]
+
+export interface OrderTotalsLine {
+  readonly price: number
+  readonly qty: number
+}
+
+export interface OrderTotalsInput {
+  readonly discountTotal?: number | undefined
+  readonly itemsSubtotal: number
+  readonly shippingTotal: number
+  readonly vatBasisPoints?: number | undefined
+}
+
+export interface OrderTotals {
+  readonly discountTotal: number
+  readonly shippingTotal: number
+  readonly subtotal: number
+  readonly taxTotal: number
+  readonly total: number
+  readonly vatBasisPoints: number
+}
+
+export interface ChartWindowInput {
+  readonly count: number
+  readonly dateAt: (index: number) => CalendarDate
+  readonly keyOf: (date: CalendarDate) => string
+  readonly timeZone: string
+}
+
+export interface AdminDashboardChartWindow {
+  readonly end: Date
+  readonly periods: readonly CalendarPeriod[]
+  readonly start: Date
+}
+
+export interface OrderAggregateRow {
+  readonly orders: number
+  readonly periodKey: string
+  readonly revenue: number
+}
+
+export interface OrderDestinationRow extends OrderShippingAddressSources {
+  readonly deliveryMethod: { readonly names: DeliveryMethod["names"]; readonly type: DeliveryMethodType } | null
+  readonly lockerId: string | null
+  readonly lockerPoint: string | null
+}
+
+export interface OrderLockerSource {
+  readonly deliveryType: DeliveryMethodType | undefined
+  readonly lockerId: string | null
+  readonly lockerPoint: string | null
+}
+
+export interface AdminOrderAddressRow {
+  readonly address1: string
+  readonly address2: string | null
+  readonly city: string
+  readonly countryCode: string
+  readonly firstName: string | null
+  readonly lastName: string | null
+  readonly phone: string | null
+  readonly postalCode: string | null
+  readonly province: string | null
+}
+
+export interface AdminOrderAddressSnapshotRow extends AdminOrderAddressRow {
+  readonly type: "billing" | "shipping"
+}
+
+export interface AdminOrderCheckoutAddresses {
+  readonly billingAddress: AdminOrderAddressRow | null
+  readonly billingAddressId: string | null
+  readonly shippingAddress: AdminOrderAddressRow | null
+  readonly shippingAddressId: string | null
+}
+
+export interface AdminOrderAddressSources {
+  readonly addresses: readonly AdminOrderAddressSnapshotRow[]
+  readonly checkout: AdminOrderCheckoutAddresses | null
+}
+
+export interface OrderShippingAddressSources {
+  readonly addresses: readonly AdminOrderAddressSnapshotRow[]
+  readonly checkout: Pick<AdminOrderCheckoutAddresses, "shippingAddress"> | null
+}
+
+export interface AdminOrderItemRow {
+  readonly id: string
+  readonly productHandle: string | null
+  readonly quantity: number
+  readonly sku: string | null
+  readonly thumbnail: string | null
+  readonly title: string
+  readonly total: number
+  readonly unitPrice: number
+  readonly variantTitle: string | null
+}
+
+export interface ResendableOrderEmail {
+  readonly detail: string | undefined
+  readonly email: Order["email"]
+  readonly idempotencyKey: string
+}
+
+export interface AdminOrderTimelineRow {
+  readonly action: string
+  readonly actorName: string
+  readonly createdAt: Date
+  readonly detail: string | null
+  readonly id: string
+  readonly metadata: string | null
+  readonly severity: AuditLogSeverity
+}
+
+export interface CustomerOrderItemRow {
+  readonly handle?: string | null | undefined
+  readonly id: string
+  readonly quantity: number
+  readonly thumbnail: string | null
+  readonly title: string
+  readonly total: number
+  readonly unitPrice?: number | undefined
+  readonly variantTitle: string | null
+}
+
+export interface OrderStepSnapshot {
+  readonly fulfillmentStep: AdminOrderFulfillmentStepKey
+  readonly orderStatus: Order["select"]["status"]
+}
+
+export interface RestockLine {
+  readonly quantity: number
+  readonly variantId: string
+}
+
+export interface OrderLineFulfillmentTime {
+  readonly time: string | undefined
+  readonly title: string
+}
+
+export interface MeasuredFulfillmentTime {
+  readonly calendarDays: number
+  readonly time: string
+  readonly title: string
 }

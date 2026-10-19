@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vite-plus/test"
 import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 
 import { getAdminOrderDestinationRows } from "~/src/modules/order/order.accessors"
-import { describeOrderDestination } from "~/src/modules/order/order.detail.utils"
+import { describeOrderDestination } from "~/src/modules/order/order.utils"
 
 const { sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")

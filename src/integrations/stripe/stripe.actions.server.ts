@@ -50,7 +50,8 @@ import { type Discount } from "~/src/modules/discount/discount.types"
 import { releaseInventoryForItems } from "~/src/modules/inventory/inventory.accessors"
 import { quantitiesBeyond, sumHeldQuantity } from "~/src/modules/inventory/inventory.utils"
 import { reserveInventoryForItems } from "~/src/modules/inventory/use-cases/reserve-inventory.server"
-import { type OrderTotals, computeOrderTotals, sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
+import { type OrderTotals } from "~/src/modules/order/order.types"
+import { computeOrderTotals, sumOrderLineSubtotal } from "~/src/modules/order/order.utils"
 import {
   createPendingPayment,
   getHeldLinesByTransactionId,

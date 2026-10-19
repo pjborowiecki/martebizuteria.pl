@@ -7,12 +7,12 @@ import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { getOrderForProgressEmail } from "~/src/modules/order/order.accessors"
 import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
-import { resolveOrderLocale } from "~/src/modules/order/order.display.utils"
-import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
-import { buildOrderShippedAccountCta } from "~/src/modules/order/order.email.utils"
+import { resolveOrderLocale } from "~/src/modules/order/order.utils"
+import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/use-cases/deliver-order-email.server"
 import { resolveLocalizedString } from "~/src/modules/product-attribute/product-attribute.utils"
 
 import type orderInProgressMessages from "~/messages/en-US/emails.order-in-progress.json"
+import { buildOrderShippedAccountCta } from "~/src/presentation/emails/order-email-content"
 import { ORDER_IN_PROGRESS_NAMESPACE, OrderInProgress } from "~/src/presentation/emails/order-in-progress"
 
 const ORDER_IN_PROGRESS_LABEL = "Order in progress"

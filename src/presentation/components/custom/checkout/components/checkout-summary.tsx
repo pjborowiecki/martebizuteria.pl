@@ -7,7 +7,7 @@ import { isCheckoutSessionFor } from "~/src/integrations/stripe/stripe.checkout"
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
 import { getCartLineUnitPriceCents } from "~/src/modules/cart/cart.utils"
-import { computeOrderTotals } from "~/src/modules/order/order.totals"
+import { computeOrderTotals } from "~/src/modules/order/order.utils"
 
 import { useCartStore } from "~/src/hooks/use-cart-store"
 import { useFormatter } from "~/src/hooks/use-display-format"

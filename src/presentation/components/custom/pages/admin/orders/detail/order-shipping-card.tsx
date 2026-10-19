@@ -4,9 +4,8 @@ import { AlertTriangle, Copy, ExternalLink, Package, Truck } from "lucide-react"
 import { toast } from "sonner"
 import { useLocale, useTranslations } from "use-intl/react"
 
-import { describeOrderLocker, resolveAdminOrderDeliveryLocker } from "~/src/modules/order/order.detail.utils"
-import { formatOrderAddressLocality } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
+import { describeOrderLocker, formatOrderAddressLocality, resolveAdminOrderDeliveryLocker } from "~/src/modules/order/order.utils"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"

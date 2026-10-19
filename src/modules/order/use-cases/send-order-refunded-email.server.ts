@@ -7,14 +7,14 @@ import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { getOrderForRefundEmail } from "~/src/modules/order/order.accessors"
 import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
-import { resolveOrderLocale } from "~/src/modules/order/order.display.utils"
-import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
-import { buildOrderAccountCta } from "~/src/modules/order/order.email.utils"
 import { type Order } from "~/src/modules/order/order.types"
+import { resolveOrderLocale } from "~/src/modules/order/order.utils"
+import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/use-cases/deliver-order-email.server"
 
 import { resolveDeploymentOrigin } from "~/src/lib/request"
 
 import type orderRefundedMessages from "~/messages/en-US/emails.order-refunded.json"
+import { buildOrderAccountCta } from "~/src/presentation/emails/order-email-content"
 import { ORDER_REFUNDED_NAMESPACE, OrderRefunded } from "~/src/presentation/emails/order-refunded"
 
 const ORDER_REFUNDED_LABEL = "Order refunded"

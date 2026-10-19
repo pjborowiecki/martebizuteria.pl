@@ -7,37 +7,98 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
+import { type CalendarPeriod, startOfCalendarDate, toCalendarDate } from "~/src/modules/_core/utils/datetime"
 import { pageViewsQuery } from "~/src/modules/audit-log/audit-log.accessors"
+import { orderAggregatesQuery } from "~/src/modules/order/order.accessors"
 import {
   ADMIN_DASHBOARD_CHART_DAYS_30,
   ADMIN_DASHBOARD_CHART_DAYS_7,
   ADMIN_DASHBOARD_CHART_MONTHS_1Y,
+  ADMIN_DASHBOARD_COMPARISON_PERIOD_DAYS,
   ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
   ADMIN_DASHBOARD_MONTH_LABEL_FORMAT,
+  ADMIN_DASHBOARD_MS_PER_DAY,
   ADMIN_DASHBOARD_QUERY_KEYS,
   ADMIN_DASHBOARD_QUERY_STALE_MS,
+  ADMIN_DASHBOARD_TREND_PERCENT_SCALE,
 } from "~/src/modules/order/order.constants"
+import { type AdminDashboard, type OrderAggregateRow } from "~/src/modules/order/order.types"
 import {
-  orderAggregatesQuery,
+  buildAdminDashboardChartPoints,
+  resolveAdminDashboardDays,
+  resolveAdminDashboardMonths,
+  toAdminOrderListItem,
+} from "~/src/modules/order/order.utils"
+import { adminDashboardZodSchemas } from "~/src/modules/order/order.zod"
+import {
   recentOrdersQuery,
   resolveTopProductCategoryLabel,
   resolveTopProductName,
   salesTotalsQuery,
   topProductsQuery,
-} from "~/src/modules/order/order.dashboard.accessors"
-import {
-  buildAdminDashboardChartPoints,
-  buildAdminDashboardKpiStat,
-  buildAdminDashboardWeeklyOrderPoints,
-  resolveAdminDashboardComparisonPeriod,
-  resolveAdminDashboardDays,
-  resolveAdminDashboardMonths,
-  resolveAdminDashboardYearStart,
-} from "~/src/modules/order/order.dashboard.utils"
-import { toAdminOrderListItem } from "~/src/modules/order/order.display.utils"
-import { type AdminDashboard } from "~/src/modules/order/order.types"
-import { adminDashboardZodSchemas } from "~/src/modules/order/order.zod"
+} from "~/src/modules/order/use-cases/get-dashboard-snapshot.server"
 import { newCustomersQuery } from "~/src/modules/user/user.accessors"
+
+export const resolveAdminDashboardComparisonPeriod = (
+  referenceDate: Date = new Date(),
+  periodDays: number = ADMIN_DASHBOARD_COMPARISON_PERIOD_DAYS,
+): AdminDashboardComparisonPeriod => {
+  const currentStart = new Date(referenceDate.getTime() - periodDays * ADMIN_DASHBOARD_MS_PER_DAY)
+  const comparisonPeriodMultiplier = 2
+  const previousStart = new Date(referenceDate.getTime() - periodDays * comparisonPeriodMultiplier * ADMIN_DASHBOARD_MS_PER_DAY)
+
+  return {
+    currentStart,
+    previousEnd: currentStart,
+    previousStart,
+  }
+}
+
+export const resolveAdminDashboardYearStart = (referenceDate: Date, timeZone: string): Date =>
+  startOfCalendarDate({ day: 1, month: 1, year: toCalendarDate(referenceDate, timeZone).year }, timeZone)
+
+export const computeAdminDashboardTrendPercent = (current: number, previous: number): number => {
+  if (previous <= 0) {
+    return current > 0 ? SINGLE_PRIOR_VALUE : 0
+  }
+
+  return Math.round(((current - previous) / previous) * ADMIN_DASHBOARD_TREND_PERCENT_SCALE)
+}
+
+export const buildAdminDashboardKpiStat = (current: number, previous: number): AdminDashboard["kpiStat"] => ({
+  current,
+  previous,
+  trendPercent: computeAdminDashboardTrendPercent(current, previous),
+})
+
+export const buildAdminDashboardWeeklyOrderPoints = ({
+  formatLocale,
+  periods,
+  rows,
+  timeZone,
+}: Readonly<{
+  formatLocale: string
+  periods: readonly CalendarPeriod[]
+  rows: readonly OrderAggregateRow[]
+  timeZone: string
+}>): AdminDashboard["weeklyOrderPoint"][] =>
+  buildAdminDashboardChartPoints({ formatLocale, labelFormat: WEEKDAY_LABEL_FORMAT, periods, rows, timeZone }).map(
+    ({ dateKey, label, orders }) => ({
+      dateKey,
+      dayLabel: label,
+      orders,
+    }),
+  )
+
+const SINGLE_PRIOR_VALUE = 100
+
+export interface AdminDashboardComparisonPeriod {
+  readonly currentStart: Date
+  readonly previousEnd: Date
+  readonly previousStart: Date
+}
+
+const WEEKDAY_LABEL_FORMAT: Intl.DateTimeFormatOptions = { weekday: "short" }
 
 export const getDashboardSnapshot = createServerFn({ method: "GET" })
   .middleware([authorized({ settings: ["manage"] })])

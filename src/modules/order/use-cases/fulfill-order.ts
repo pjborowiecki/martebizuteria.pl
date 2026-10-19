@@ -8,13 +8,13 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { recordOrderFulfillmentStartedAudit } from "~/src/modules/audit-log/audit-log.events.server"
-import { assertOrderActionState, getAdminOrderActionRow, transitionOrder } from "~/src/modules/order/order.admin-action.server"
-import { canFulfillAdminOrder } from "~/src/modules/order/order.admin-actions.utils"
 import { FULFILLABLE_FULFILLMENT_STATUSES, ORDER_EMAIL_KIND, ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
-import { announceClaimedOrderEmail } from "~/src/modules/order/order.email-delivery.server"
 import { order } from "~/src/modules/order/order.schema"
+import { canFulfillAdminOrder } from "~/src/modules/order/order.utils"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
+import { announceClaimedOrderEmail } from "~/src/modules/order/use-cases/deliver-order-email.server"
 import { sendOrderInProgressEmail } from "~/src/modules/order/use-cases/send-order-in-progress-email.server"
+import { assertOrderActionState, getAdminOrderActionRow, transitionOrder } from "~/src/modules/order/use-cases/transition-order.server"
 
 import { resolveRequestOrigin } from "~/src/lib/request"
 

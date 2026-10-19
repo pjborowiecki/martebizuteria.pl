@@ -16,7 +16,7 @@ import { AUDIT_LOG_ACTION, CUSTOMER_EMAIL_CHANGE_REFUSAL } from "~/src/modules/a
 import { recordCustomerEmailChangeAudit } from "~/src/modules/audit-log/audit-log.email-change.server"
 import { type AuditEventOptions, resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.events.server"
 import { getOrdersPlacedWhileSignedIn } from "~/src/modules/order/order.accessors"
-import { resolveOrderLocale } from "~/src/modules/order/order.display.utils"
+import { resolveOrderLocale } from "~/src/modules/order/order.utils"
 import { getCurrentAddressHolder } from "~/src/modules/user-email-history/user-email-history.accessors"
 import { sendSupportEmailChangeEmail } from "~/src/modules/user/use-cases/send-support-email-change-email.server"
 import { getUserById } from "~/src/modules/user/user.accessors"

@@ -8,9 +8,6 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleAdminOrdersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { recordOrderSteppedBackAudit } from "~/src/modules/audit-log/audit-log.events.server"
-import { buildOrderStepBackAuditChange } from "~/src/modules/order/order-audit.utils"
-import { assertOrderActionState, getAdminOrderActionRow, transitionOrder } from "~/src/modules/order/order.admin-action.server"
-import { resolveAdminOrderStepBack } from "~/src/modules/order/order.admin-actions.utils"
 import {
   ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP,
   ADMIN_ORDER_PREVIOUS_STEP,
@@ -18,7 +15,9 @@ import {
   ORDER_MUTATION_KEYS,
 } from "~/src/modules/order/order.constants"
 import { type order } from "~/src/modules/order/order.schema"
+import { buildOrderStepBackAuditChange, resolveAdminOrderStepBack } from "~/src/modules/order/order.utils"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
+import { assertOrderActionState, getAdminOrderActionRow, transitionOrder } from "~/src/modules/order/use-cases/transition-order.server"
 
 const STEP_BACK_UPDATES = {
   delivered: { deliveredAt: sql`NULL`, fulfillmentStatus: "shipped", status: "processing" },

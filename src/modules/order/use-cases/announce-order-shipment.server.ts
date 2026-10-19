@@ -3,9 +3,9 @@ import { and, eq, isNotNull, isNull, ne, or, sql } from "drizzle-orm"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { ORDER_EMAIL_KIND, ORDER_EMAIL_NOTICE_STATUS } from "~/src/modules/order/order.constants"
-import { awaitOrderEmailNotice } from "~/src/modules/order/order.email-delivery.server"
 import { order } from "~/src/modules/order/order.schema"
 import { type Order } from "~/src/modules/order/order.types"
+import { awaitOrderEmailNotice } from "~/src/modules/order/use-cases/deliver-order-email.server"
 import { sendOrderShippedEmail } from "~/src/modules/order/use-cases/send-order-shipped-email.server"
 import { sendOrderTrackingEmail } from "~/src/modules/order/use-cases/send-order-tracking-email.server"
 

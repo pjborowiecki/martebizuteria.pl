@@ -9,8 +9,8 @@ import { TestProviders, createTestRouter } from "~/src/platform/testing/lib/rend
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { ADMIN_ORDER_FULFILLMENT_UI_KEY, ADMIN_ORDER_TABLE_COLUMN_ID } from "~/src/modules/order/order.constants"
-import { formatAdminOrderDate } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
+import { formatAdminOrderDate } from "~/src/modules/order/order.utils"
 
 import { buildOrderColumns } from "~/src/presentation/components/custom/pages/admin/orders/lib/orders-column-defs"
 

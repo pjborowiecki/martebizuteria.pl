@@ -5,18 +5,18 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
 
+import { orderAggregatesQuery } from "~/src/modules/order/order.accessors"
 import {
   ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
   ADMIN_DASHBOARD_QUERY_KEYS,
   ADMIN_DASHBOARD_QUERY_STALE_MS,
 } from "~/src/modules/order/order.constants"
-import { orderAggregatesQuery } from "~/src/modules/order/order.dashboard.accessors"
+import { type AdminDashboard } from "~/src/modules/order/order.types"
 import {
   buildAdminDashboardChartPoints,
   isAdminDashboardCustomChartRangeValid,
   resolveAdminDashboardDateRange,
-} from "~/src/modules/order/order.dashboard.utils"
-import { type AdminDashboard } from "~/src/modules/order/order.types"
+} from "~/src/modules/order/order.utils"
 import { adminDashboardZodSchemas } from "~/src/modules/order/order.zod"
 
 export const getDashboardChartRange = createServerFn({ method: "GET" })

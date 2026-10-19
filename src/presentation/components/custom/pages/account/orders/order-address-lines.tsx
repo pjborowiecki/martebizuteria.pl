@@ -3,8 +3,8 @@ import { type JSX } from "react"
 import { useLocale } from "use-intl/react"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
-import { formatOrderAddressLocality } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
+import { formatOrderAddressLocality } from "~/src/modules/order/order.utils"
 
 export const AddressLines = ({ address }: Readonly<{ address?: Order["customerOrderAddress"] | undefined }>): JSX.Element => {
   const locale = useLocale()

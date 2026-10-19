@@ -4,7 +4,7 @@ import { z } from "zod"
 import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 
 import { type FulfillCheckoutFromSessionInput, fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
-import { currentOrderNumberPeriod } from "~/src/modules/order/order.number.server"
+import { currentOrderNumberPeriod } from "~/src/modules/order/use-cases/allocate-order-number.server"
 import { deleteProducts } from "~/src/modules/product/product.mutations"
 
 const { sqlite } = await vi.hoisted(async () => {

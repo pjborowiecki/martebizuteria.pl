@@ -40,7 +40,9 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
   scheduleAdminOrdersInvalidation: doubles.scheduleAdminOrdersInvalidation,
 }))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderByInpostShipmentId: doubles.getOrderByInpostShipmentId }))
-vi.mock("~/src/modules/order/order.shipment.server", () => ({ syncOrderInpostShipment: doubles.syncOrderInpostShipment }))
+vi.mock("~/src/modules/order/use-cases/sync-order-inpost-shipment.server", () => ({
+  syncOrderInpostShipment: doubles.syncOrderInpostShipment,
+}))
 vi.mock("~/src/modules/order/use-cases/announce-order-shipment.server", () => ({ announceOrderShipment: doubles.announceOrderShipment }))
 vi.mock("~/src/lib/request", () => ({ resolveDeploymentOrigin: (url: string) => new URL(url).origin }))
 vi.mock("~/src/lib/rate-limit", () => ({ clientAddress: () => "203.0.113.7", withinRateLimit: doubles.withinRateLimit }))

@@ -7,7 +7,6 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
-import { type OrderAccountCta, type OrderEmailDestination } from "~/src/modules/order/order.email.utils"
 import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
 import { formatSellerPostalAddress, toSellerPhoneHref } from "~/src/modules/store-setting/store-setting.utils"
 
@@ -21,6 +20,7 @@ import {
   EmailBorderedSection,
 } from "~/src/presentation/emails/email-highlight-box"
 import { EmailLayout } from "~/src/presentation/emails/email-layout"
+import { type OrderAccountCta, type OrderEmailDestination } from "~/src/presentation/emails/order-email-content"
 
 export const ORDER_CONFIRMATION_NAMESPACE = "emails.order-confirmation"
 

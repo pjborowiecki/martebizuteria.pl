@@ -22,8 +22,8 @@ import {
   CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT,
   ORDER_QUERY_KEYS,
 } from "~/src/modules/order/order.constants"
-import { mapCustomerOrderSummaryRow } from "~/src/modules/order/order.customer.utils"
 import { type Order } from "~/src/modules/order/order.types"
+import { mapCustomerOrderSummaryRow } from "~/src/modules/order/use-cases/list-customer-orders.server"
 import { getPublishedProductsByCategoryIds, getPublishedProductsByCollectionHandle } from "~/src/modules/product/product.accessors"
 import { LANDING_NEW_ARRIVALS_COLLECTION_HANDLE } from "~/src/modules/product/product.constants"
 import { resolveProductTitle } from "~/src/modules/product/product.utils"

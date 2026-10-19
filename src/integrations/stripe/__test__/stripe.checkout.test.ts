@@ -6,7 +6,7 @@ import {
 } from "@stripe/stripe-js"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { type OrderTotals } from "~/src/modules/order/order.totals"
+import { type OrderTotals } from "~/src/modules/order/order.types"
 
 interface OpenedSession {
   amount: number

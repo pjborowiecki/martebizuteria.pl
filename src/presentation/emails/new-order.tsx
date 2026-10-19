@@ -6,7 +6,6 @@ import { createTranslator } from "use-intl"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
-import { type OrderEmailDestination } from "~/src/modules/order/order.email.utils"
 import { type Order } from "~/src/modules/order/order.types"
 
 import type emailMessages from "~/messages/en-US/emails.new-order.json"
@@ -20,6 +19,7 @@ import {
   EmailDetailRow,
 } from "~/src/presentation/emails/email-highlight-box"
 import { EmailLayout } from "~/src/presentation/emails/email-layout"
+import { type OrderEmailDestination } from "~/src/presentation/emails/order-email-content"
 
 export const NEW_ORDER_NAMESPACE = "emails.new-order"
 

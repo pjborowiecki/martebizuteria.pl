@@ -1,11 +1,10 @@
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { recordOrderRefundAudit } from "~/src/modules/audit-log/audit-log.events.server"
-import { buildOrderRefundAuditChange } from "~/src/modules/order/order-audit.utils"
-import { getOrderByCheckoutId } from "~/src/modules/order/order.accessors"
-import { findSettledOrder } from "~/src/modules/order/order.settled.server"
+import { getOrderByCheckoutId, prepareRefundBatch } from "~/src/modules/order/order.accessors"
 import { type Order } from "~/src/modules/order/order.types"
-import { prepareRefundBatch } from "~/src/modules/order/order.utils"
+import { buildOrderRefundAuditChange } from "~/src/modules/order/order.utils"
+import { findSettledOrder } from "~/src/modules/order/use-cases/find-settled-order.server"
 import { getPaymentByTransactionId } from "~/src/modules/payment/payment.accessors"
 
 const resolveRefundAfterSnapshot = (

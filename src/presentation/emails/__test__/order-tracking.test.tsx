@@ -1,10 +1,9 @@
 import { render } from "react-email"
 import { describe, expect, it } from "vite-plus/test"
 
-import { type OrderTracking } from "~/src/modules/order/order.email.utils"
-
 import englishCopy from "~/messages/en-US/emails.order-tracking.json"
 import polishCopy from "~/messages/pl-PL/emails.order-tracking.json"
+import { type OrderTracking } from "~/src/presentation/emails/order-email-content"
 import { ORDER_TRACKING_NAMESPACE, OrderTrackingUpdate } from "~/src/presentation/emails/order-tracking"
 
 const ORDER_NUMBER = "MRT-2026-00042"

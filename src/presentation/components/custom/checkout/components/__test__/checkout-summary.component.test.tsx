@@ -66,7 +66,7 @@ vi.mock("@tanstack/react-router", async () => {
 import { type CheckoutSession, buildCheckoutValuesFingerprint } from "~/src/integrations/stripe/stripe.checkout"
 
 import { type Discount } from "~/src/modules/discount/discount.types"
-import { type OrderTotals } from "~/src/modules/order/order.totals"
+import { type OrderTotals } from "~/src/modules/order/order.types"
 
 import { useCartStore } from "~/src/hooks/use-cart-store"
 

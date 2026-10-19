@@ -19,7 +19,7 @@ import {
 import { type Discount } from "~/src/modules/discount/discount.types"
 import { calculateDiscountAmount, normalizeDiscountCode, resolveDiscountPreviewRejection } from "~/src/modules/discount/discount.utils"
 import { discountZodSchemas } from "~/src/modules/discount/discount.zod"
-import { sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
+import { sumOrderLineSubtotal } from "~/src/modules/order/order.utils"
 import { getSellPricesByVariantIds } from "~/src/modules/product-variant/product-variant.accessors"
 
 const NO_DELIVERY_COST = 0

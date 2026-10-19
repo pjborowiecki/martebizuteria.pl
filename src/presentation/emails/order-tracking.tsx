@@ -5,8 +5,6 @@ import { createTranslator } from "use-intl"
 
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
-import { type OrderAccountCta, type OrderTracking } from "~/src/modules/order/order.email.utils"
-
 import type emailMessages from "~/messages/en-US/emails.order-tracking.json"
 import {
   EMAIL_CTA_BUTTON_CLASS,
@@ -17,6 +15,7 @@ import {
   EmailDetailRow,
 } from "~/src/presentation/emails/email-highlight-box"
 import { EmailLayout } from "~/src/presentation/emails/email-layout"
+import { type OrderAccountCta, type OrderTracking } from "~/src/presentation/emails/order-email-content"
 
 export const ORDER_TRACKING_NAMESPACE = "emails.order-tracking"
 

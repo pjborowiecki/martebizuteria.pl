@@ -14,7 +14,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
-import { resolveAdminDashboardMonths } from "~/src/modules/order/order.dashboard.utils"
+import { resolveAdminDashboardMonths } from "~/src/modules/order/order.utils"
 import {
   getAdminCustomerOrderRowsQuery,
   getCustomerAuditTimelineQuery,

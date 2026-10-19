@@ -7,9 +7,9 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/_core/constants/customer-account"
 import { countCustomerOrders, getCustomerOrderRows, getOrderItemsForOrders } from "~/src/modules/order/order.accessors"
 import { CUSTOMER_ACCOUNT_ORDERS_PAGE_SIZE, ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
-import { mapCustomerOrderSummaryRow } from "~/src/modules/order/order.customer.utils"
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
+import { mapCustomerOrderSummaryRow } from "~/src/modules/order/use-cases/list-customer-orders.server"
 
 const FIRST_PAGE = 1
 

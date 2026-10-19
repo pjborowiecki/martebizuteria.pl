@@ -2,8 +2,8 @@ import { type JSX } from "react"
 
 import { useLocale } from "use-intl/react"
 
-import { formatOrderAddressLocality } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
+import { formatOrderAddressLocality } from "~/src/modules/order/order.utils"
 
 export const OrderAddressLines = ({ address }: Readonly<OrderAddressLinesProps>): JSX.Element => {
   const locale = useLocale()

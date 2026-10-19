@@ -56,7 +56,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
 }))
 vi.mock("~/src/modules/order/use-cases/announce-order-shipment.server", () => ({ announceOrderShipment }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderTrackingUpdatedAudit }))
-vi.mock(import("~/src/modules/order/order.admin-action.server"), async (importOriginal) => {
+vi.mock(import("~/src/modules/order/use-cases/transition-order.server"), async (importOriginal) => {
   const actual = await importOriginal()
 
   return { ...actual, getAdminOrderActionRow: () => Promise.resolve(orderRow.current) }
