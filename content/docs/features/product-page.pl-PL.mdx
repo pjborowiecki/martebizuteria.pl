@@ -87,6 +87,8 @@ Zwróć uwagę na typ zwracany. **Brak produktu i brak stanu magazynowego to oba
 
 `product-variant-picker.tsx` renderuje grupy opcji; `product-hero-gallery.tsx` podmienia zdjęcia przy zmianie wariantu, bo `ProductHeroSection` przelicza `images` z `selectedVariant?.imageUrls`.
 
+Galeria renderuje każde zdjęcie dwa razy, raz w karuzeli na telefonie (`lg:hidden`) i raz w kolumnie na komputerze (`hidden lg:block`). Pierwsze zdjęcie jest Largest Contentful Paint strony w obu punktach przerwania, więc obie jego kopie dostają `priority`, a każde inne zdjęcie jest leniwe przy domyślnym priorytecie. Wszystkie kopie mają wspólne `sizes`, `(width < 64rem) 100vw, 58vw`, to samo źródło i te same wymiary, więc przy każdej szerokości okna przeglądarka sprowadza obie kopie pierwszego zdjęcia do jednego adresu: renderowanie Reacta na serwerze wysyła jeden preload obrazu, a kopia ukryta w danym punkcie przerwania nie kosztuje drugiego pobrania.
+
 ## Dodanie do koszyka
 
 `use-product-hero-cart.ts` to jedyne miejsce, w którym karta produktu zapisuje do koszyka. Uwzględnia stan magazynowy:
@@ -167,7 +169,7 @@ Trasa mapuje wiersze na kształt wymagany przez `ProductRelatedSection`, rozwią
 
 ## Animacja
 
-`hooks/use-product-animations.ts` jest wywoływany z korzeniem strony i `dependencies: [handle]`, więc animacje odsłaniania odtwarzają się ponownie przy przejściu z jednego produktu na drugi.
+`hooks/use-product-animations.ts` jest wywoływany z korzeniem strony i `dependencies: [handle]`, więc animacje odsłaniania odtwarzają się ponownie przy przejściu z jednego produktu na drugi. Ukrywa i odsłania tylko elementy `.reveal` zaczynające się poniżej pierwszego ekranu, takie jak powiązane produkty; okruszki, galeria i panel zakupu są na ekranie od wczytania strony i zostają dokładnie takie, jak namalował je serwer, więc główne zdjęcie jest Largest Contentful Paint od pierwszej klatki. Przy `prefers-reduced-motion: reduce` niczego nie ukrywa ani nie przesuwa.
 
 ## Powiązane strony
 

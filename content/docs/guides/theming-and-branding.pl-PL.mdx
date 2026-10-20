@@ -7,17 +7,16 @@ Wszystko, co wizualne, mieszka pod `src/presentation/`. Style w `styles/`, mecha
 
 Zasada brzmi: nic poza `src/presentation` nie deklaruje koloru, kroju pisma ani danych marki; dane sprzedawcy to dane w D1. Kod ma znane wyjątki, które zmiana palety też musi uwzględnić: mapy kolorów odznak i kropek statusów w stałych modułów (`ORDER_STATUS_BADGE_STYLES`, `PAYMENT_BADGE_STYLES` i `FULFILLMENT_DOT_COLORS` w `order.constants.ts`; `SEVERITY_DOT_COLORS`, `SEVERITY_BADGE_COLORS` i `ACTOR_ROLE_COLORS` w `audit-log.constants.ts`; `NEWSLETTER_STATUS_BADGE_STYLES` w `newsletter-subscriber.constants.ts`; `NEWSLETTER_CAMPAIGN_STATUS_BADGE_STYLES` w `newsletter-campaign.constants.ts`) oraz wygląd Stripe Elements dla kroku płatności w `src/integrations/stripe/stripe.appearance.ts`, który ma własne kolory hex i ładuje Manrope z Google Fonts.
 
-## Pięć arkuszy stylów
+## Cztery arkusze stylów
 
-| Plik                 | Linie | Ładowany przez                                 | Zakres                                                  |
-| -------------------- | ----- | ---------------------------------------------- | ------------------------------------------------------- |
-| `globals.css`        | 253   | `src/routes/__root.tsx` jako `link` trasy      | Tokeny, warstwa bazowa, wspólne komponenty              |
-| `admin.css`          | 137   | `src/routes/admin.tsx` jako `link` trasy       | Powłoka panelu i edytor treści                          |
-| `storefront.css`     | 20    | `src/routes/_storefront.tsx` jako `link` trasy | Stan początkowy animacji odsłaniania na stronie głównej |
-| `fonts.css`          | 84    | `@import` na początku `globals.css`            | Niekrytyczne reguły `@font-face`                        |
-| `critical-fonts.css` | 60    | Wstawiany do `<head>` przez `?raw`             | Kroje obu rodzin do pierwszego renderowania i zastępcze |
+| Plik                 | Linie | Ładowany przez                            | Zakres                                                  |
+| -------------------- | ----- | ----------------------------------------- | ------------------------------------------------------- |
+| `globals.css`        | 253   | `src/routes/__root.tsx` jako `link` trasy | Tokeny, warstwa bazowa, wspólne komponenty              |
+| `admin.css`          | 137   | `src/routes/admin.tsx` jako `link` trasy  | Powłoka panelu i edytor treści                          |
+| `fonts.css`          | 84    | `@import` na początku `globals.css`       | Niekrytyczne reguły `@font-face`                        |
+| `critical-fonts.css` | 60    | Wstawiany do `<head>` przez `?raw`        | Kroje obu rodzin do pierwszego renderowania i zastępcze |
 
-Zachowaj ten podział. Reguła potrzebna tylko panelowi należy do `admin.css`; reguła potrzebna tylko stronie głównej należy do `storefront.css`. `globals.css` jest dla tego, co obie powłoki dzielą.
+Zachowaj ten podział. Reguła potrzebna tylko panelowi należy do `admin.css`; `globals.css` jest dla tego, co obie powłoki dzielą. Sklep nie ma arkusza trasy: jego animacje odsłaniania ukrywają treść z JavaScriptu i tylko poniżej pierwszego ekranu, więc arkusz ukrywający ją przed uruchomieniem skryptów opóźniałby pierwsze wyrenderowanie treści, którą odwiedzający już widzi.
 
 Poza tokenami `globals.css` importuje `tailwindcss`, `tw-animate-css`, `shadcn/tailwind.css` i arkusz stylów Lenis oraz rejestruje wtyczkę typografii pod nazwą klasy `wysiwyg`. Jego linie `@source not` wyłączają ze skanowania Tailwinda testy, `src/platform/testing/` i komponenty shadcn, których aplikacja nie używa; jeśli zaczniesz używać któregoś z wymienionych komponentów, usuń go z listy, inaczej Tailwind nie zobaczy jego nazw klas.
 

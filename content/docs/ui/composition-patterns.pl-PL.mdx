@@ -26,12 +26,11 @@ const HomePage = (): JSX.Element => {
 }
 ```
 
-Trasa layoutu robi to samo dla chromu. `src/routes/_storefront.tsx` montuje `Navigation`, `Footer`, komunikat o wstrzymanej sprzedaży, banner koszyka i tracker aktywności, subskrybuje unieważnianie w czasie rzeczywistym, dołącza swój arkusz stylów i ładuje kolekcje pokazywane w pełnoekranowym menu nawigacji razem ze stanem sprzedaży, który czyta komunikat, i danymi sprzedawcy, które pokazuje stopka:
+Trasa layoutu robi to samo dla chromu. `src/routes/_storefront.tsx` montuje `Navigation`, `Footer`, komunikat o wstrzymanej sprzedaży, banner koszyka i tracker aktywności, subskrybuje unieważnianie w czasie rzeczywistym i ładuje kolekcje pokazywane w pełnoekranowym menu nawigacji razem ze stanem sprzedaży, który czyta komunikat, i danymi sprzedawcy, które pokazuje stopka:
 
 ```tsx
 export const Route = createFileRoute("/_storefront")({
   component: StorefrontLayout,
-  head: () => ({ links: [{ href: storefrontCss, rel: "stylesheet" }] }),
   loader: async ({ context }) => {
     await Promise.all([
       context.queryClient.query({ ...getCollectionsQuery(), staleTime: "static" }).catch(noop),
@@ -163,11 +162,13 @@ Używaj `custom/image.tsx`, nie surowego `<img>`. Komponent opakowuje `@unpic/re
 
 | Prop          | Efekt                                                                            |
 | ------------- | -------------------------------------------------------------------------------- |
-| `priority`    | `loading="eager"`, `decoding="sync"`, `fetchPriority="high"`, wyższa jakość      |
+| `priority`    | `loading="eager"` i `fetchPriority="high"`; dekodowanie zostaje `async`          |
 | `optimize`    | Domyślnie `true`; `false` rozwiązuje surowy adres zasobu przez `resolveAssetURL` |
 | `quality`     | Nadpisuje jakość domyślną i priorytetową z `IMAGE_CONSTANTS`                     |
 | `blurDataURL` | Przekazywany do unpic jako `background`                                          |
 | `sizes`       | Atrybut `sizes` dla obrazów responsywnych                                        |
+
+Bez `priority` obraz ma `loading="lazy"` i `decoding="async"` przy domyślnym priorytecie przeglądarki. `priority` dostaje jeden obraz na stronę, ten, na którym wypada Largest Contentful Paint: zdjęcie w hero strony głównej i główne zdjęcie na stronie produktu. Renderer serwerowy Reacta zamienia każdy obraz, który nie jest leniwy, w `<link rel="preload" as="image">` na początku dokumentu, więc każdy dodatkowy obraz priorytetowy konkuruje z właściwym o pierwsze wymiany z serwerem. Gdy układ renderuje to samo zdjęcie dwa razy dla dwóch punktów przerwania, jak galeria produktu w karuzeli na telefonie i w kolumnie na komputerze, obie kopie dostają ten sam `src`, `width`, `height` i `sizes`: przeglądarka sprowadza je wtedy przy każdej szerokości ekranu do jednego adresu, React wysyła jeden preload, a ukryta kopia nie kosztuje drugiego pobrania.
 
 `width` i `height` są wymagane, co utrzymuje stabilny układ. Przy włączonym `optimize` obraz na hoście z `VITE_R2_URL` jest zmniejszany na tym hoście przez Cloudflare Image Transformations, a unpic buduje `srcset`; obraz na hoście `r2.dev` serwowany jest w oryginalnym rozmiarze, bo `r2.dev` nie przekształca obrazów.
 

@@ -18,7 +18,7 @@ dzięki czemu `_storefront.products.$handle.tsx` obsługuje zarówno `/products/
 
 ## Sklep
 
-Wszystkie strony sklepu leżą pod layoutem bez ścieżki `_storefront.tsx`, który dostarcza `Navigation`, `Footer`, banner dostępności koszyka, tracker aktywności klienta, subskrypcję realtime dla sklepu oraz `storefront.css`. Jego loader ładuje `getCollectionsQuery()` dla pełnoekranowego menu, więc zdjęcia kolekcji w menu są w cache wyrenderowanym na serwerze. Żadna z nich nie ma strażnika.
+Wszystkie strony sklepu leżą pod layoutem bez ścieżki `_storefront.tsx`, który dostarcza `Navigation`, `Footer`, banner dostępności koszyka, tracker aktywności klienta i subskrypcję realtime dla sklepu. Jego loader ładuje `getCollectionsQuery()` dla pełnoekranowego menu, więc zdjęcia kolekcji w menu są w cache wyrenderowanym na serwerze. Żadna z nich nie ma strażnika.
 
 | Ścieżka                   | Stała w `ROUTES`         | Plik trasy                               |
 | ------------------------- | ------------------------ | ---------------------------------------- |

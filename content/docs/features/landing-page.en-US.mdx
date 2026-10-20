@@ -95,11 +95,15 @@ To publish an article, add its slug to `BLOG_POST_SLUGS` and give it, in both `m
 
 ```ts
 export const LANDING_HERO_IMG = getAssetURL("marketing/hero.webp")
-export const LANDING_VIDEO_POSTER = getAssetURL("placeholder.svg")
+export const LANDING_VIDEO_POSTER = getAssetURL("marketing/editorial.webp")
 export const LANDING_VIDEO_SRC = getAssetURL("marketing/landing-video.mp4")
 ```
 
 `getAssetURL` (`src/lib/url.ts`) resolves them against the R2 public URL. `HeroSection` shows the picture and `VideoExperienceSection` the video.
+
+The hero picture is the page's Largest Contentful Paint on phones and desktops, and the only image on the page with `priority`: it alone is `loading="eager"` with `fetchPriority="high"`, so React's server render puts exactly one image preload in the head. Every other picture on the page, the new arrivals, the category panels and cards, the collections and the editorial pictures, is `loading="lazy"` at the browser's default priority.
+
+The video does not download with the page. The `<video>` has `preload="none"` and no `autoplay`; a ref callback watches it with an `IntersectionObserver`, calls `play()` once a quarter of it is on screen and `pause()` when it leaves, and does nothing for visitors who ask for reduced motion, who keep the still. Until the video plays, `LANDING_VIDEO_POSTER` covers it through the shared `Image` component, lazily loaded and sized at the video's 1920 × 1080 frame, and the still hides when the video fires `playing` and comes back on `error`. The bucket holds no frame of the video yet, so the still is `marketing/editorial.webp`, the gold necklaces with the shell pendant the video also shows; to use a frame of the video instead, upload it to `marketing/` and point `LANDING_VIDEO_POSTER` at it.
 
 ## Collections
 
@@ -109,13 +113,15 @@ export const LANDING_VIDEO_SRC = getAssetURL("marketing/landing-video.mp4")
 
 `src/hooks/use-landing-animations.ts` is called once from the page component with a ref to `<main>`. It reads GSAP and `ScrollTrigger` from `src/integrations/gsap/gsap.config.ts` and wires three effects by class name:
 
-| Class            | Effect                                                                                                  |
-| ---------------- | ------------------------------------------------------------------------------------------------------- |
-| `.reveal`        | Fade and rise once, batched through `ScrollTrigger.batch`; elements already in view animate immediately |
-| `.line-reveal`   | Horizontal rule scales in from the left, once                                                           |
-| `.parallax-wrap` | The `.parallax-img` inside it translates as the wrapper scrolls                                         |
+| Class            | Effect                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------- |
+| `.reveal`        | Fade and rise once, batched through `ScrollTrigger.batch`, for elements that start below the fold |
+| `.line-reveal`   | Horizontal rule scales in from the left, once, if it starts below the fold                        |
+| `.parallax-wrap` | The `.parallax-img` inside it translates as the wrapper scrolls                                   |
 
 So a new section joins the choreography by adding `reveal` to its outer element — there is nothing to register.
+
+Nothing is hidden before the scripts run: no stylesheet sets a starting state, and after hydration the hook hides a `.reveal` or collapses a `.line-reveal` only when its top is below the bottom of the viewport. Whatever the visitor can already see, the hero above all, stays exactly as the server painted it, so the first paint carries the Largest Contentful Paint and the layout does not shift. The reveals and the parallax are registered in `gsap.matchMedia()` for `(prefers-reduced-motion: no-preference)`, so under reduced motion nothing is hidden or moved.
 
 Smooth scrolling itself is Lenis, mounted by `src/presentation/components/custom/smooth-scroll.tsx` and kept in step with the router by `src/hooks/use-lenis-router-scroll-sync.ts`.
 
