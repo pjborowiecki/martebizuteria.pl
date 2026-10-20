@@ -17,18 +17,20 @@ const ProductHeroImage = ({
 }: Readonly<{
   alt: string
   priority: boolean
-  src: string
+  src: string | undefined
 }>): JSX.Element => (
   <AspectRatio className="overflow-hidden bg-secondary" ratio={PRODUCT_IMAGE_ASPECT_RATIO}>
-    <Image
-      alt={alt}
-      className="absolute inset-0 size-full object-cover"
-      height={1400}
-      priority={priority}
-      sizes={PRODUCT_IMAGE_SIZES}
-      src={src}
-      width={1120}
-    />
+    {src !== undefined && (
+      <Image
+        alt={alt}
+        className="absolute inset-0 size-full object-cover"
+        height={1400}
+        priority={priority}
+        sizes={PRODUCT_IMAGE_SIZES}
+        src={src}
+        width={1120}
+      />
+    )}
   </AspectRatio>
 )
 
@@ -134,7 +136,7 @@ const ProductHeroMobileCarousel = ({ images, title }: Readonly<ProductHeroGaller
         <CarouselContent className="ml-0">
           {images.map((src, index) => (
             <CarouselItem key={src} className="pl-0">
-              <ProductHeroImage alt={title} priority={index === 0} src={src} />
+              <ProductHeroImage alt={title} priority={index === 0} src={index === 0 || api !== undefined ? src : undefined} />
             </CarouselItem>
           ))}
         </CarouselContent>
