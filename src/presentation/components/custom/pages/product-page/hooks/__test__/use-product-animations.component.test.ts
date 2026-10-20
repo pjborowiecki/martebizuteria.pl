@@ -52,9 +52,17 @@ const buildRoot = ({ parallaxWraps = 0, reveals = 0, wrapsWithoutImage = 0 } = {
   return root
 }
 
-const putInView = (element: Element): void => {
-  element.getBoundingClientRect = () => new DOMRect(0, 10, 100, 100)
+const placeAt = (element: Element, top: number): void => {
+  element.getBoundingClientRect = () => new DOMRect(0, top, 100, 100)
 }
+
+const placeEveryReveal = (root: HTMLElement, top: number): void => {
+  for (const reveal of root.querySelectorAll(".reveal")) {
+    placeAt(reveal, top)
+  }
+}
+
+const BELOW_THE_FOLD = 2000
 
 describe("useProductAnimations", () => {
   beforeEach(() => {
@@ -76,16 +84,24 @@ describe("useProductAnimations", () => {
     expect(gsapMock.batch).not.toHaveBeenCalled()
   })
 
-  it("hides the reveal sections and batches them behind a scroll trigger", () => {
+  it("hides only the sections that start below the fold and batches them behind a scroll trigger", () => {
     const root = buildRoot({ reveals: 3 })
+    const [gallery, ...related] = root.querySelectorAll(".reveal")
+    if (gallery !== undefined) {
+      placeAt(gallery, 10)
+    }
+    for (const section of related) {
+      placeAt(section, BELOW_THE_FOLD)
+    }
 
     renderHook(() => {
       useProductAnimations({ rootRef: { current: root } })
     })
 
     expect(gsapMock.set).toHaveBeenCalledTimes(1)
-    expect(gsapMock.set.mock.calls[0]?.[1]).toStrictEqual({ autoAlpha: 0, y: 24 })
+    expect(gsapMock.set.mock.calls[0]).toStrictEqual([related, { autoAlpha: 0, y: 24 }])
     expect(gsapMock.batch).toHaveBeenCalledTimes(1)
+    expect(gsapMock.batch.mock.calls[0]?.[0]).toStrictEqual(related)
     expect(gsapMock.batch.mock.calls[0]?.[1]).toMatchObject({ once: true, start: "top 92%" })
   })
 
@@ -100,22 +116,26 @@ describe("useProductAnimations", () => {
     expect(gsapMock.batch).not.toHaveBeenCalled()
   })
 
-  it("reveals the sections already on screen straight away with a stagger", () => {
+  it.each([
+    ["on screen, like the hero image and the buy box", 10],
+    ["cut by the bottom edge of the screen", 767],
+    ["above the screen after a scrolled navigation", -400],
+  ])("never hides or fades a section %s", (_position, top) => {
     const root = buildRoot({ reveals: 2 })
-    for (const reveal of root.querySelectorAll(".reveal")) {
-      putInView(reveal)
-    }
+    placeEveryReveal(root, top)
 
     renderHook(() => {
       useProductAnimations({ rootRef: { current: root } })
     })
 
-    expect(gsapMock.to).toHaveBeenCalledTimes(1)
-    expect(gsapMock.to.mock.calls[0]?.[1]).toMatchObject({ autoAlpha: 1, stagger: 0.08, y: 0 })
+    expect(gsapMock.set).not.toHaveBeenCalled()
+    expect(gsapMock.to).not.toHaveBeenCalled()
+    expect(gsapMock.batch).not.toHaveBeenCalled()
   })
 
   it("leaves sections below the fold to the scroll trigger", () => {
     const root = buildRoot({ reveals: 2 })
+    placeEveryReveal(root, BELOW_THE_FOLD)
 
     renderHook(() => {
       useProductAnimations({ rootRef: { current: root } })
@@ -126,6 +146,7 @@ describe("useProductAnimations", () => {
 
   it("reveals a batch with a stagger once it scrolls into view", () => {
     const root = buildRoot({ reveals: 2 })
+    placeEveryReveal(root, BELOW_THE_FOLD)
 
     renderHook(() => {
       useProductAnimations({ rootRef: { current: root } })
@@ -140,6 +161,7 @@ describe("useProductAnimations", () => {
 
     expect(gsapMock.to).toHaveBeenCalledTimes(1)
     expect(gsapMock.to.mock.calls[0]?.[0]).toStrictEqual(batched)
+    expect(gsapMock.to.mock.calls[0]?.[1]).toMatchObject({ autoAlpha: 1, stagger: 0.08, y: 0 })
   })
 
   it("parallaxes every wrap that carries an image", () => {
@@ -154,16 +176,16 @@ describe("useProductAnimations", () => {
     expect(gsapMock.fromTo.mock.calls[0]?.[2]).toMatchObject({ yPercent: 4 })
   })
 
-  it("shows the reveal sections without animating when motion is reduced", () => {
+  it("hides and moves nothing when motion is reduced, not even below the fold", () => {
     media.active = ["(prefers-reduced-motion: reduce)"]
     const root = buildRoot({ parallaxWraps: 1, reveals: 2 })
+    placeEveryReveal(root, BELOW_THE_FOLD)
 
     renderHook(() => {
       useProductAnimations({ rootRef: { current: root } })
     })
 
-    expect(gsapMock.set).toHaveBeenCalledTimes(1)
-    expect(gsapMock.set.mock.calls[0]?.[1]).toStrictEqual({ autoAlpha: 1, y: 0 })
+    expect(gsapMock.set).not.toHaveBeenCalled()
     expect(gsapMock.batch).not.toHaveBeenCalled()
     expect(gsapMock.fromTo).not.toHaveBeenCalled()
   })

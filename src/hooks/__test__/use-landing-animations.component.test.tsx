@@ -74,8 +74,18 @@ const IN_VIEW_RECT = { bottom: 200, top: 100 }
 
 const OUT_OF_VIEW_RECT = { bottom: 1000, top: 900 }
 
+const BOTTOM_EDGE_RECT = { bottom: 868, top: 767 }
+
+const SCROLLED_PAST_RECT = { bottom: -100, top: -400 }
+
+const RECT_BY_CLASS = new Map([
+  ["out-of-view", OUT_OF_VIEW_RECT],
+  ["bottom-edge", BOTTOM_EDGE_RECT],
+  ["scrolled-past", SCROLLED_PAST_RECT],
+])
+
 const rectFor = (element: Element): DOMRect => {
-  const { bottom, top } = element.classList.contains("out-of-view") ? OUT_OF_VIEW_RECT : IN_VIEW_RECT
+  const { bottom, top } = [...RECT_BY_CLASS].find(([className]) => element.classList.contains(className))?.[1] ?? IN_VIEW_RECT
 
   return {
     bottom,
@@ -150,10 +160,10 @@ afterEach(() => {
 })
 
 describe("useLandingAnimations media queries", () => {
-  it("registers one branch for motion and one for reduced motion", () => {
+  it("registers its animations for visitors who allow motion only", () => {
     render(<Harness />)
 
-    expect(gsapStub.media.entries.map((entry) => entry.query)).toStrictEqual([MOTION_QUERY, REDUCED_MOTION_QUERY])
+    expect(gsapStub.media.entries.map((entry) => entry.query)).toStrictEqual([MOTION_QUERY])
   })
 
   it("does nothing at all while the root element is not mounted", () => {
@@ -172,29 +182,32 @@ describe("useLandingAnimations media queries", () => {
 })
 
 describe("useLandingAnimations reveals", () => {
-  it("hides every reveal before it scrolls into view", () => {
+  it("hides only the reveals that start below the fold until they scroll into view", () => {
     render(
       <Harness>
+        <p className="reveal">On screen</p>
         <p className="reveal out-of-view">Hidden until scrolled to</p>
       </Harness>,
     )
 
-    expect(setVarsFor("reveal")).toStrictEqual([{ autoAlpha: 0, y: 28 }])
+    expect(gsapStub.setCalls).toStrictEqual([{ target: [document.querySelector(".out-of-view")], vars: { autoAlpha: 0, y: 28 } }])
+    expect(gsapStub.batchCalls.map((call) => call.targets)).toStrictEqual([[document.querySelector(".out-of-view")]])
   })
 
-  it("reveals the elements already on screen straight away, staggered", () => {
+  it.each([
+    ["on screen", ""],
+    ["cut by the bottom edge of the screen", "bottom-edge"],
+    ["already scrolled past", "scrolled-past"],
+  ])("never hides or fades a reveal that is %s when the page loads", (_position, className) => {
     render(
       <Harness>
-        <p className="reveal">On screen</p>
+        <p className={`reveal ${className}`}>Painted with the page</p>
       </Harness>,
     )
 
-    expect(gsapStub.toCalls).toStrictEqual([
-      {
-        target: [document.querySelector(".reveal")],
-        vars: { autoAlpha: 1, duration: 0.9, ease: "power2.out", overwrite: true, stagger: 0.08, y: 0 },
-      },
-    ])
+    expect(gsapStub.setCalls).toHaveLength(0)
+    expect(gsapStub.toCalls).toHaveLength(0)
+    expect(gsapStub.batchCalls).toHaveLength(0)
   })
 
   it("leaves the off screen reveals to the scroll trigger batch", () => {
@@ -250,14 +263,14 @@ describe("useLandingAnimations reveals", () => {
 })
 
 describe("useLandingAnimations line reveals", () => {
-  it("draws an on screen line immediately instead of on scroll", () => {
+  it("leaves a line that is on screen when the page loads drawn as the server painted it", () => {
     render(
       <Harness>
         <span className="line-reveal" />
       </Harness>,
     )
 
-    expect(setVarsFor("line-reveal")).toStrictEqual([{ scaleX: 1, transformOrigin: "left center" }])
+    expect(setVarsFor("line-reveal")).toHaveLength(0)
     expect(gsapStub.fromToCalls).toHaveLength(0)
   })
 
@@ -325,26 +338,22 @@ describe("useLandingAnimations reduced motion", () => {
     stubMatchMedia(REDUCED_MOTION_QUERY)
   })
 
-  it("shows the reveals and the lines without animating them", () => {
+  it("hides nothing, not even the reveals and lines below the fold", () => {
     render(
       <Harness>
-        <p className="reveal">Copy</p>
-        <span className="line-reveal" />
+        <p className="reveal out-of-view">Copy</p>
+        <span className="line-reveal out-of-view" />
       </Harness>,
     )
 
-    expect(gsapStub.setCalls).toStrictEqual([
-      {
-        target: [document.querySelector(".reveal"), document.querySelector(".line-reveal")],
-        vars: { autoAlpha: 1, clearProps: "transform" },
-      },
-    ])
+    expect(gsapStub.setCalls).toHaveLength(0)
+    expect(gsapStub.toCalls).toHaveLength(0)
   })
 
   it("wires up no scroll triggers at all", () => {
     render(
       <Harness>
-        <p className="reveal">Copy</p>
+        <p className="reveal out-of-view">Copy</p>
         <div className="parallax-wrap">
           <img alt="" className="parallax-img" src="/hero.avif" />
         </div>

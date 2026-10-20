@@ -20,8 +20,6 @@ import { Footer } from "~/src/presentation/components/custom/pages/landing-page/
 import { Navigation } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation"
 import { SalesPausedBanner } from "~/src/presentation/components/custom/sales-paused-banner"
 
-import storefrontCss from "~/src/presentation/styles/storefront.css?url"
-
 const StorefrontLayout = (): JSX.Element => {
   useRealtimeQuerySync({
     hub: REALTIME_INVALIDATION_HUB.STOREFRONT,
@@ -44,14 +42,6 @@ const StorefrontLayout = (): JSX.Element => {
 
 export const Route = createFileRoute("/_storefront")({
   component: StorefrontLayout,
-  head: () => ({
-    links: [
-      {
-        href: storefrontCss,
-        rel: "stylesheet",
-      },
-    ],
-  }),
   loader: async ({ context }) => {
     await Promise.all([
       context.queryClient
