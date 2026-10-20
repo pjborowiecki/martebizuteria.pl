@@ -5,7 +5,7 @@ description: "The steps a page request, a server function call and a webhook go 
 
 ## Page request
 
-1. **Four short-circuits.** `src/server.ts` checks the pathname first. `/sitemap.xml` and `/robots.txt` are generated from `src/lib/seo.ts`, the sitemap from the pages `listSitemapPages` in `src/lib/sitemap.ts` reads from D1. `ROUTES.API_REALTIME.ADMIN_WS` and `ROUTES.API_REALTIME.STOREFRONT_WS` are handed to `handleRealtimeInvalidationWebSocket`. None of these loads React.
+1. **Four short-circuits.** `src/server.ts` first sends a request for `www.martebizuteria.pl` to the same path and query on `martebizuteria.pl` with a `308 Permanent Redirect`, which keeps the method, so the shop answers on one host only. It then checks the pathname. `/sitemap.xml` and `/robots.txt` are generated from `src/lib/seo.ts`, the sitemap from the pages `listSitemapPages` in `src/lib/sitemap.ts` reads from D1. `ROUTES.API_REALTIME.ADMIN_WS` and `ROUTES.API_REALTIME.STOREFRONT_WS` are handed to `handleRealtimeInvalidationWebSocket`. None of these loads React.
 2. **Locale canonicalization.** `resolveLocale` runs for `GET` and `HEAD` document requests — decided by `sec-fetch-dest`, falling back to the `Accept` header — outside `/api`, `/rpc`, `/_serverFn`, `/assets` and `/forms`. A language-only or redundant default-locale prefix is redirected with `301` to its canonical form: `/pl/products` and `/pl-PL/products` both become `/products`. When the URL locale differs from the `marte_locale` cookie, the cookie is queued for the response instead.
 3. **The execution context is captured.** `src/server.ts` draws a fresh Content-Security-Policy nonce for the request. The Start handler is invoked inside `executionContextStorage.run({ waitUntil }, …)` and receives `{ edgeTimeZone, env, nonce, passThroughOnException, waitUntil }` as its request context, plus `responseLinkHeader: true`. `edgeTimeZone` is `request.cf?.timezone`, the IANA time zone Cloudflare's edge assigns to the visitor's location.
 4. **Routing.** `getRouter` creates a new router and a new `QueryClient`, and copies the request's nonce into `ssr.nonce` so Start stamps it on every script it renders. The router's `rewrite.input` de-localizes the URL before matching, so `/en-US/products` matches the `/_storefront/products` route, and `rewrite.output` re-applies the prefix when generating links.
@@ -28,7 +28,7 @@ description: "The steps a page request, a server function call and a webhook go 
 
 ```text
 GET /en-US/products/pierscionek-z-perla
-  src/server.ts          sitemap? robots? ws? → no; resolveLocale → canonical
+  src/server.ts          www? → 308 to the bare domain; sitemap? robots? ws? → no; resolveLocale → canonical
   executionContextStorage.run({ waitUntil })
   router rewrite.input   /products/pierscionek-z-perla
   __root beforeLoad      getCurrentLocale, preloadNamespaces(root + route), displayPreferencesQuery

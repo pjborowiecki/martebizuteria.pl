@@ -5,7 +5,7 @@ description: "Kroki, przez które przechodzi żądanie strony, wywołanie funkcj
 
 ## Żądanie strony
 
-1. **Cztery skróty.** `src/server.ts` najpierw sprawdza ścieżkę. `/sitemap.xml` i `/robots.txt` są generowane z `src/lib/seo.ts`, mapa witryny ze stron, które `listSitemapPages` w `src/lib/sitemap.ts` czyta z D1. `ROUTES.API_REALTIME.ADMIN_WS` i `ROUTES.API_REALTIME.STOREFRONT_WS` trafiają do `handleRealtimeInvalidationWebSocket`. Żaden z nich nie ładuje Reacta.
+1. **Cztery skróty.** `src/server.ts` najpierw odsyła żądanie do `www.martebizuteria.pl` na tę samą ścieżkę i zapytanie w `martebizuteria.pl` przekierowaniem `308 Permanent Redirect`, które zachowuje metodę, więc sklep odpowiada tylko pod jednym hostem. Potem sprawdza ścieżkę. `/sitemap.xml` i `/robots.txt` są generowane z `src/lib/seo.ts`, mapa witryny ze stron, które `listSitemapPages` w `src/lib/sitemap.ts` czyta z D1. `ROUTES.API_REALTIME.ADMIN_WS` i `ROUTES.API_REALTIME.STOREFRONT_WS` trafiają do `handleRealtimeInvalidationWebSocket`. Żaden z nich nie ładuje Reacta.
 2. **Kanonizacja locale.** `resolveLocale` uruchamia się dla żądań dokumentu `GET` i `HEAD` — rozpoznawanych po `sec-fetch-dest`, z nagłówkiem `Accept` jako wartością zapasową — poza `/api`, `/rpc`, `/_serverFn`, `/assets` i `/forms`. Prefiks samego języka lub zbędny prefiks domyślnego locale jest przekierowywany kodem `301` do formy kanonicznej: `/pl/products` i `/pl-PL/products` stają się `/products`. Gdy locale z URL-a różni się od cookie `marte_locale`, zamiast przekierowania kolejkowane jest ustawienie cookie w odpowiedzi.
 3. **Przechwycenie kontekstu wykonania.** `src/server.ts` losuje dla żądania nowy nonce Content-Security-Policy. Handler Start jest wywoływany wewnątrz `executionContextStorage.run({ waitUntil }, …)` i otrzymuje `{ edgeTimeZone, env, nonce, passThroughOnException, waitUntil }` jako kontekst żądania oraz `responseLinkHeader: true`. `edgeTimeZone` to `request.cf?.timezone`, strefa czasowa IANA, którą brzeg Cloudflare przypisuje lokalizacji odwiedzającego.
 4. **Routing.** `getRouter` tworzy nowy router i nowy `QueryClient` oraz kopiuje nonce żądania do `ssr.nonce`, żeby Start nadał go każdemu skryptowi, który renderuje. `rewrite.input` routera usuwa prefiks locale przed dopasowaniem, więc `/en-US/products` pasuje do trasy `/_storefront/products`, a `rewrite.output` przywraca prefiks przy generowaniu linków.
@@ -28,7 +28,7 @@ description: "Kroki, przez które przechodzi żądanie strony, wywołanie funkcj
 
 ```text
 GET /en-US/products/pierscionek-z-perla
-  src/server.ts          sitemap? robots? ws? → nie; resolveLocale → kanoniczny
+  src/server.ts          www? → 308 na domenę bez www; sitemap? robots? ws? → nie; resolveLocale → kanoniczny
   executionContextStorage.run({ waitUntil })
   router rewrite.input   /products/pierscionek-z-perla
   __root beforeLoad      getCurrentLocale, preloadNamespaces(root + trasa), displayPreferencesQuery

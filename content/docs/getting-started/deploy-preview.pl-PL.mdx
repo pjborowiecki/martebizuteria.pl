@@ -79,7 +79,9 @@ Zwróć uwagę na kontrolę wartości zastępczych: identyfikator złożony wył
 
 Wrangler podłącza domenę własną tylko w strefie tego samego konta Cloudflare, więc `martebizuteria.pl` musi być tam aktywną strefą przed pierwszym wdrożeniem. Rekord DNS i certyfikat dla każdej nazwy Cloudflare tworzy wtedy sam. Rekord A, AAAA albo CNAME istniejący już na `martebizuteria.pl` lub `preview.martebizuteria.pl` koliduje z domeną własną: wdrożenie z terminala pyta, zanim go zastąpi, a wdrożenie z CI zastępuje go bez pytania. Rekordy MX i TXT strefy, na których opiera się skrzynka sklepu i nadawca Resend, zostają nietknięte.
 
-Wdrożenie ustawia domeny własne Workera dokładnie tak, jak w `routes`, więc nazwę podłączoną do Workera ręcznie w panelu następne wdrożenie odłączy; dopisz ją zamiast tego do `routes`. Poza wdrażaniem Workerów token API potrzebuje uprawnień Workers Routes (edycja) i Zone (odczyt) do strefy `martebizuteria.pl`, żeby podłączyć domeny.
+Gdy `routes` wymienia domeny własne, wdrożenie ustawia domeny własne Workera dokładnie według tej listy, więc nazwę podłączoną ręcznie w panelu następne wdrożenie odłączy; dopisz ją zamiast tego do `routes`. Gdy `routes` jest puste, jak w produkcji do startu, wdrożenie zostawia domeny własne Workera bez zmian. Poza wdrażaniem Workerów token API potrzebuje uprawnień Workers Routes (edycja) i Zone (odczyt) do strefy `martebizuteria.pl`, żeby podłączyć domeny.
+
+W dniu startu podłącz `martebizuteria.pl` i `www.martebizuteria.pl` przez `routes` produkcji, jak opisuje [Lista kontrolna przed startem sprzedaży](/docs/guides/go-live-checklist); Worker sam odsyła `www` na domenę bez `www`.
 
 ### Jeśli zmieniasz nazwę hosta
 
