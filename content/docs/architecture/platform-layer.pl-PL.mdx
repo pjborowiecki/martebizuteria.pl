@@ -19,7 +19,7 @@ description: "Runtime Cloudflare: punkt wejścia Workera, jego bindingi, cztery 
 
 Durable Object jest zadeklarowany jako klasa SQLite w bloku `migrations` (`tag: "v1"`, `new_sqlite_classes: ["RealtimeInvalidationHub"]`), mimo że hub nie trzyma żadnego trwałego stanu. Producent i konsument każdej kolejki wskazują tę samą kolejkę, dlatego `src/server.ts` eksportuje zarówno handler `fetch`, jak i `queue`, a ten handler konsumuje też obie kolejki martwych listów; partię z kolejki, której nazwa zaczyna się od `martebizuteria-newsletter`, kieruje do konsumenta newslettera, a każdą inną do konsumenta dziennika zdarzeń. Kolejka dziennika zdarzeń ma `max_batch_size: 50`, `max_batch_timeout: 5` (`1` w `test`), `max_retries: 3` i `dead_letter_queue` nazwaną od niej z przyrostkiem `-dlq`, konsumowaną po jednej wiadomości z `max_retries: 3` i `retry_delay: 300`. Kolejka newslettera wysyła jedną partię kampanii naraz (`max_batch_size: 1`, `max_concurrency: 1`, `max_retries: 3`), a jej kolejka `-dlq` jest konsumowana z tymi samymi limitami i dodatkowo `retry_delay: 300`. Preview i produkcja deklarują też `triggers.crons: ["0 3 * * *"]`, który codziennie o 03:00 UTC wywołuje jego handler `scheduled` na potrzeby [czyszczenia po okresie przechowywania](/docs/guides/data-retention); development i test nie deklarują triggera.
 
-Flaga `nodejs_compat` udostępnia `node:async_hooks`, którego `src/lib/background.ts` potrzebuje do swojego `AsyncLocalStorage`.
+Flaga `nodejs_compat` udostępnia `node:async_hooks`, którego `src/lib/background.ts` i `src/lib/server-timing.ts` potrzebują do swoich `AsyncLocalStorage`.
 
 ## Środowiska
 

@@ -84,7 +84,7 @@ Konwencje obowiązujące w całym schemacie:
 export { address, addressRelations } from "~/src/modules/address/address.schema"
 ```
 
-Ten plik nie jest ułożony w kolejności zależności — `account` stoi przed `user`, a `productVariant` przed `product` — więc umieść swój eksport obok tabel, z którymi jest związany. Bez tej linii tabela jest niewidoczna dla `db.query`, dla `bun run db:generate` i dla `bun run db:push`, bo `drizzle.database.ts` przekazuje ten moduł do `drizzle(env.DB, { schema })`, a `src/integrations/drizzle-orm/drizzle.config.ts` wskazuje go drizzle-kitowi jako `schema`.
+Ten plik nie jest ułożony w kolejności zależności — `account` stoi przed `user`, a `productVariant` przed `product` — więc umieść swój eksport obok tabel, z którymi jest związany. Bez tej linii tabela jest niewidoczna dla `db.query`, dla `bun run db:generate` i dla `bun run db:push`, bo `drizzle.database.ts` przekazuje ten moduł do `drizzle(timeD1Statements(env.DB), { schema })`, a `src/integrations/drizzle-orm/drizzle.config.ts` wskazuje go drizzle-kitowi jako `schema`.
 
 ## 3. Napisz schematy Zod
 

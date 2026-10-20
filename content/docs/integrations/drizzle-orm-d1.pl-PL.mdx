@@ -16,10 +16,28 @@ import { drizzle } from "drizzle-orm/d1"
 
 import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas"
 
-export const db = drizzle(env.DB, { schema })
+import { timeD1Statements } from "~/src/lib/server-timing"
+
+const instrumentedBinding = (): D1Database => timeD1Statements(env.DB)
+
+class DeferredD1Database implements D1Database {
+  batch = <TResult = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<TResult>[]> =>
+    instrumentedBinding().batch<TResult>(statements)
+
+  dump = (): Promise<ArrayBuffer> => Promise.reject(new Error("D1 dump only applies to alpha databases"))
+
+  exec = (query: string): Promise<D1ExecResult> => instrumentedBinding().exec(query)
+
+  prepare = (query: string): D1PreparedStatement => instrumentedBinding().prepare(query)
+
+  withSession = (constraintOrBookmark?: Parameters<D1Database["withSession"]>[0]): D1DatabaseSession =>
+    instrumentedBinding().withSession(constraintOrBookmark)
+}
+
+export const db = drizzle(new DeferredD1Database(), { schema })
 ```
 
-To cała treść `drizzle.database.ts`. Import `server-only` zamienia każdy import po stronie klienta w błąd budowania. `env.DB` to powiązanie D1 deklarowane osobno dla każdego środowiska w `wrangler.jsonc`. Ponieważ schemat jest przekazywany do klienta, zapytania relacyjne `db.query.<table>` działają wszędzie.
+To cała treść `drizzle.database.ts`. Import `server-only` zamienia każdy import po stronie klienta w błąd budowania. `env.DB` to powiązanie D1 deklarowane osobno dla każdego środowiska w `wrangler.jsonc`. `timeD1Statements` z `src/lib/server-timing.ts` opakowuje je i dolicza czas każdej instrukcji i każdej partii do wpisu `d1` nagłówka `Server-Timing` wczytania strony (zobacz [Czasy żądań](/docs/guides/monitoring-and-alerts#czasy-żądań)); samej instrukcji nic nie zmienia. drizzle dostaje `DeferredD1Database`, którego metody opakowują `env.DB` przy każdym wywołaniu: gdy Cloudflare sprawdza przesłany skrypt, powiązanie nie jest jeszcze obiektem, więc opakowanie go przy ładowaniu modułu przerwałoby wdrożenie. Ponieważ schemat jest przekazywany do klienta, zapytania relacyjne `db.query.<table>` działają wszędzie.
 
 ## Gdzie naprawdę mieszkają schematy
 

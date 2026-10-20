@@ -6,6 +6,7 @@ import { I18N } from "~/src/integrations/use-intl/i18n.config"
 import { type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.types"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
+import { timeServerWork } from "~/src/lib/server-timing"
 
 import { TestExecutionContext } from "~/src/__test__/doubles/test-execution-context"
 import { TestHTMLRewriter } from "~/src/__test__/doubles/test-html-rewriter"
@@ -27,8 +28,16 @@ interface StartRequestOptions {
   readonly responseLinkHeader: { readonly filter: (entry: LinkHeaderEntry) => boolean }
 }
 
+type RenderPage = (page: { readonly request: Request }) => Promise<Response>
+
 const entry = vi.hoisted(() => ({
-  fetch: vi.fn((_request: Request, _options: StartRequestOptions): Promise<Response> => Promise.resolve(new Response("page"))),
+  fetch: vi.fn((_request: Request, _options: StartRequestOptions, _renderPage: RenderPage): Promise<Response> =>
+    Promise.resolve(new Response("page")),
+  ),
+}))
+
+const streamHandler = vi.hoisted(() => ({
+  defaultStreamHandler: vi.fn((_page: { readonly request: Request }) => Promise.resolve(new Response("rendered"))),
 }))
 
 const realtime = vi.hoisted(() => ({ handleRealtimeInvalidationWebSocket: vi.fn(() => Promise.resolve(new Response("upgraded"))) }))
@@ -47,7 +56,11 @@ const sitemap = vi.hoisted(() => ({
 
 vi.mock("cloudflare:workers", () => ({ env: { VITE_R2_URL: "https://images.marte.test" } }))
 vi.mock("~/src/durable-objects/realtime-invalidation-hub", () => ({ RealtimeInvalidationHub: vi.fn() }))
-vi.mock("@tanstack/react-start/server-entry", () => ({ default: entry }))
+vi.mock("@tanstack/react-start/server", () => ({
+  createStartHandler: (renderPage: RenderPage) => (request: Request, options: StartRequestOptions) =>
+    entry.fetch(request, options, renderPage),
+  defaultStreamHandler: streamHandler.defaultStreamHandler,
+}))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.ws.server", () => realtime)
 vi.mock("~/src/modules/audit-log/use-cases/process-audit-log-queue.server", () => queue)
 vi.mock("~/src/lib/sitemap", () => sitemap)
@@ -82,7 +95,7 @@ class TestEnv implements Env {
 
 const env = new TestEnv()
 
-const fetchPath = async (path: string, origin = "https://marte.test") => {
+const fetchRequest = async (request: Request) => {
   const context = new TestExecutionContext()
   const { fetch: handleFetch } = server
 
@@ -90,7 +103,7 @@ const fetchPath = async (path: string, origin = "https://marte.test") => {
     throw new Error("the worker registered no fetch handler")
   }
 
-  const answer: unknown = await Reflect.apply(handleFetch, server, [new Request(`${origin}${path}`), env, context])
+  const answer: unknown = await Reflect.apply(handleFetch, server, [request, env, context])
 
   if (!(answer instanceof Response)) {
     throw new Error("the worker did not answer the request with a response")
@@ -98,6 +111,8 @@ const fetchPath = async (path: string, origin = "https://marte.test") => {
 
   return { context, response: answer }
 }
+
+const fetchPath = (path: string, origin = "https://marte.test") => fetchRequest(new Request(`${origin}${path}`))
 
 const lastStartOptions = (): StartRequestOptions => {
   const options = entry.fetch.mock.calls.at(-1)?.[1]
@@ -393,6 +408,69 @@ describe("worker security headers", () => {
 
     expect(response).toBe(upgraded)
     expect(response.headers.has("content-security-policy")).toBe(false)
+  })
+})
+
+const renderedHtml = (): Response => new Response("<html>rendered</html>", { headers: { "Content-Type": "text/html; charset=utf-8" } })
+
+const PAGE_TIMING = /^d1;dur=\d+\.\d;desc="statements: 2", render;dur=\d+\.\d, total;dur=\d+\.\d$/u
+
+const renderPageAfterTwoStatements = async (request: Request, _options: StartRequestOptions, renderPage: RenderPage): Promise<Response> => {
+  await timeServerWork("d1", () => Promise.resolve())
+  await timeServerWork("d1", () => Promise.resolve())
+
+  return renderPage({ request })
+}
+
+describe("worker server timing", () => {
+  beforeEach(() => {
+    streamHandler.defaultStreamHandler.mockImplementation(() => Promise.resolve(renderedHtml()))
+    entry.fetch.mockImplementation(renderPageAfterTwoStatements)
+  })
+
+  it("reports a page load's database time and statement count, its render and the whole request, and nothing else", async () => {
+    const { response } = await fetchPath("/about")
+
+    expect(response.headers.get("server-timing")).toMatch(PAGE_TIMING)
+  })
+
+  it("renders the page through the default stream handler", async () => {
+    const { response } = await fetchPath("/about")
+
+    await expect(response.text()).resolves.toBe("<html>rendered</html>")
+    expect(streamHandler.defaultStreamHandler.mock.calls[0]?.[0].request.url).toBe("https://marte.test/about")
+  })
+
+  it("names no statement or table the request read", async () => {
+    const { response } = await fetchPath("/about")
+
+    expect(response.headers.get("server-timing")).not.toMatch(/select|insert|product|session|isolate|cache/u)
+  })
+
+  it("sends no timing with a server function call, even one answered with HTML", async () => {
+    const { response } = await fetchRequest(new Request("https://marte.test/_serverFn/abc", { body: "{}", method: "POST" }))
+
+    expect(response.headers.has("server-timing")).toBe(false)
+  })
+
+  it("sends no timing with a server function read", async () => {
+    entry.fetch.mockImplementation(() => Promise.resolve(Response.json({ ok: true })))
+
+    const { response } = await fetchPath("/_serverFn/abc")
+
+    expect(response.headers.has("server-timing")).toBe(false)
+  })
+
+  it.each(["/api/auth/get-session", "/api/auth/reset-password/token"])("sends no timing with the auth API answer for %s", async (path) => {
+    const { response } = await fetchPath(path)
+
+    expect(response.headers.has("server-timing")).toBe(false)
+  })
+
+  it.each(["/robots.txt", "/sitemap.xml", "/pl-PL/about"])("sends no timing with %s, which is not a page", async (path) => {
+    const { response } = await fetchPath(path)
+
+    expect(response.headers.has("server-timing")).toBe(false)
   })
 })
 

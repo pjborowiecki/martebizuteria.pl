@@ -5,7 +5,7 @@ const { paymentIntentsRetrieve } = vi.hoisted(() => ({
   paymentIntentsRetrieve: vi.fn(),
 }))
 
-vi.mock("cloudflare:workers", () => ({ DurableObject: Object, env: {} }))
+vi.mock("cloudflare:workers", () => ({ DurableObject: Object, env: { DB: {} } }))
 vi.mock("~/src/modules/attribute-on-product/attribute-on-product.accessors", () => ({ getFulfillmentTimeAttributesByVariantId: vi.fn() }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({
   stripe: { paymentIntents: { retrieve: paymentIntentsRetrieve } },

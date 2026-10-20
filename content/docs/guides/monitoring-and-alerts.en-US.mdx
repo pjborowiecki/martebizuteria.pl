@@ -1,6 +1,6 @@
 ---
 title: "Monitoring and alerts"
-description: "Workers Logs and Issues, the /api/health check for an uptime monitor, the e-mails the shop sends itself when a payment, a Stripe event, a refund, the audit queue, a newsletter or an order email fails, and the Cloudflare notifications to add."
+description: "Workers Logs and Issues, the /api/health check for an uptime monitor, the Server-Timing header of a page load, the e-mails the shop sends itself when a payment, a Stripe event, a refund, the audit queue, a newsletter or an order email fails, and the Cloudflare notifications to add."
 ---
 
 The shop watches itself in three ways, and none of them needs an account with an error-reporting service. Cloudflare keeps the Worker's logs and groups its failures, `/api/health` tells an uptime monitor whether the Worker can reach its storage, and the Worker emails `RESEND_EMAIL_FROM` when a failure needs the owner.
@@ -90,6 +90,20 @@ The monitor is what notices an outage the Worker cannot report itself: a failed 
 **Cloudflare Health Checks.** If the `martebizuteria.pl` zone is on the Pro plan or higher, Cloudflare can be the monitor; the Free plan has no standalone Health Checks. The check below probes `martebizuteria.pl`, so it watches production only once production serves that domain. In the dashboard, open the zone, go to **Health Checks**, select **Create**, and point it at `martebizuteria.pl` over HTTPS with the path `/api/health`, the expected code `200` and `"status":"ok"` as the **Response body**, a substring that must appear in the first 10 KB. Keep the **Interval** at a minute or more and the **Check regions** few, since each region sends its own requests. Then select **Configure an alert** on the same page, add the notification e-mail and the health check, and choose the trigger. Cloudflare sends it only after the status changes in the majority of the selected regions.
 
 **On the Free plan**, use a hosted uptime monitor with the settings above. That is the only part of this page that needs an account outside Cloudflare, and nothing in the code depends on which one is used.
+
+## Request timings
+
+Every page load — a `GET` the Worker answers with HTML — carries a `Server-Timing` header with three entries. API routes under `/api/`, server function calls, redirects, `robots.txt` and the sitemap carry none, so the header says nothing about a sign-in, a password reset or a newsletter sign-up. `src/lib/server-timing.ts` collects the timings in an `AsyncLocalStorage` store that `src/server.ts` opens for each request:
+
+| Entry    | What it measures                                                                                                                                                                                                        |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `d1`     | The time of every D1 statement and batch the page load ran, added up, with their number in `desc` (`statements: 6`). `timeD1Statements` wraps the D1 binding in `drizzle.database.ts`, so the session lookup counts too |
+| `render` | `defaultStreamHandler`, from the end of the route loaders to the first byte of HTML. For a crawler it runs to the end of the page, because TanStack Start waits for every deferred promise before it answers a bot      |
+| `total`  | The whole request inside the Worker, from `fetch` to the response                                                                                                                                                       |
+
+The header names no statement and no table. Read it with `curl -s -o /dev/null -D - https://preview.martebizuteria.pl/products | grep -i server-timing`, or in the browser's developer tools: **Network**, the document request, **Timing**.
+
+Two things to keep in mind with deployed numbers. A deployed Worker's clock only moves when the Worker waits for I/O, a Cloudflare defence against timing attacks, so work that only uses the CPU, such as `render`, reads close to `0` there and `total` counts the waiting alone; the same build run on your machine times the CPU work as well (see [Running the production build locally](/docs/guides/local-debugging#running-the-production-build-locally)). And the time before the Worker runs — the TLS handshake, the trip to the data centre and a cold isolate loading the Worker — is outside the header: compare `total` with the time to first byte the browser measured.
 
 ## E-mail alerts from the shop
 

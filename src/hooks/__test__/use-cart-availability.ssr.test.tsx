@@ -4,7 +4,7 @@ import { renderToString } from "react-dom/server"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
-vi.mock("cloudflare:workers", () => ({ env: {} }))
+vi.mock("cloudflare:workers", () => ({ env: { DB: {} } }))
 vi.mock("~/src/integrations/better-auth/auth.middleware", async () => {
   const { createMiddleware } = await import("@tanstack/react-start")
 

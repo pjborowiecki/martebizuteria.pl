@@ -84,7 +84,7 @@ Conventions the whole schema follows:
 export { address, addressRelations } from "~/src/modules/address/address.schema"
 ```
 
-The file is not in dependency order — `account` comes before `user`, and `productVariant` before `product` — so place your export next to the tables it belongs with. Without this line the table is invisible to `db.query`, to `bun run db:generate` and to `bun run db:push`, because `drizzle.database.ts` passes this module to `drizzle(env.DB, { schema })` and `src/integrations/drizzle-orm/drizzle.config.ts` points drizzle-kit's `schema` at it.
+The file is not in dependency order — `account` comes before `user`, and `productVariant` before `product` — so place your export next to the tables it belongs with. Without this line the table is invisible to `db.query`, to `bun run db:generate` and to `bun run db:push`, because `drizzle.database.ts` passes this module to `drizzle(timeD1Statements(env.DB), { schema })` and `src/integrations/drizzle-orm/drizzle.config.ts` points drizzle-kit's `schema` at it.
 
 ## 3. Write the Zod schemas
 

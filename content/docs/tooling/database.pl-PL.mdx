@@ -42,7 +42,16 @@ import { drizzle } from "drizzle-orm/d1"
 
 import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas"
 
-export const db = drizzle(env.DB, { schema })
+import { timeD1Statements } from "~/src/lib/server-timing"
+
+const instrumentedBinding = (): D1Database => timeD1Statements(env.DB)
+
+class DeferredD1Database implements D1Database {
+  prepare = (query: string): D1PreparedStatement => instrumentedBinding().prepare(query)
+  // batch, exec and withSession forward the same way; dump rejects
+}
+
+export const db = drizzle(new DeferredD1Database(), { schema })
 ```
 
 Import `server-only` sprawia, że pakiet klienta, który sięgnąłby po `db`, wysypie się już na etapie kompilacji, a nie w czasie działania, a `scripts/verify-build.ts` sprawdza to samo założenie powtórnie, skanując skompilowane zasoby klienta w poszukiwaniu importów `cloudflare:workers` i `node:` oraz samego Drizzle ORM.

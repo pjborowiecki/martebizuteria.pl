@@ -21,7 +21,7 @@ const {
   undoFailedRefund: vi.fn<(input: Order["failedRefundInput"]) => Promise<Order["failedRefund"] | undefined>>(),
 }))
 
-vi.mock("cloudflare:workers", () => ({ env: {} }))
+vi.mock("cloudflare:workers", () => ({ env: { DB: {} } }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({
   stripe: { checkout: { sessions: { list: sessionsList } }, refunds: { list: refundsList } },
 }))
