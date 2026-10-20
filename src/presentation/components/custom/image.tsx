@@ -50,7 +50,7 @@ export const Image = ({
     <UnpicImage
       alt={alt}
       className={className}
-      decoding={priority ? "sync" : decoding}
+      decoding={decoding}
       fetchPriority={priority ? "high" : undefined}
       height={height}
       loading={resolvedLoading}

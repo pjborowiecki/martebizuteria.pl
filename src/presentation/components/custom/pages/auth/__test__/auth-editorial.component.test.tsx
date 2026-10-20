@@ -53,7 +53,7 @@ describe("AuthEditorial", () => {
     expect(renderAt("/sign-in")).toHaveAttribute("loading", "eager")
   })
 
-  it("asks the browser to decode the editorial image synchronously", () => {
-    expect(renderAt("/sign-in")).toHaveAttribute("decoding", "sync")
+  it("decodes the editorial image off the main thread instead of holding the first paint for it", () => {
+    expect(renderAt("/sign-in")).toHaveAttribute("decoding", "async")
   })
 })

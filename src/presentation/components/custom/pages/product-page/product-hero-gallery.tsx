@@ -12,12 +12,10 @@ import { Image } from "~/src/presentation/components/custom/image"
 const ProductHeroImage = ({
   alt,
   priority,
-  sizes,
   src,
 }: Readonly<{
   alt: string
   priority: boolean
-  sizes: string
   src: string
 }>): JSX.Element => (
   <AspectRatio className="overflow-hidden bg-secondary" ratio={PRODUCT_IMAGE_ASPECT_RATIO}>
@@ -26,7 +24,7 @@ const ProductHeroImage = ({
       className="absolute inset-0 size-full object-cover"
       height={1400}
       priority={priority}
-      sizes={sizes}
+      sizes={PRODUCT_IMAGE_SIZES}
       src={src}
       width={1120}
     />
@@ -122,7 +120,7 @@ const ProductHeroMobileCarousel = ({ images, title }: Readonly<ProductHeroGaller
   if (images.length === 1 && firstImage !== undefined) {
     return (
       <div className="reveal lg:hidden">
-        <ProductHeroImage alt={title} priority sizes="100vw" src={firstImage} />
+        <ProductHeroImage alt={title} priority src={firstImage} />
       </div>
     )
   }
@@ -133,7 +131,7 @@ const ProductHeroMobileCarousel = ({ images, title }: Readonly<ProductHeroGaller
         <CarouselContent className="ml-0">
           {images.map((src, index) => (
             <CarouselItem key={src} className="pl-0">
-              <ProductHeroImage alt={title} priority={index === 0} sizes="100vw" src={src} />
+              <ProductHeroImage alt={title} priority={index === 0} src={src} />
             </CarouselItem>
           ))}
         </CarouselContent>
@@ -169,13 +167,15 @@ export const ProductHeroGallery = ({ images, title }: Readonly<ProductHeroGaller
 
     <div className="reveal hidden space-y-3 lg:block lg:space-y-4">
       {images.map((src, index) => (
-        <ProductHeroImage key={src} alt={title} priority={index === 0} sizes="(max-width: 1024px) 100vw, 58vw" src={src} />
+        <ProductHeroImage key={src} alt={title} priority={index === 0} src={src} />
       ))}
     </div>
   </div>
 )
 
 const PRODUCT_IMAGE_ASPECT_RATIO = 0.8
+
+const PRODUCT_IMAGE_SIZES = "(width < 64rem) 100vw, 58vw"
 
 const CAROUSEL_LOOP_OPTS = {
   loop: true,
