@@ -147,10 +147,13 @@ describe("Worker domains in wrangler.jsonc", () => {
     expect(config).toHaveProperty("workers_dev", true)
   })
 
-  it("keeps the production Worker on its workers.dev host, with no custom domain, until the shop goes live", () => {
+  it("attaches the shop's domain and its www host to the production Worker and keeps the workers.dev host the Stripe webhook and the live-site check use", () => {
     const config = readWorkerConfig("production")
 
-    expect(config).toHaveProperty("routes", [])
+    expect(config).toHaveProperty("routes", [
+      { custom_domain: true, pattern: APP_DOMAIN },
+      { custom_domain: true, pattern: `www.${APP_DOMAIN}` },
+    ])
     expect(config).toHaveProperty("workers_dev", true)
   })
 
