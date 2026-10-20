@@ -93,7 +93,7 @@ const PaymentPage = (): JSX.Element => {
 
       <div className="space-y-2">
         <p className="text-[11px] tracking-[0.15em] text-muted-foreground uppercase">{t("securityNote")}</p>
-        <p className="max-w-md text-[12px] leading-relaxed text-muted-foreground/70">{t("securityDesc")}</p>
+        <p className="max-w-md text-[12px] leading-relaxed text-muted-foreground">{t("securityDesc")}</p>
       </div>
     </div>
   )

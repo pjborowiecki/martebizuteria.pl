@@ -56,7 +56,7 @@ export const StorefrontCategoryCard = ({
           <h2 className="font-serif text-lg tracking-tight transition-colors duration-500 group-hover:text-muted-foreground sm:text-xl lg:text-2xl">
             {title}
           </h2>
-          <span className="shrink-0 text-[10px] tracking-[0.22em] text-foreground/35 uppercase">
+          <span className="shrink-0 text-[10px] tracking-[0.22em] text-muted-foreground uppercase">
             {t("productCount", {
               count: category.productCount,
             })}

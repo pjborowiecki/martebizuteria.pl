@@ -16,6 +16,13 @@ describe("AuthDivider", () => {
     expect(screen.getByText("or")).toBeInTheDocument()
   })
 
+  it("shows the label in the muted text colour at full strength", () => {
+    renderWithProviders(<AuthDivider />)
+
+    expect(screen.getByText("or")).toHaveClass("text-muted-foreground")
+    expect(screen.getByText("or").className).not.toMatch(/text-muted-foreground\//u)
+  })
+
   it("places a rule on each side of the label", () => {
     const { container } = renderWithProviders(<AuthDivider />)
 

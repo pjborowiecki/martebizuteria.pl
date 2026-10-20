@@ -55,7 +55,7 @@ const CartPage = (): JSX.Element => {
           <p className="text-sm text-muted-foreground">{t("itemCount", tParams)}</p>
         </div>
         <LocalizedLink
-          className="hidden text-sm text-foreground/50 underline underline-offset-4 transition-colors hover:text-foreground sm:inline"
+          className="hidden text-sm text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground sm:inline"
           to={ROUTES.PRODUCTS}
         >
           {t("continueShopping")}
@@ -73,7 +73,7 @@ const CartPage = (): JSX.Element => {
           ))}
 
           <LocalizedLink
-            className="mt-6 inline-flex text-sm text-foreground/50 underline underline-offset-4 transition-colors hover:text-foreground sm:hidden pointer-coarse:min-h-10 pointer-coarse:items-center"
+            className="mt-6 inline-flex text-sm text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground sm:hidden pointer-coarse:min-h-10 pointer-coarse:items-center"
             to={ROUTES.PRODUCTS}
           >
             {t("continueShopping")}

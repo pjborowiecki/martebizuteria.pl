@@ -112,4 +112,10 @@ describe("SecondaryNav cart count", () => {
 
     expect(screen.getByRole("link", { name: /Cart/u })).toHaveTextContent("Cart (0)")
   })
+
+  it("shows the count at half strength, readable on the dark menu", () => {
+    renderMenu(undefined)
+
+    expect(screen.getByText("(0)")).toHaveClass("text-primary-foreground/50")
+  })
 })

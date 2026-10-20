@@ -99,7 +99,7 @@ export const NewsletterSection = (): JSX.Element => {
             </p>
           )}
 
-          <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground/60">{t("note")}</p>
+          <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground">{t("note")}</p>
         </div>
       </div>
     </section>

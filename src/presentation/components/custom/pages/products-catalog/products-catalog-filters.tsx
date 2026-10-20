@@ -57,7 +57,7 @@ const FilterChoice = <TValue extends string>({
         "group/filter min-h-11 w-full cursor-pointer touch-manipulation border-l py-2.5 pl-3 text-left text-xs tracking-[0.16em] uppercase transition-colors duration-300 lg:min-h-0 lg:py-1.5 lg:text-[11px] lg:tracking-[0.18em]",
         active
           ? "border-foreground text-foreground"
-          : "border-transparent text-muted-foreground/75 hover:border-foreground/20 hover:text-foreground",
+          : "border-transparent text-muted-foreground hover:border-foreground/20 hover:text-foreground",
       )}
     >
       <span

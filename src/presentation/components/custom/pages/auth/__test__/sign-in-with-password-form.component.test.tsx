@@ -113,6 +113,13 @@ describe("SignInWithPasswordForm fields", () => {
 
     expect(screen.getByRole("link", { name: "Forgot password?" })).toHaveClass("pointer-coarse:-my-3", "pointer-coarse:min-h-10")
   })
+
+  it("shows the password reset link in the muted text colour at full strength", () => {
+    renderWithProviders(<SignInWithPasswordForm />)
+
+    expect(screen.getByRole("link", { name: "Forgot password?" })).toHaveClass("text-muted-foreground")
+    expect(screen.getByRole("link", { name: "Forgot password?" }).className).not.toMatch(/text-muted-foreground\//u)
+  })
 })
 
 describe("SignInWithPasswordForm two-factor challenge", () => {

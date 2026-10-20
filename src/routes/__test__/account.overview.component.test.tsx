@@ -167,6 +167,14 @@ describe("account overview activity feed", () => {
 
     expect(screen.getByText("15. März 2026")).toBeInTheDocument()
   })
+
+  it("dates activity in the muted text colour at full strength", async () => {
+    overviewRef.current = overview({ activity: [activityItem({ createdAt: new Date("2026-03-14T23:30:00.000Z") })] })
+    await renderOverview({ formatLocale: "de-DE", timeZone: "Europe/Warsaw" })
+
+    expect(screen.getByText("15. März 2026")).toHaveClass("text-muted-foreground")
+    expect(screen.getByText("15. März 2026").className).not.toMatch(/text-muted-foreground\//u)
+  })
 })
 
 describe("account overview activity icons", () => {
@@ -222,6 +230,13 @@ describe("account overview recommendations", () => {
     expect(screen.getByText("Recommended for You")).toBeInTheDocument()
     expect(screen.getByText("Based on your recent orders")).toBeInTheDocument()
     expect(screen.getByText("View all").closest("a")).toHaveAttribute("href", "/products")
+  })
+
+  it("explains the recommendations in the muted text colour at full strength", async () => {
+    await renderOverview()
+
+    expect(screen.getByText("Based on your recent orders")).toHaveClass("text-muted-foreground")
+    expect(screen.getByText("Based on your recent orders").className).not.toMatch(/text-muted-foreground\//u)
   })
 
   it("calls the fallback picks new arrivals instead of pretending they follow an order", async () => {

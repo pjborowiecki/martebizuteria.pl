@@ -49,6 +49,13 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe("CloseAccountSection warnings", () => {
+  it("heads the section in the full destructive colour", () => {
+    renderWithProviders(<CloseAccountSection hasPassword />)
+
+    expect(screen.getByRole("heading", { level: 2, name: "Close Account" })).toHaveClass("text-destructive")
+    expect(screen.getByRole("heading", { level: 2, name: "Close Account" }).className).not.toMatch(/text-destructive\//u)
+  })
+
   it("warns about the consequences before any dialog is opened", () => {
     renderWithProviders(<CloseAccountSection hasPassword />)
 

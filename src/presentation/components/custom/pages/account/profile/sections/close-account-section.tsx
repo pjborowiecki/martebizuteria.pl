@@ -20,7 +20,7 @@ export const CloseAccountSection = ({ hasPassword }: Readonly<{ hasPassword: boo
   return (
     <>
       <section>
-        <h2 className="text-[11px] tracking-[0.2em] text-destructive/70 uppercase">{t("closeAccount")}</h2>
+        <h2 className="text-[11px] tracking-[0.2em] text-destructive uppercase">{t("closeAccount")}</h2>
         <Separator className="mt-3 mb-0" />
         <div className="py-5">
           <div className="flex items-start gap-4">

@@ -56,6 +56,14 @@ describe("SilverPremiumSection", () => {
     expect(screen.getByText("Statutory liability for lack of conformity")).toBeInTheDocument()
   })
 
+  it("keeps the eyebrow and the statistic labels at half strength, readable on the dark band", () => {
+    renderWithProviders(<SilverPremiumSection />)
+
+    for (const label of ["Premium Collection", "Silver purity", "Handmade", "Statutory liability for lack of conformity"]) {
+      expect(screen.getByText(label)).toHaveClass("text-primary-foreground/50")
+    }
+  })
+
   it("promises no warranty or guarantee, which the shop does not give", () => {
     const { container } = renderWithProviders(<SilverPremiumSection />)
 

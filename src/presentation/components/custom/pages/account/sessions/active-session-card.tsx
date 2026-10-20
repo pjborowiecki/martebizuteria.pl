@@ -64,7 +64,7 @@ export const ActiveSessionCard = ({
           {session.browser}
           {session.ipAddress === undefined ? "" : ` · ${session.ipAddress}`}
         </p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground/60">
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
           {formatSessionLastActive(session.lastActiveAt, t("activeNow"), { ...displayPreferences, locale })}
         </p>
       </div>

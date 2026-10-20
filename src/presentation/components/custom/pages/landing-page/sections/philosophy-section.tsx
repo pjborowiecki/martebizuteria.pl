@@ -15,7 +15,7 @@ export const PhilosophySection = (): JSX.Element => {
         <Separator className="line-reveal mx-auto max-w-16 bg-foreground/30" />
         <p className="text-base/relaxed text-muted-foreground md:text-lg/relaxed">{t("paragraph1")}</p>
         <p className="text-base/relaxed text-muted-foreground md:text-lg/relaxed">{t("paragraph2")}</p>
-        <p className="pt-2 text-[11px] tracking-[0.2em] text-muted-foreground/70 uppercase">{t("signature")}</p>
+        <p className="pt-2 text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("signature")}</p>
       </div>
     </section>
   )

@@ -67,6 +67,13 @@ describe("ProductsCatalogFilters sorting", () => {
     expect(screen.queryAllByRole("heading", { level: 3 })).toStrictEqual([])
   })
 
+  it("keeps the choices not taken in the muted text colour at full strength", () => {
+    renderFilters()
+
+    expect(choice("Newest")).toHaveClass("text-muted-foreground")
+    expect(choice("Newest").className).not.toMatch(/text-muted-foreground\//u)
+  })
+
   it("caps indentation for deeply nested category branches", () => {
     const fourthLevel = categoryFixture("four", "Four", [categoryFixture("five", "Five")])
     const thirdLevel = categoryFixture("three", "Three", [fourthLevel])

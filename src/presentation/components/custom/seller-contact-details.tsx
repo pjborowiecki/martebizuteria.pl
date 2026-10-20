@@ -28,5 +28,4 @@ export const SellerContactDetails = ({ className }: Readonly<{ className: string
   )
 }
 
-const CONTACT_LINK_CLASS =
-  "underline-offset-4 hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-10 pointer-coarse:items-center"
+const CONTACT_LINK_CLASS = "inline-flex min-h-6 items-center underline-offset-4 hover:underline pointer-coarse:min-h-10"

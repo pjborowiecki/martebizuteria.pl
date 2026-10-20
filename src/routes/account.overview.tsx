@@ -95,7 +95,7 @@ const ActivityFeed = ({
                 </div>
                 <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-4">
                   <p className="text-[13px] text-foreground/80 sm:min-w-0 sm:flex-1">{t(`activityItems.${item.actionKey}`, item.params)}</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground/50 tabular-nums sm:mt-0 sm:shrink-0">
+                  <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums sm:mt-0 sm:shrink-0">
                     {formatRelativeFromNow(item.createdAt, { ...displayPreferences, locale })}
                   </p>
                 </div>
@@ -262,7 +262,7 @@ const Recommendations = ({
           <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
             {t(source === "orders" ? "recommendations" : "newArrivals")}
           </h2>
-          <p className="mt-1 text-[12px] text-muted-foreground/60">{t(source === "orders" ? "recommendationsDesc" : "newArrivalsDesc")}</p>
+          <p className="mt-1 text-[12px] text-muted-foreground">{t(source === "orders" ? "recommendationsDesc" : "newArrivalsDesc")}</p>
         </div>
         <LocalizedLink
           to={ROUTES.PRODUCTS}

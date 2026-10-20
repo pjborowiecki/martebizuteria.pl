@@ -45,17 +45,18 @@ describe("SellerContactDetails", () => {
     expect(screen.getByRole("link", { name: TEST_SELLER_DETAILS.phone })).toHaveAttribute("href", "tel:+48600100200")
   })
 
+  it("keeps the e-mail and phone links at least 24px tall for every pointer", () => {
+    renderDetails()
+
+    expect(screen.getByRole("link", { name: TEST_SELLER_DETAILS.email })).toHaveClass("inline-flex", "min-h-6", "items-center")
+    expect(screen.getByRole("link", { name: TEST_SELLER_DETAILS.phone })).toHaveClass("inline-flex", "min-h-6", "items-center")
+  })
+
   it("gives the e-mail and phone links finger-sized targets on touch screens", () => {
     renderDetails()
 
-    expect(screen.getByRole("link", { name: TEST_SELLER_DETAILS.email })).toHaveClass(
-      "pointer-coarse:inline-flex",
-      "pointer-coarse:min-h-10",
-    )
-    expect(screen.getByRole("link", { name: TEST_SELLER_DETAILS.phone })).toHaveClass(
-      "pointer-coarse:inline-flex",
-      "pointer-coarse:min-h-10",
-    )
+    expect(screen.getByRole("link", { name: TEST_SELLER_DETAILS.email })).toHaveClass("pointer-coarse:min-h-10")
+    expect(screen.getByRole("link", { name: TEST_SELLER_DETAILS.phone })).toHaveClass("pointer-coarse:min-h-10")
   })
 
   it("keeps the details in one address block laid out by the caller", () => {
