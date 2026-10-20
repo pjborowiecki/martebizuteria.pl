@@ -22,7 +22,10 @@ const { batchSend, env, readSellerDetails } = vi.hoisted(() => ({
 }))
 
 vi.mock("cloudflare:workers", () => ({ env }))
-vi.mock("~/src/integrations/resend/resend.config", () => ({ resend: { batch: { send: batchSend } } }))
+vi.mock("~/src/integrations/resend/resend.config", () => ({
+  resend: { batch: { send: batchSend } },
+  shopSenderAddress: () => env.RESEND_EMAIL_FROM,
+}))
 vi.mock("~/src/modules/store-setting/store-setting.accessors", () => ({ readSellerDetails }))
 
 import { TEST_SELLER_DETAILS, TEST_STORED_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"

@@ -4,6 +4,7 @@ import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-q
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
+import { getShopSenderQuery } from "~/src/integrations/resend/resend.shop-sender"
 import { syncQueryInvalidation } from "~/src/integrations/tanstack-query/query.sync"
 
 import { ERROR_CODES, errorCode } from "~/src/modules/_core/constants/errors"
@@ -31,6 +32,7 @@ export const SettingsStorePage = (): JSX.Element => {
   const actionError = useActionError()
   const queryClient = useQueryClient()
   const { data } = useSuspenseQuery(getAdminSellerDetailsQuery())
+  const { data: sender } = useSuspenseQuery(getShopSenderQuery())
   const [saved, setSaved] = useState(() => toSellerDetailsForm(data))
   const [form, setForm] = useState(saved)
   const [errors, setErrors] = useState<SellerDetailsFieldErrors>({})
@@ -77,7 +79,13 @@ export const SettingsStorePage = (): JSX.Element => {
     >
       <SettingsCard description={t("description")} title={t("title")}>
         <form className="px-4 py-5 lg:px-5" id={SELLER_DETAILS_FORM_ID} noValidate onSubmit={handleSubmit}>
-          <SellerDetailsFields disabled={save.isPending} errors={errors} onChange={handleChange} values={form.values} />
+          <SellerDetailsFields
+            disabled={save.isPending}
+            errors={errors}
+            onChange={handleChange}
+            senderAddress={sender.address}
+            values={form.values}
+          />
         </form>
       </SettingsCard>
     </SettingsPageLayout>

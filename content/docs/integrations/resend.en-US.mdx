@@ -334,6 +334,8 @@ Replies never go to that address. `sendEmail` passes the contact e-mail from Set
 
 Both the shop's own notice of each new order and the incident alerts go to `RESEND_EMAIL_FROM` itself, in every environment, so that address needs a mailbox the owner reads as well.
 
+`shopSenderAddress()` in `resend.config.ts` is the one place the running code reads `RESEND_EMAIL_FROM`. The sender (`shopSender()`), the new-order and withdrawal notices, the incident alerts and the admin's Store details hint all read the address through it, so changing the variable changes all of them at once and nothing can show an outdated copy. Only `scripts/verify-email-sender.ts` reads the raw value, because it checks the value about to be deployed.
+
 Preview and development therefore send from, and notify, the developer's `hello@pjborowiecki.com`, so test orders never reach the shop's inbox; only production sends as the shop. The [deploy check](#deploy-check) refuses an address at `martebizuteria.pl`, or at one of its subdomains, outside production. The Reply-To still comes from Settings → Store details in that environment's database, so its contact e-mail is set to the developer's address there too.
 
 ### Verifying a domain

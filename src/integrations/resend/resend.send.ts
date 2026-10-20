@@ -1,11 +1,9 @@
-import { env } from "cloudflare:workers"
-
 import { type ReactElement } from "react"
 
 import { type Attachment, type ErrorResponse } from "resend"
 
 import { markEmailSenderUnavailable } from "~/src/integrations/resend/resend.availability.server"
-import { resend } from "~/src/integrations/resend/resend.config"
+import { resend, shopSenderAddress } from "~/src/integrations/resend/resend.config"
 
 import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
 import { readSellerDetails } from "~/src/modules/store-setting/store-setting.accessors"
@@ -31,7 +29,7 @@ const RESEND_TEST_SENDER = /@resend\.dev>?$/iu
 const refusesEverySend = ({ name, statusCode }: ErrorResponse, sender: string): boolean =>
   SENDER_REFUSAL_NAMES.has(name) || (SENDER_REFUSAL_STATUSES.has(statusCode) && !RESEND_TEST_SENDER.test(sender))
 
-export const shopSender = (): string => `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
+export const shopSender = (): string => `${APP_NAME} <${shopSenderAddress()}>`
 
 const sellerReplyTo = async (): Promise<{ readonly replyTo?: string }> => {
   try {

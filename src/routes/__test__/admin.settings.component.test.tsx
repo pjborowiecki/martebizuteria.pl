@@ -92,6 +92,9 @@ vi.mock("~/src/presentation/components/custom/pages/admin/settings/security/comp
 vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", () => ({
   getAdminSellerDetailsQuery: () => ({ queryKey: ["admin", "store-setting", "seller-details"] }),
 }))
+vi.mock("~/src/integrations/resend/resend.shop-sender", () => ({
+  getShopSenderQuery: () => ({ queryKey: ["admin", "resend", "shop-sender"] }),
+}))
 vi.mock("~/src/presentation/components/custom/pages/admin/settings/store/settings-store-page", () => ({
   SettingsStorePage: (): JSX.Element => <main data-active="store">store page</main>,
 }))
@@ -223,8 +226,11 @@ describe("admin settings delivery route", () => {
 })
 
 describe("admin settings store route", () => {
-  it("loads the seller details before the page renders", async () => {
-    await expect(prefetched("/admin/settings/store")).resolves.toStrictEqual([["admin", "store-setting", "seller-details"]])
+  it("loads the seller details and the shop's sending address before the page renders", async () => {
+    await expect(prefetched("/admin/settings/store")).resolves.toStrictEqual([
+      ["admin", "store-setting", "seller-details"],
+      ["admin", "resend", "shop-sender"],
+    ])
   })
 
   it("shows the store page under the store tab", () => {

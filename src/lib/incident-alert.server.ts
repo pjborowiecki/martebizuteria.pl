@@ -4,6 +4,7 @@ import { createElement } from "react"
 
 import { createTranslator } from "use-intl"
 
+import { shopSenderAddress } from "~/src/integrations/resend/resend.config"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
@@ -38,7 +39,7 @@ const attemptIncidentAlert = async (incident: Incident): Promise<string | undefi
   return sendEmail({
     react: createElement(IncidentAlert, { environment: env.APP_ENV, incident, locale, messages }),
     subject: createTranslator({ locale, messages })(`${incident.kind}.subject`),
-    to: env.RESEND_EMAIL_FROM,
+    to: shopSenderAddress(),
   })
 }
 
@@ -50,7 +51,7 @@ export const sendIncidentAlert = async (incident: Incident): Promise<void> => {
 
     const failure = await attemptIncidentAlert(incident)
     if (failure !== undefined) {
-      console.error(`[Alert] The ${incident.kind} alert to ${env.RESEND_EMAIL_FROM} was not sent: ${failure}`)
+      console.error(`[Alert] The ${incident.kind} alert to ${shopSenderAddress()} was not sent: ${failure}`)
     }
   } catch (error) {
     console.error(`[Alert] The ${incident.kind} alert could not be sent:`, error)

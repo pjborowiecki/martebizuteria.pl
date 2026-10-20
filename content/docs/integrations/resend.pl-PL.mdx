@@ -334,6 +334,8 @@ Odpowiedzi nigdy nie trafiają na ten adres. `sendEmail` przekazuje przy każdej
 
 Własne powiadomienie sklepu o każdym nowym zamówieniu i alerty sklepu o incydentach trafiają natomiast na sam `RESEND_EMAIL_FROM`, w każdym środowisku, więc ten adres też potrzebuje skrzynki, którą właściciel czyta.
 
+`shopSenderAddress()` w `resend.config.ts` to jedyne miejsce, w którym działający kod czyta `RESEND_EMAIL_FROM`. Nadawca (`shopSender()`), powiadomienia o nowym zamówieniu i o odstąpieniu, alerty o incydentach i podpowiedź w Danych sklepu w panelu czytają adres właśnie przez nie, więc zmiana zmiennej zmienia je wszystkie naraz i nic nie może pokazać nieaktualnej kopii. Surową wartość czyta tylko `scripts/verify-email-sender.ts`, bo sprawdza wartość, która ma zostać wdrożona.
+
 Dlatego środowiska preview i development wysyłają pocztę z adresu dewelopera `hello@pjborowiecki.com` i na niego kierują powiadomienia, żeby testowe zamówienia nigdy nie trafiały do skrzynki sklepu; jako sklep wysyła tylko produkcja. [Kontrola przed wdrożeniem](#kontrola-przed-wdrożeniem) odrzuca poza produkcją adres w domenie `martebizuteria.pl` lub w jednej z jej subdomen. Reply-To nadal pochodzi z Ustawień → Dane sklepu w bazie danego środowiska, więc tam również kontaktowy e-mail ustawia się na adres dewelopera.
 
 ### Weryfikacja domeny
