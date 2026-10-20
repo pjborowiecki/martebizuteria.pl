@@ -20,6 +20,6 @@ describe("landing media", () => {
   it("keeps the asset file names", () => {
     expect(LANDING_HERO_IMG.endsWith("/marketing/hero.webp")).toBe(true)
     expect(LANDING_VIDEO_SRC.endsWith("/marketing/landing-video.mp4")).toBe(true)
-    expect(LANDING_VIDEO_POSTER.endsWith("/placeholder.svg")).toBe(true)
+    expect(LANDING_VIDEO_POSTER.endsWith("/marketing/editorial.webp")).toBe(true)
   })
 })
