@@ -122,7 +122,7 @@ Creating, saving and deleting a product call `scheduleProductCatalogInvalidation
 
 ### The form
 
-`product.zod.ts` is the largest `*.zod.ts` file in the repository, at 491 lines. `productFormSchemaDefinition` extends the shared `catalogUpsertBaseSchema` with the locale maps, the media fields and the read-only `quantityInCheckout` of each variant, and adds three refinements:
+`product.zod.ts` is the largest `*.zod.ts` file in the repository, at 481 lines. `productFormSchemaDefinition` extends the shared `catalogUpsertBaseSchema` with the locale maps, the media fields and the read-only `quantityInCheckout` of each variant, and adds three refinements:
 
 - `refineDuplicateSkusInForm`
 - `refineDuplicateProductAttributes`

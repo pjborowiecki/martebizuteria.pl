@@ -15,7 +15,7 @@ Moduł w `src/modules/<table>/` nosi nazwę tabeli bazy danych, której jest wł
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | `<table>.schema.ts`                            | Tabelę Drizzle i jej `relations`                                                                | `order/order.schema.ts`                          |
 | `<table>.types.ts`                             | Typy wyprowadzone z tabeli, zwykle jeden interfejs z `select`/`insert`                          | `address/address.types.ts`                       |
-| `<table>.zod.ts`                               | Schematy Zod, głównie budowane przez `drizzle-zod`                                              | `product/product.zod.ts`                         |
+| `<table>.zod.ts`                               | Ręcznie pisane schematy Zod, które nie importują tabeli                                         | `product/product.zod.ts`                         |
 | `<table>.constants.ts`                         | Długości kolumn, enumy statusów, kody błędów, klucze zapytań i mutacji                          | `product-category/product-category.constants.ts` |
 | `<table>.accessors.ts`                         | Dostęp do danych bez autoryzacji: odczyty, zapisy i buildery batchy do `db`                     | `payment/payment.accessors.ts`                   |
 | `<table>.utils.ts`                             | Czyste helpery bez dostępu do bazy, żądania i `cloudflare:workers`, bezpieczne dla przeglądarki | `order/order.utils.ts`                           |

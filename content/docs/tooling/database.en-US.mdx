@@ -45,7 +45,7 @@ import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas"
 export const db = drizzle(env.DB, { schema })
 ```
 
-The `server-only` import is what makes a client bundle that reaches for `db` fail at build time rather than at runtime, and `scripts/verify-build.ts` double-checks the same invariant by scanning the built client assets for `cloudflare:workers` and `node:` imports.
+The `server-only` import is what makes a client bundle that reaches for `db` fail at build time rather than at runtime, and `scripts/verify-build.ts` double-checks the same invariant by scanning the built client assets for `cloudflare:workers` and `node:` imports and for Drizzle ORM itself.
 
 ### The tables
 
@@ -83,6 +83,8 @@ Wrangler adds one more, `d1_migrations`, which is bookkeeping and not part of th
 | `calendarPeriodKey(column, periods)` | The key of the last of `periods` (`{ key, start }`) that starts at or before `column`, bound as one JSON parameter, for grouping by days or months in a time zone, such as the admin dashboard's order chart and a customer's monthly spending in the viewer's display time zone |
 | `inJsonList(column, values)`         | `column in (select value from json_each(...))`, with the whole list bound as one JSON parameter, so a list of any length uses one of D1's 100 bound parameters                                                                                                                   |
 | `notInJsonList(column, values)`      | The same with `not in`                                                                                                                                                                                                                                                           |
+
+The modules' constants files and `product-attribute.zod.ts` import `UUID_STRING_LENGTH` from this file, and they reach the browser. The file therefore only declares constants and functions and calls nothing from Drizzle when it loads, so the client build drops `drizzle-orm` instead of shipping it with the constant.
 
 A new table ends with `...timestamps()` and uses `timestamp(...)` for every other date column. 35 of the 43 tables do; `audit_log`, `category_on_product`, `collection_on_product`, `order_number_sequence`, `price_history`, `rate_limit`, `storefront_search` and `user_email_history` have no `timestamps()`. 21 tables generate their primary key with `text("id").primaryKey().$defaultFn(() => crypto.randomUUID())`. The other text keys come from the code that writes the row — Better Auth, for example, issues UUIDv7 ids through `generateId` in `auth.server.ts` — and a few tables use another key: an integer `id` on `price_history` and `user_email_history`, `period` on `order_number_sequence`, a composite key of product and category or collection on `category_on_product` and `collection_on_product`, and none on `storefront_search`.
 

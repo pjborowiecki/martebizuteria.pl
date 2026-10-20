@@ -12,7 +12,7 @@ Server logic that belongs to no table does not get a module. Request-scoped help
 | File                              | Contents                                                                                                                                     |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `{feature}.schema.ts`             | The Drizzle `sqliteTable`, its indexes, and its `relations(...)`                                                                             |
-| `{feature}.zod.ts`                | `drizzle-zod` insert/select/update schemas plus one hand-written input schema per operation                                                  |
+| `{feature}.zod.ts`                | One hand-written Zod input or form schema per operation, with no table import                                                                |
 | `{feature}.constants.ts`          | Query-key and mutation-key tuples, column length limits, enum tuples, stale times                                                            |
 | `{feature}.types.ts`              | Row types inferred from the table, exported as one interface per module                                                                      |
 | `{feature}.utils.ts`              | Pure functions — row mapping, normalisation, label resolution                                                                                |
@@ -88,25 +88,12 @@ The file is not in dependency order — `account` comes before `user`, and `prod
 
 ## 3. Write the Zod schemas
 
-`{feature}.zod.ts` imports `zod/v4` (not bare `zod`) and builds the generated schemas through `createSchemaFactory`, so the generated shapes and the hand-written ones come from the same Zod instance:
+`{feature}.zod.ts` imports `zod/v4` (not bare `zod`) and writes every schema by hand. It never imports the module's `{feature}.schema.ts` or `drizzle-zod`: forms and route search parameters validate in the browser with these schemas, so a table import would ship Drizzle ORM to every page that uses them. Row types come from the table through `$inferSelect` and `$inferInsert` in `{feature}.types.ts`, and length limits come from the constants file the table reads too:
 
 ```ts
-import { createSchemaFactory } from "drizzle-zod"
 import zod from "zod/v4"
 
-import { address } from "~/src/modules/address/address.schema"
-
 export const COUNTRY_CODE_LENGTH = 2
-
-const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
-  zodInstance: zod,
-})
-
-export const addressZodSchemas = {
-  insert: createInsertSchema(address),
-  select: createSelectSchema(address),
-  update: createUpdateSchema(address),
-}
 
 export const addressFieldsSchema = zod.object({
   address1: zod.string().min(1),
@@ -179,7 +166,7 @@ export interface Address {
 }
 ```
 
-Consumers then write `Address["select"]`. Richer modules add derived members — `ProductCategory["adminListItem"]` and `ProductCategory["formValues"]` are what the admin grid and the admin form pass around.
+Consumers then write `Address["select"]`. Richer modules add derived members — `ProductCategory["adminListItem"]`, the table's `select` row plus the computed `parentTitles` and `productCount`, and `ProductCategory["formValues"]`, inferred from its Zod schema, are what the admin grid and the admin form pass around.
 
 ## 6. Add accessors, if they carry behaviour
 

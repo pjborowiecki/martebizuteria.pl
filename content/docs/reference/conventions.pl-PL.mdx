@@ -112,7 +112,7 @@ Moduł jest właścicielem jednej tabeli Drizzle i wszystkiego, co z niej wynika
 - `*.accessors.ts` zawiera też przygotowane zapytania (prepared statements) i budowniki wsadów; operacja wyłącznie serwerowa, która nie jest endpointem RPC, to `use-cases/<czasownik>-<rzeczownik>.server.ts`. Moduł nie zawiera żadnego innego rodzaju pliku.
 - `use-cases/<czasownik>-<rzeczownik>.ts` zawiera jedną operację. Eksportuje funkcję serwerową `createServerFn` oraz `queryOptions` lub klucz mutacji, z których korzystają wywołujący. Loadery, komponenty i unieważnianie cache importują ten sam obiekt opcji, więc z konstrukcji dzielą jeden klucz zapytania.
 - Stałe — długości kolumn, enumy statusów, kody błędów, klucze zapytań, klucze mutacji, identyfikatory kolumn tabeli — leżą w `*.constants.ts` jako obiekty `SCREAMING_SNAKE_CASE` z prefiksem encji, na przykład `CATEGORY_QUERY_KEYS` i `CATEGORY_ERROR_CODES`.
-- `*.zod.ts` buduje schematy Zod, zwykle przez `createSchemaFactory` z `drizzle-zod`, i eksportuje je jako jeden obiekt `<encja>ZodSchemas` plus nazwane schematy wejściowe.
+- `*.zod.ts` pisze schematy Zod ręcznie i nigdy nie importuje tabeli, żeby Drizzle ORM nie trafiał do paczki przeglądarki, i zwykle eksportuje je jako jeden obiekt `<encja>ZodSchemas` plus nazwane schematy wejściowe.
 - `*.types.ts` wyprowadza typy z tabeli, zamiast powtarzać je ręcznie:
 
 ```ts

@@ -115,7 +115,7 @@ Migrations are applied by `wrangler d1 migrations apply` in filename order. Ther
 | Deploy preview                   | `bun run deploy:preview`    | See [Deploy a preview](/docs/getting-started/deploy-preview)                                             |
 | Deploy production                | `bun run deploy:production` | The same against the `production` environment                                                            |
 
-Both builds end in a verification script rather than a warning. `scripts/verify-build.ts` fails if the built Worker targets the wrong environment, if `dist/client/fonts` is missing, if there is no client JavaScript or CSS, or if any client asset still imports `cloudflare:workers` or a `node:` builtin.
+Both builds end in a verification script rather than a warning. `scripts/verify-build.ts` fails if the built Worker targets the wrong environment, if `dist/client/fonts` is missing, if there is no client JavaScript or CSS, or if any client asset still imports `cloudflare:workers` or a `node:` builtin or carries Drizzle ORM.
 
 ## Housekeeping
 

@@ -137,9 +137,10 @@ bun scripts/verify-bindings.ts preview \
 - brakuje pliku wejściowego albo katalogu `dist/client/fonts`;
 - `assets.directory` nie wskazuje na `dist/client`;
 - `dist/client/assets` nie zawiera przynajmniej jednego pliku `.js` i jednego `.css`;
-- którykolwiek kliencki plik `.js` importuje `cloudflare:workers` albo wbudowany moduł `node:`.
+- którykolwiek kliencki plik `.js` importuje `cloudflare:workers` albo wbudowany moduł `node:`;
+- którykolwiek kliencki plik `.js` zawiera Drizzle ORM, rozpoznawany po wywołaniu `Symbol.for`, które rejestruje jego symbol `drizzle:entityKind`.
 
-Ta ostatnia kontrola jest najciekawsza. Skanuje każdy bundle kliencki przy użyciu `Bun.Transpiler` i przerywa build przy imporcie tylko serwerowym, który przeciekł do grafu przeglądarki — czyli przy klasie błędów objawiającej się na produkcji pustą stroną.
+Dwie ostatnie kontrole są najciekawsze. Pierwsza skanuje każdy bundle kliencki przy użyciu `Bun.Transpiler` i przerywa build przy imporcie tylko serwerowym, który przeciekł do grafu przeglądarki — czyli przy klasie błędów objawiającej się na produkcji pustą stroną. Druga przerywa build, gdy moduł wczytywany przez przeglądarkę wciąga Drizzle, na przykład schemat Zod zbudowany z tabeli, który dołożyłby ORM do każdej strony, która z niego korzysta.
 
 ## Wdrożenia automatyczne
 

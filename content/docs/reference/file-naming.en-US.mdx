@@ -15,7 +15,7 @@ A module in `src/modules/<table>/` is named after the database table it owns, an
 | ----------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | `<table>.schema.ts`                 | The Drizzle table and its `relations`                                                       | `order/order.schema.ts`                          |
 | `<table>.types.ts`                  | Types derived from the table, usually one interface with `select`/`insert`                  | `address/address.types.ts`                       |
-| `<table>.zod.ts`                    | Zod schemas, mostly built from `drizzle-zod`                                                | `product/product.zod.ts`                         |
+| `<table>.zod.ts`                    | Hand-written Zod schemas that never import the table                                        | `product/product.zod.ts`                         |
 | `<table>.constants.ts`              | Column lengths, status enums, error codes, query and mutation keys                          | `product-category/product-category.constants.ts` |
 | `<table>.accessors.ts`              | Data access with no authorization: reads, writes and batch builders against `db`            | `payment/payment.accessors.ts`                   |
 | `<table>.utils.ts`                  | Pure helpers with no database, request or `cloudflare:workers` access, safe for the browser | `order/order.utils.ts`                           |

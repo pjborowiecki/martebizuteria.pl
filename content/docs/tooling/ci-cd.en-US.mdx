@@ -56,7 +56,7 @@ The `verify` job, with a 25-minute timeout, running on `ubuntu-latest` with `per
 
 A second job, `e2e`, calls `e2e-reusable.yml` with `browser: chromium`.
 
-The build step runs against the dummy `.env.preview` the setup action copied from `.env.test`, which is enough because `scripts/verify-build.ts` checks the shape of the output — the deployment config, the Worker name, the `APP_ENV` var, the presence of fonts, client JS and CSS, and the absence of `cloudflare:workers` or `node:` imports in any client asset — not the values of any credential.
+The build step runs against the dummy `.env.preview` the setup action copied from `.env.test`, which is enough because `scripts/verify-build.ts` checks the shape of the output — the deployment config, the Worker name, the `APP_ENV` var, the presence of fonts, client JS and CSS, and the absence of `cloudflare:workers` or `node:` imports and of Drizzle ORM in any client asset — not the values of any credential.
 
 ## The end-to-end workflows
 
@@ -134,7 +134,7 @@ It runs before the build so that a sender Resend would refuse stops the deploy w
 
 ### 4. build
 
-`bun run build:preview` removes `dist`, regenerates `.source/`, runs `CLOUDFLARE_ENV=preview vp build --mode preview`, and then `bun scripts/verify-build.ts preview`. `verify-build.ts` reads `.wrangler/deploy/config.json`, follows its `configPath`, and asserts it resolves to exactly `dist/server/wrangler.json`; that the built config's `vars.APP_ENV` matches the target and its `name` is `martebizuteria-preview` (or `martebizuteria` for production); that its `main` exists and its assets directory resolves to `dist/client`; that `dist/client/fonts` exists; that `dist/client/assets` contains at least one `.js` and one `.css`; and finally it scans every client `.js` file with `new Bun.Transpiler({ loader: "js" })` and fails on any import of `cloudflare:workers` or a `node:` module.
+`bun run build:preview` removes `dist`, regenerates `.source/`, runs `CLOUDFLARE_ENV=preview vp build --mode preview`, and then `bun scripts/verify-build.ts preview`. `verify-build.ts` reads `.wrangler/deploy/config.json`, follows its `configPath`, and asserts it resolves to exactly `dist/server/wrangler.json`; that the built config's `vars.APP_ENV` matches the target and its `name` is `martebizuteria-preview` (or `martebizuteria` for production); that its `main` exists and its assets directory resolves to `dist/client`; that `dist/client/fonts` exists; that `dist/client/assets` contains at least one `.js` and one `.css`; and finally it scans every client `.js` file with `new Bun.Transpiler({ loader: "js" })` and fails on any import of `cloudflare:workers` or a `node:` module, and on any file that carries Drizzle ORM (the `Symbol.for` call that registers its `drizzle:entityKind` symbol).
 
 ### 5. prepare-deploy-secrets.ts
 

@@ -115,7 +115,7 @@ Migracje nakłada `wrangler d1 migrations apply` w kolejności nazw plików. Obe
 | Wdrożenie preview               | `bun run deploy:preview`    | Zobacz [Wdrożenie podglądu](/docs/getting-started/deploy-preview)                                        |
 | Wdrożenie produkcyjne           | `bun run deploy:production` | To samo dla środowiska `production`                                                                      |
 
-Oba buildy kończą się skryptem weryfikującym, a nie ostrzeżeniem. `scripts/verify-build.ts` przerywa pracę, jeśli zbudowany Worker celuje w niewłaściwe środowisko, jeśli brakuje `dist/client/fonts`, jeśli nie ma klienckiego JavaScriptu lub CSS, albo jeśli którykolwiek zasób kliencki nadal importuje `cloudflare:workers` lub wbudowany moduł `node:`.
+Oba buildy kończą się skryptem weryfikującym, a nie ostrzeżeniem. `scripts/verify-build.ts` przerywa pracę, jeśli zbudowany Worker celuje w niewłaściwe środowisko, jeśli brakuje `dist/client/fonts`, jeśli nie ma klienckiego JavaScriptu lub CSS, albo jeśli którykolwiek zasób kliencki nadal importuje `cloudflare:workers` lub wbudowany moduł `node:` albo zawiera Drizzle ORM.
 
 ## Porządki
 

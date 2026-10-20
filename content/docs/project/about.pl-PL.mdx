@@ -59,7 +59,7 @@ Cztery ścieżki żądań kończą się wewnątrz `src/server.ts`, jeszcze przed
 | -------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------- |
 | Framework            | TanStack Start 1.168 + TanStack Router 1.170                                             | `vite.config.ts`, `src/router.tsx`                  |
 | Interfejs            | React 19.3, Tailwind CSS 4, komponenty shadcn, Base UI                                   | `src/presentation/`                                 |
-| Dane                 | D1 + Drizzle ORM 0.45, `drizzle-zod` do schematów                                        | `src/integrations/drizzle-orm/`                     |
+| Dane                 | D1 + Drizzle ORM 0.45, ręcznie pisane schematy Zod 4                                     | `src/integrations/drizzle-orm/`                     |
 | Cache klienta        | TanStack Query 5.104, opcje zapytań eksportowane przy przypadku użycia                   | `src/integrations/tanstack-query/`                  |
 | Uwierzytelnianie     | Better Auth 1.7 z wtyczkami `admin`, `twoFactor`, `multiSession`                         | `src/integrations/better-auth/auth.server.ts`       |
 | Płatności            | Stripe 23.0 (SDK serwerowy) w wersji API `2026-09-30.endive` + `@stripe/react-stripe-js` | `src/integrations/stripe/`                          |

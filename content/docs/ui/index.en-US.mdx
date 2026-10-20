@@ -20,7 +20,7 @@ Everything visual lives under `src/presentation`. Nothing else in the repository
 
 The application renders two visually different shells from the same token definitions.
 
-- **Storefront look**: serif display type, generous spacing, Lenis smooth scrolling, light and dark token sets. `src/routes/_storefront.tsx` is the layout for the public pages and wraps them with `Navigation` and `Footer`; `account.tsx`, `auth.tsx`, `checkout.tsx` and `docs.tsx` are separate top-level layouts that use the same tokens: `account.tsx` and `docs.tsx` reuse the same `Navigation` and `Footer`, `auth.tsx` reuses `Navigation` only, and `checkout.tsx` renders its own `CheckoutHeader`.
+- **Storefront look**: serif display type, generous spacing, Lenis smooth scrolling for mouse and trackpad, light and dark token sets. `src/routes/_storefront.tsx` is the layout for the public pages and wraps them with `Navigation` and `Footer`; `account.tsx`, `auth.tsx`, `checkout.tsx` and `docs.tsx` are separate top-level layouts that use the same tokens: `account.tsx` and `docs.tsx` reuse the same `Navigation` and `Footer`, `auth.tsx` reuses `Navigation` only, and `checkout.tsx` renders its own `CheckoutHeader`.
 - **Admin look** (`/admin/**`): a dense console. `src/routes/admin.tsx` forces light tokens inside `[data-admin-main]`, paints the page chrome with the dark sidebar colour and skips smooth scrolling.
 
 The root route (`src/routes/__root.tsx`) decides which one it is with `isAdminPathname(...)` and sets `data-admin-shell` on `html` accordingly. See [Theme](/docs/ui/theme) for the inline scripts that make this happen before first paint.
