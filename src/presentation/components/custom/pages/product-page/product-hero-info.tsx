@@ -100,7 +100,7 @@ export const ProductHeroInfo = ({ onSelectOptionValue, product, selectedValueIds
         </p>
         <h1 className="font-serif text-4xl leading-tight md:text-5xl">{product.title}</h1>
         {selectedSku !== EMPTY_SKU && (
-          <p className="text-[10px] tracking-wider text-muted-foreground/60">
+          <p className="text-[10px] tracking-wider text-muted-foreground">
             {t("sku", {
               sku: selectedSku,
             })}

@@ -151,6 +151,15 @@ describe("account payment page", () => {
       screen.getByText("Cards are stored by Stripe, never on our servers. We only keep a reference so you can reuse them."),
     ).toBeInTheDocument()
   })
+
+  it("shows the security note in the muted text colour at full strength", () => {
+    renderPayment([])
+
+    const note = screen.getByText("Cards are stored by Stripe, never on our servers. We only keep a reference so you can reuse them.")
+
+    expect(note).toHaveClass("text-muted-foreground")
+    expect(note.className).not.toMatch(/text-muted-foreground\//u)
+  })
 })
 
 describe("adding a card from the wallet", () => {

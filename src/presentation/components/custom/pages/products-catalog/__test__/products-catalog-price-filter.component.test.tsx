@@ -40,6 +40,13 @@ describe("ProductsCatalogPriceFilter", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Price" })).toBeInTheDocument()
   })
 
+  it("shows the hint in the muted text colour at full strength", () => {
+    renderFilter()
+
+    expect(screen.getByText("Amounts in PLN")).toHaveClass("text-muted-foreground")
+    expect(screen.getByText("Amounts in PLN").className).not.toMatch(/text-muted-foreground\//u)
+  })
+
   it("starts both bounds empty when no price filter is applied", () => {
     const { from, to } = renderFilter()
 

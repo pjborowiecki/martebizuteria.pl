@@ -34,6 +34,17 @@ describe("CartSummary", () => {
     expect(shipping.parentElement).toHaveClass("justify-between", "gap-4")
   })
 
+  it("shows the checkout note and the reassurances in the muted text colour at full strength", () => {
+    renderWithProviders(<CartSummary subtotal="PLN 340.00" />)
+
+    expect(screen.getByText("Shipping & taxes calculated at checkout.")).toHaveClass("text-muted-foreground")
+    expect(screen.getByText("Shipping & taxes calculated at checkout.").className).not.toMatch(/text-muted-foreground\//u)
+    for (const reassurance of ["Secure payment", "14-day right of withdrawal"]) {
+      expect(screen.getByText(reassurance).parentElement).toHaveClass("text-muted-foreground")
+      expect(screen.getByText(reassurance).parentElement?.className).not.toMatch(/text-muted-foreground\//u)
+    }
+  })
+
   it("offers a checkout link by default", () => {
     renderWithProviders(<CartSummary subtotal="PLN 340.00" />)
 

@@ -167,6 +167,14 @@ describe("account sessions page", () => {
     expect(await screen.findByText("Active now")).toBeInTheDocument()
   })
 
+  it("dates each session in the muted text colour at full strength", async () => {
+    state.sessions = [session({ lastActiveAt: new Date(Date.now() - 60_000) })]
+    renderPage()
+
+    expect(await screen.findByText("Active now")).toHaveClass("text-muted-foreground")
+    expect(screen.getByText("Active now").className).not.toMatch(/text-muted-foreground\//u)
+  })
+
   it("dates a session that has been idle for hours", async () => {
     state.sessions = [session({ lastActiveAt: new Date(Date.now() - 7_200_000) })]
     renderPage()
@@ -231,6 +239,16 @@ describe("account sessions revoking", () => {
 
     expect(await screen.findByRole("button", { name: "Sign out other devices" })).toBeEnabled()
     expect(screen.queryByText("You're signed in on this device only.")).toBeNull()
+  })
+
+  it("labels the bulk sign-out in the full destructive colour", async () => {
+    state.sessions = [session(), session({ id: "session-2", isCurrent: false })]
+    renderPage()
+
+    const signOutOthers = await screen.findByRole("button", { name: "Sign out other devices" })
+
+    expect(signOutOthers).toHaveClass("text-destructive", "hover:underline")
+    expect(signOutOthers.className).not.toMatch(/text-destructive\//u)
   })
 
   it("signs the other devices out and refreshes the list", async () => {

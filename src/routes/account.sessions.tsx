@@ -55,7 +55,7 @@ const SessionsPage = (): JSX.Element => {
           <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("activeSessions")}</h2>
           {hasOtherDevices && (
             <Button
-              className="text-destructive/70 hover:text-destructive"
+              className="text-destructive underline-offset-4 hover:text-destructive hover:underline"
               disabled={revokeOtherDevicesMutation.isPending}
               onClick={handleRevokeOtherDevices}
               variant="account-ghost"

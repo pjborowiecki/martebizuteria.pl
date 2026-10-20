@@ -24,4 +24,11 @@ describe("PhilosophySection", () => {
     expect(screen.getByText(/Our studio works at the rhythm of craft, not commerce\./u)).toBeInTheDocument()
     expect(screen.getByText("— M'ARTE")).toBeInTheDocument()
   })
+
+  it("signs off in the muted text colour at full strength", () => {
+    renderWithProviders(<PhilosophySection />)
+
+    expect(screen.getByText("— M'ARTE")).toHaveClass("text-muted-foreground")
+    expect(screen.getByText("— M'ARTE").className).not.toMatch(/text-muted-foreground\//u)
+  })
 })

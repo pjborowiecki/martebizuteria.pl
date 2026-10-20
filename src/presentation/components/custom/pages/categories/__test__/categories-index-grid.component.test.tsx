@@ -50,6 +50,13 @@ describe("StorefrontCategoryCard", () => {
     expect(screen.getByText("3 pieces")).toBeInTheDocument()
   })
 
+  it("shows the product count in the muted text colour at full strength", () => {
+    renderWithProviders(<StorefrontCategoryCard aspectRatioClass="" category={category()} sizes="100vw" />)
+
+    expect(screen.getByText("3 pieces")).toHaveClass("text-muted-foreground")
+    expect(screen.getByText("3 pieces").className).not.toMatch(/foreground\//u)
+  })
+
   it("uses the singular form for a category holding one product", () => {
     renderWithProviders(<StorefrontCategoryCard aspectRatioClass="" category={category({ productCount: 1 })} sizes="100vw" />)
 

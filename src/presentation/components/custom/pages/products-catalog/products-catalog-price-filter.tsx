@@ -80,7 +80,7 @@ export const ProductsCatalogPriceFilter = ({ onSearchChange, search }: ProductsC
           />
         </div>
       </div>
-      <p className="text-[10px] tracking-[0.16em] text-muted-foreground/70 uppercase">{t("priceHint")}</p>
+      <p className="text-[10px] tracking-[0.16em] text-muted-foreground uppercase">{t("priceHint")}</p>
     </section>
   )
 }

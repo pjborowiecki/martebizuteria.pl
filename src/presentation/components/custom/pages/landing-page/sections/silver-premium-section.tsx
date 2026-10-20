@@ -21,7 +21,7 @@ export const SilverPremiumSection = (): JSX.Element => {
       <div className="storefront-container grid gap-12 py-20 lg:grid-cols-2 lg:items-center lg:gap-16 lg:py-32">
         <div className="reveal space-y-10 lg:space-y-12">
           <div className="space-y-6">
-            <p className="text-[10px] tracking-[0.28em] text-primary-foreground/40 uppercase">{t("eyebrow")}</p>
+            <p className="text-[10px] tracking-[0.28em] text-primary-foreground/50 uppercase">{t("eyebrow")}</p>
             <h2 className="font-serif text-6xl leading-[0.9] tracking-tight md:text-7xl lg:text-8xl">
               {t("titleMain")} <span className="italic">{t("titleAccent")}</span>
             </h2>
@@ -47,15 +47,15 @@ export const SilverPremiumSection = (): JSX.Element => {
           <div className="grid grid-cols-1 gap-6 border-t border-primary-foreground/10 pt-8 sm:grid-cols-3 sm:gap-8 lg:gap-12 lg:pt-10">
             <div>
               <p className="font-serif text-4xl leading-none tracking-tight lg:text-5xl">{t("stats.purity.value")}</p>
-              <p className="mt-2.5 text-[10px] tracking-[0.2em] text-primary-foreground/35 uppercase">{t("stats.purity.label")}</p>
+              <p className="mt-2.5 text-[10px] tracking-[0.2em] text-primary-foreground/50 uppercase">{t("stats.purity.label")}</p>
             </div>
             <div>
               <p className="font-serif text-4xl leading-none tracking-tight lg:text-5xl">{t("stats.handmade.value")}</p>
-              <p className="mt-2.5 text-[10px] tracking-[0.2em] text-primary-foreground/35 uppercase">{t("stats.handmade.label")}</p>
+              <p className="mt-2.5 text-[10px] tracking-[0.2em] text-primary-foreground/50 uppercase">{t("stats.handmade.label")}</p>
             </div>
             <div>
               <p className="font-serif text-4xl leading-none tracking-tight lg:text-5xl">{t("stats.liability.value")}</p>
-              <p className="mt-2.5 text-[10px] tracking-[0.2em] text-primary-foreground/35 uppercase">{t("stats.liability.label")}</p>
+              <p className="mt-2.5 text-[10px] tracking-[0.2em] text-primary-foreground/50 uppercase">{t("stats.liability.label")}</p>
             </div>
           </div>
         </div>

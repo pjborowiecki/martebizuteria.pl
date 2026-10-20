@@ -32,7 +32,7 @@ export const SecondaryNav = (): JSX.Element => {
           {t("menu.links.myAccount")}
         </LocalizedLink>
         <LocalizedLink className={cn(linkStyles, "flex items-center gap-2")} onClick={dismissMenuForRouteNavigation} to={ROUTES.CART}>
-          {t("menu.links.cart")} <span className="text-primary-foreground/40">{t("menu.links.cartCount", { count: itemCount })}</span>
+          {t("menu.links.cart")} <span className="text-primary-foreground/50">{t("menu.links.cartCount", { count: itemCount })}</span>
         </LocalizedLink>
       </div>
       <div className="flex flex-col gap-4 sm:gap-5">

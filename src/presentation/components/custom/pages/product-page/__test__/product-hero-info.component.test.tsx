@@ -145,6 +145,13 @@ describe("ProductHeroInfo", () => {
     expect(screen.getByText("SKU: MR-001")).toBeInTheDocument()
   })
 
+  it("shows the sku in the muted text colour at full strength", () => {
+    renderInfo(storefrontProduct({ variants: [storefrontVariant({ sku: "MR-001" })] }))
+
+    expect(screen.getByText("SKU: MR-001")).toHaveClass("text-muted-foreground")
+    expect(screen.getByText("SKU: MR-001").className).not.toMatch(/text-muted-foreground\//u)
+  })
+
   it("leaves the sku line out when the variant has none", () => {
     renderInfo(storefrontProduct())
 

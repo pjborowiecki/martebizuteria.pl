@@ -10,7 +10,7 @@ export const AuthDivider = (): JSX.Element => {
   return (
     <div className="flex items-center gap-4">
       <Separator className="flex-1 bg-border/50" />
-      <span className="text-[10px] tracking-[0.2em] text-muted-foreground/60 uppercase">{t("or")}</span>
+      <span className="text-[10px] tracking-[0.2em] text-muted-foreground uppercase">{t("or")}</span>
       <Separator className="flex-1 bg-border/50" />
     </div>
   )

@@ -43,6 +43,21 @@ describe("NewsletterSection", () => {
     expect(screen.getByRole("heading", { name: "Stay close to M'ARTE" })).toBeInTheDocument()
   })
 
+  it("shows the consent note in the muted text colour at full strength", () => {
+    renderWithProviders(<NewsletterSection />)
+
+    expect(
+      screen.getByText(
+        "By subscribing, you agree to the processing of data for marketing purposes, in accordance with the Terms and Privacy Policy.",
+      ),
+    ).toHaveClass("text-muted-foreground")
+    expect(
+      screen.getByText(
+        "By subscribing, you agree to the processing of data for marketing purposes, in accordance with the Terms and Privacy Policy.",
+      ).className,
+    ).not.toMatch(/text-muted-foreground\//u)
+  })
+
   it("sends the address to the subscribe server function", async () => {
     renderWithProviders(<NewsletterSection />)
     submit("anna@example.com")

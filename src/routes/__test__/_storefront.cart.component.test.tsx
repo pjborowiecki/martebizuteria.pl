@@ -280,6 +280,17 @@ describe("cart page with items", () => {
     expect(links).toHaveLength(2)
     expect(links[0]).toHaveAttribute("href", "/products")
   })
+
+  it("shows the continue shopping links in the muted text colour at full strength", () => {
+    fillCart([cartLine()])
+
+    renderCart()
+
+    for (const link of screen.getAllByRole("link", { name: "Continue shopping" })) {
+      expect(link).toHaveClass("text-muted-foreground")
+      expect(link.className).not.toMatch(/foreground\//u)
+    }
+  })
 })
 
 describe("cart page metadata", () => {

@@ -58,15 +58,15 @@ export const CartSummary = ({ checkoutDisabled = false, salesPaused = false, sub
           </LocalizedLink>
         )}
 
-        <p className="text-center text-[11px] leading-relaxed text-muted-foreground/50">{t("summary.note")}</p>
+        <p className="text-center text-[11px] leading-relaxed text-muted-foreground">{t("summary.note")}</p>
       </div>
 
       <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-6">
-        <div className="flex items-center gap-2 text-muted-foreground/80">
+        <div className="flex items-center gap-2 text-muted-foreground">
           <ShieldCheck className="size-4 shrink-0" strokeWidth={1.5} />
           <span className="text-xs leading-tight">{t("trust.securePayment")}</span>
         </div>
-        <div className="flex items-center gap-2 text-muted-foreground/80">
+        <div className="flex items-center gap-2 text-muted-foreground">
           <RotateCcw className="size-4 shrink-0" strokeWidth={1.5} />
           <span className="text-xs leading-tight">{t("trust.returns")}</span>
         </div>
