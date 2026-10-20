@@ -1,18 +1,28 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { getLenisInstance } from "~/src/integrations/lenis/lenis.instance"
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/presentation/components/shadcn/select"
 
 import { SmoothScroll } from "~/src/presentation/components/custom/smooth-scroll"
 
 vi.mock("~/src/integrations/gsap/gsap.config", () => ({
-  ScrollTrigger: { update: vi.fn() },
-  gsap: {
-    registerPlugin: vi.fn(),
-    ticker: { add: vi.fn(), lagSmoothing: vi.fn(), remove: vi.fn() },
+  gsapToolkit: {
+    ScrollTrigger: { update: vi.fn() },
+    gsap: {
+      registerPlugin: vi.fn(),
+      ticker: { add: vi.fn(), lagSmoothing: vi.fn(), remove: vi.fn() },
+    },
   },
 }))
 vi.mock("~/src/hooks/use-lenis-router-scroll-sync", () => ({ useLenisRouterScrollSync: vi.fn() }))
+vi.stubGlobal("matchMedia", (query: string) => ({
+  addEventListener: () => {},
+  matches: query.includes("(hover: hover) and (pointer: fine)"),
+  media: query,
+  removeEventListener: () => {},
+}))
 
 const ZONES = Array.from({ length: 30 }, (_, index) => `zone-${index}`)
 
@@ -20,7 +30,7 @@ const WHEEL_DELTA_PX = 120
 
 const isWheelLeftToTheBrowser = (target: Element): boolean => fireEvent.wheel(target, { deltaY: WHEEL_DELTA_PX })
 
-const renderSelectOnSmoothPage = (selectProps: Readonly<{ defaultOpen: boolean; modal?: boolean }>): void => {
+const renderSelectOnSmoothPage = async (selectProps: Readonly<{ defaultOpen: boolean; modal?: boolean }>): Promise<void> => {
   render(
     <SmoothScroll>
       <main>
@@ -40,10 +50,13 @@ const renderSelectOnSmoothPage = (selectProps: Readonly<{ defaultOpen: boolean; 
       </main>
     </SmoothScroll>,
   )
+  await waitFor(() => {
+    expect(getLenisInstance()).toBeDefined()
+  })
 }
 
 const openSelectAndWaitForThePageLock = async (): Promise<void> => {
-  renderSelectOnSmoothPage({ defaultOpen: true })
+  await renderSelectOnSmoothPage({ defaultOpen: true })
   await screen.findByRole("listbox")
   await waitFor(() => {
     expect(document.body.style.overflowY).toBe("hidden")
@@ -59,7 +72,7 @@ afterEach(async () => {
 
 describe("SelectContent on a page driven by Lenis", () => {
   it("leaves a wheel over the open list to the list, even when the select leaves the page unlocked", async () => {
-    renderSelectOnSmoothPage({ defaultOpen: true, modal: false })
+    await renderSelectOnSmoothPage({ defaultOpen: true, modal: false })
 
     expect(isWheelLeftToTheBrowser(await screen.findByRole("option", { name: "zone-10" }))).toBe(true)
   })
@@ -76,8 +89,8 @@ describe("SelectContent on a page driven by Lenis", () => {
     expect(isWheelLeftToTheBrowser(screen.getByText("Page copy"))).toBe(true)
   })
 
-  it("still hands a wheel over the page to Lenis while the list is closed", () => {
-    renderSelectOnSmoothPage({ defaultOpen: false })
+  it("still hands a wheel over the page to Lenis while the list is closed", async () => {
+    await renderSelectOnSmoothPage({ defaultOpen: false })
 
     expect(isWheelLeftToTheBrowser(screen.getByText("Page copy"))).toBe(false)
   })
@@ -85,7 +98,7 @@ describe("SelectContent on a page driven by Lenis", () => {
 
 describe("Select sizing", () => {
   it("lets the open list grow to its longest option, so a long label never runs under the check mark", async () => {
-    renderSelectOnSmoothPage({ defaultOpen: true })
+    await renderSelectOnSmoothPage({ defaultOpen: true })
 
     const list = await screen.findByRole("listbox")
 
@@ -96,8 +109,8 @@ describe("Select sizing", () => {
     )
   })
 
-  it("cuts a chosen value too long for the field off with an ellipsis", () => {
-    renderSelectOnSmoothPage({ defaultOpen: false })
+  it("cuts a chosen value too long for the field off with an ellipsis", async () => {
+    await renderSelectOnSmoothPage({ defaultOpen: false })
 
     expect(screen.getByRole("combobox", { name: "Zone" }).querySelector("[data-slot=select-value]")).toHaveClass("min-w-0", "truncate")
   })

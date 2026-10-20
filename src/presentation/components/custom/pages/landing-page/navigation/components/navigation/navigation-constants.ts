@@ -4,6 +4,8 @@ export const CLIP_OPEN = "inset(0 0 0% 0)"
 
 export const HEADER_OFFSET_PX = 96
 
+export const SCROLLED_OFFSET_PX = 20
+
 export const MENU_MEDIA = {
   desktop: "(min-width: 1024px)",
   mobile: "(max-width: 1023px)",

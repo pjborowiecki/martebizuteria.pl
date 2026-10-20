@@ -2,12 +2,12 @@ import { useEffect, useRef } from "react"
 
 import { useRouter, useRouterState } from "@tanstack/react-router"
 
-import { ScrollTrigger } from "~/src/integrations/gsap/gsap.config"
+import { type GsapToolkit, loadGsap } from "~/src/integrations/gsap/gsap.loader"
 import { getLenisInstance, syncLenisToWindowScroll } from "~/src/integrations/lenis/lenis.instance"
 
 import { catalogDebugLog } from "~/src/lib/catalog-debug-log"
 
-const cleanupDetachedScrollTriggers = (): void => {
+const cleanupDetachedScrollTriggers = ({ ScrollTrigger }: GsapToolkit): void => {
   ScrollTrigger.getAll().forEach((trigger) => {
     const element = trigger.trigger
     if (element instanceof Element && !document.contains(element)) {
@@ -68,9 +68,11 @@ export const useLenisRouterScrollSync = (): void => {
       })
       syncLenisToWindowScroll()
       requestAnimationFrame(() => {
-        cleanupDetachedScrollTriggers()
-        syncLenisToWindowScroll()
-        ScrollTrigger.refresh()
+        void loadGsap().then((toolkit) => {
+          cleanupDetachedScrollTriggers(toolkit)
+          syncLenisToWindowScroll()
+          toolkit.ScrollTrigger.refresh()
+        })
       })
     })
 

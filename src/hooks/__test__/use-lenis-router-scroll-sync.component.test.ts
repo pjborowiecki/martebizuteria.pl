@@ -37,7 +37,7 @@ const { getAll, getLenisInstance, refresh, subscribe, subscribers, syncLenisToWi
   }))
 
 vi.mock("~/src/integrations/lenis/lenis.instance", () => ({ getLenisInstance, syncLenisToWindowScroll }))
-vi.mock("~/src/integrations/gsap/gsap.config", () => ({ ScrollTrigger: { getAll, refresh } }))
+vi.mock("~/src/integrations/gsap/gsap.config", () => ({ gsapToolkit: { ScrollTrigger: { getAll, refresh } } }))
 vi.mock("@tanstack/react-router", async () => {
   const actual = await vi.importActual<typeof TanStackRouter>("@tanstack/react-router")
 

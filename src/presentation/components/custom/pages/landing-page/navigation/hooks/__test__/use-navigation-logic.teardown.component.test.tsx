@@ -42,8 +42,8 @@ vi.mock("~/src/integrations/lenis/lenis.scroll", () => ({
     return document.createElement("section")
   },
 }))
-vi.mock("~/src/integrations/gsap/gsap.config", async () => {
-  const { useEffect, useRef: useStored } = await import("react")
+vi.mock("~/src/integrations/gsap/gsap.loader", async () => {
+  const { createGsapContextStub, loadedGsapModule } = await import("~/src/platform/testing/mocks/gsap")
 
   const timeline = {
     fromTo: () => timeline,
@@ -68,9 +68,9 @@ vi.mock("~/src/integrations/gsap/gsap.config", async () => {
     timeScale: () => timeline,
   }
 
-  return {
-    ScrollTrigger: { create: () => ({ isActive: false }) },
+  return loadedGsapModule({
     gsap: {
+      context: createGsapContextStub,
       fromTo: () => {},
       matchMedia: () => ({
         add: (_media: unknown, run: (context: { conditions: { desktop: boolean; reduced: boolean } }) => (() => void) | undefined) => {
@@ -92,34 +92,7 @@ vi.mock("~/src/integrations/gsap/gsap.config", async () => {
       },
       to: () => {},
     },
-    useGSAP: (callback: () => (() => void) | undefined, config?: { dependencies?: readonly unknown[] }) => {
-      const lastDependencies = useStored<readonly unknown[] | undefined>(undefined)
-      const teardown = useStored<(() => void) | undefined>(undefined)
-      useEffect(() => {
-        const dependencies = config?.dependencies ?? []
-        const previous = lastDependencies.current
-        if (
-          previous !== undefined &&
-          previous.length === dependencies.length &&
-          previous.every((entry, index) => entry === dependencies[index])
-        ) {
-          return
-        }
-        lastDependencies.current = dependencies
-        teardown.current?.()
-        teardown.current = callback()
-      })
-      useEffect(
-        () => () => {
-          teardown.current?.()
-          teardown.current = undefined
-        },
-        [],
-      )
-
-      return { contextSafe: <TArgs extends unknown[], TReturn>(fn: (...args: TArgs) => TReturn) => fn }
-    },
-  }
+  })
 })
 
 const { useNavigationLogic } = await import("~/src/presentation/components/custom/pages/landing-page/navigation/hooks/use-navigation-logic")

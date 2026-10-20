@@ -1,6 +1,6 @@
 import * as matchers from "@testing-library/jest-dom/matchers"
 import { configure } from "@testing-library/react"
-import { afterAll, expect, vi } from "vite-plus/test"
+import { afterAll, afterEach, expect, vi } from "vite-plus/test"
 
 import { StubIntersectionObserver } from "~/src/platform/testing/mocks/intersection-observer"
 import { StubResizeObserver } from "~/src/platform/testing/mocks/resize-observer"
@@ -40,6 +40,10 @@ Object.defineProperties(globalThis, {
     },
     writable: true,
   },
+})
+
+afterEach(async () => {
+  await vi.dynamicImportSettled()
 })
 
 afterAll(() => {

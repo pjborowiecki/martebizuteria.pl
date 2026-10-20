@@ -1,10 +1,15 @@
 import { type RefObject } from "react"
 
-import { ScrollTrigger, gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
+import { gsapToolkit } from "~/src/integrations/gsap/gsap.config"
+import { type GsapToolkit, provideGsap } from "~/src/integrations/gsap/gsap.loader"
+
+import { useGsap } from "~/src/hooks/use-gsap"
+
+provideGsap(gsapToolkit)
 
 const startsBelowTheFold = (element: HTMLElement): boolean => element.getBoundingClientRect().top >= window.innerHeight
 
-const animateRevealElements = (elements: readonly HTMLElement[]): void => {
+const animateRevealElements = ({ gsap }: GsapToolkit, elements: readonly HTMLElement[]): void => {
   gsap.to(elements, {
     autoAlpha: 1,
     duration: REVEAL_DURATION,
@@ -15,7 +20,8 @@ const animateRevealElements = (elements: readonly HTMLElement[]): void => {
   })
 }
 
-const setupScrollReveals = (root: HTMLElement): void => {
+const setupScrollReveals = (toolkit: GsapToolkit, root: HTMLElement): void => {
+  const { ScrollTrigger, gsap } = toolkit
   const revealElementsList = gsap.utils.toArray<HTMLElement>(".reveal", root).filter((element) => startsBelowTheFold(element))
   if (revealElementsList.length === 0) {
     return
@@ -27,14 +33,14 @@ const setupScrollReveals = (root: HTMLElement): void => {
   ScrollTrigger.batch(revealElementsList, {
     onEnter: (batch) => {
       const elements = batch.filter((element): element is HTMLElement => element instanceof HTMLElement)
-      animateRevealElements(elements)
+      animateRevealElements(toolkit, elements)
     },
     once: true,
     start: SCROLL_TRIGGER_BATCH_START,
   })
 }
 
-const setupLineReveals = (root: HTMLElement): void => {
+const setupLineReveals = ({ gsap }: GsapToolkit, root: HTMLElement): void => {
   gsap.utils.toArray<HTMLElement>(".line-reveal", root).forEach((line) => {
     if (!startsBelowTheFold(line)) {
       return
@@ -59,7 +65,7 @@ const setupLineReveals = (root: HTMLElement): void => {
   })
 }
 
-const setupParallax = (root: HTMLElement): void => {
+const setupParallax = ({ gsap }: GsapToolkit, root: HTMLElement): void => {
   gsap.utils.toArray<HTMLElement>(".parallax-wrap", root).forEach((wrap) => {
     const img = wrap.querySelector(".parallax-img")
     if (img === null) {
@@ -85,8 +91,9 @@ const setupParallax = (root: HTMLElement): void => {
 }
 
 export const useLandingAnimations = ({ rootRef }: LandingAnimationsProps) => {
-  useGSAP(
-    () => {
+  useGsap(
+    (toolkit) => {
+      const { ScrollTrigger, gsap } = toolkit
       const root = rootRef.current
       if (root === null) {
         return
@@ -94,9 +101,9 @@ export const useLandingAnimations = ({ rootRef }: LandingAnimationsProps) => {
 
       const mm = gsap.matchMedia()
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        setupScrollReveals(root)
-        setupLineReveals(root)
-        setupParallax(root)
+        setupScrollReveals(toolkit, root)
+        setupLineReveals(toolkit, root)
+        setupParallax(toolkit, root)
         gsap.delayedCall(0, () => {
           ScrollTrigger.refresh()
         })

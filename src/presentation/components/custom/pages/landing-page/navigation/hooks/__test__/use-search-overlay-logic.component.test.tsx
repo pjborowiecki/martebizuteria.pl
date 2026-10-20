@@ -54,8 +54,8 @@ const remote = vi.hoisted(() => {
   return { state }
 })
 
-vi.mock("~/src/integrations/gsap/gsap.config", async () => {
-  const { useEffect } = await import("react")
+vi.mock("~/src/integrations/gsap/gsap.loader", async () => {
+  const { createGsapContextStub, loadedGsapModule } = await import("~/src/platform/testing/mocks/gsap")
   const timeline: TimelineStub = {
     fromTo: (target, from, to) => {
       animation.fromTo(target, from, to)
@@ -66,8 +66,9 @@ vi.mock("~/src/integrations/gsap/gsap.config", async () => {
     reverse: animation.reverse,
   }
 
-  return {
+  return loadedGsapModule({
     gsap: {
+      context: createGsapContextStub,
       set: animation.set,
       timeline: (options: TimelineOptions) => {
         animation.create(options)
@@ -75,10 +76,7 @@ vi.mock("~/src/integrations/gsap/gsap.config", async () => {
         return timeline
       },
     },
-    useGSAP: (callback: () => void) => {
-      useEffect(callback, [])
-    },
-  }
+  })
 })
 vi.mock("~/src/integrations/lenis/lenis.instance", () => ({ getLenisInstance: () => lenis }))
 vi.mock("~/src/modules/storefront-search/use-cases/search-storefront", async () => {

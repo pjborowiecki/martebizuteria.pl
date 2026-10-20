@@ -1,7 +1,7 @@
 import { type JSX, useRef } from "react"
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 const mediaState = vi.hoisted(() => {
   const state = { prefersReducedMotion: false }
@@ -24,7 +24,8 @@ const mediaState = vi.hoisted(() => {
   return state
 })
 
-import { gsap } from "~/src/integrations/gsap/gsap.config"
+import { gsapToolkit } from "~/src/integrations/gsap/gsap.config"
+import { loadGsap } from "~/src/integrations/gsap/gsap.loader"
 
 import { useProductCardImageHover } from "~/src/hooks/use-product-card-image-hover"
 
@@ -41,6 +42,10 @@ const stubReducedMotion = (prefersReducedMotion: boolean): void => {
 
 const layer = (): HTMLElement => screen.getByTestId("layer")
 
+beforeAll(async () => {
+  await loadGsap()
+})
+
 beforeEach(() => {
   vi.restoreAllMocks()
 })
@@ -55,7 +60,7 @@ describe("useProductCardImageHover when motion is welcome", () => {
   })
 
   it("zooms the image layer in on hover", () => {
-    const to = vi.spyOn(gsap, "to")
+    const to = vi.spyOn(gsapToolkit.gsap, "to")
     render(<HoverHarness />)
 
     fireEvent.mouseEnter(layer())
@@ -65,7 +70,7 @@ describe("useProductCardImageHover when motion is welcome", () => {
   })
 
   it("zooms back out when the pointer leaves", () => {
-    const to = vi.spyOn(gsap, "to")
+    const to = vi.spyOn(gsapToolkit.gsap, "to")
     render(<HoverHarness />)
 
     fireEvent.mouseLeave(layer())
@@ -74,7 +79,7 @@ describe("useProductCardImageHover when motion is welcome", () => {
   })
 
   it("eases out more slowly than it eases in, so the card settles gently", () => {
-    const to = vi.spyOn(gsap, "to")
+    const to = vi.spyOn(gsapToolkit.gsap, "to")
     render(<HoverHarness />)
 
     fireEvent.mouseEnter(layer())
@@ -85,7 +90,7 @@ describe("useProductCardImageHover when motion is welcome", () => {
   })
 
   it("animates the layer itself rather than the card", () => {
-    const to = vi.spyOn(gsap, "to")
+    const to = vi.spyOn(gsapToolkit.gsap, "to")
     render(<HoverHarness />)
 
     fireEvent.mouseEnter(layer())
@@ -100,7 +105,7 @@ describe("useProductCardImageHover when the visitor asked for less motion", () =
   })
 
   it("does not zoom in on hover", () => {
-    const to = vi.spyOn(gsap, "to")
+    const to = vi.spyOn(gsapToolkit.gsap, "to")
     render(<HoverHarness />)
 
     fireEvent.mouseEnter(layer())
@@ -109,8 +114,8 @@ describe("useProductCardImageHover when the visitor asked for less motion", () =
   })
 
   it("snaps the layer back to its resting scale instead of tweening out", () => {
-    const to = vi.spyOn(gsap, "to")
-    const set = vi.spyOn(gsap, "set")
+    const to = vi.spyOn(gsapToolkit.gsap, "to")
+    const set = vi.spyOn(gsapToolkit.gsap, "set")
     render(<HoverHarness />)
     set.mockClear()
 
@@ -138,14 +143,14 @@ describe("useProductCardImageHover before the image layer is mounted", () => {
   })
 
   it("sets nothing up while there is no layer to animate", () => {
-    const set = vi.spyOn(gsap, "set")
+    const set = vi.spyOn(gsapToolkit.gsap, "set")
     render(<DetachedHarness />)
 
     expect(set).not.toHaveBeenCalled()
   })
 
   it("does nothing on hover", () => {
-    const to = vi.spyOn(gsap, "to")
+    const to = vi.spyOn(gsapToolkit.gsap, "to")
     render(<DetachedHarness />)
 
     fireEvent.mouseEnter(detached())
@@ -154,8 +159,8 @@ describe("useProductCardImageHover before the image layer is mounted", () => {
   })
 
   it("does nothing when the pointer leaves", () => {
-    const to = vi.spyOn(gsap, "to")
-    const set = vi.spyOn(gsap, "set")
+    const to = vi.spyOn(gsapToolkit.gsap, "to")
+    const set = vi.spyOn(gsapToolkit.gsap, "set")
     render(<DetachedHarness />)
 
     fireEvent.mouseLeave(detached())

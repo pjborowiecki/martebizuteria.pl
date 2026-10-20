@@ -1,11 +1,11 @@
 import { type RefObject, useRef } from "react"
 
-import { gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
+import { useGsap } from "~/src/hooks/use-gsap"
 
 export const useProductCardImageHover = (imageLayerRef: RefObject<HTMLDivElement | null>): ProductCardImageHoverHandlers => {
   const canAnimateRef = useRef(true)
-  const { contextSafe } = useGSAP(
-    () => {
+  const { contextSafe } = useGsap(
+    ({ gsap }) => {
       const layer = imageLayerRef.current
       if (layer === null) {
         return
@@ -32,12 +32,13 @@ export const useProductCardImageHover = (imageLayerRef: RefObject<HTMLDivElement
       }
     },
     {
+      load: false,
       revertOnUpdate: true,
       scope: imageLayerRef,
     },
   )
 
-  const handleMouseEnter = contextSafe(() => {
+  const handleMouseEnter = contextSafe(({ gsap }) => {
     const layer = imageLayerRef.current
     if (layer === null || !canAnimateRef.current) {
       return
@@ -50,7 +51,7 @@ export const useProductCardImageHover = (imageLayerRef: RefObject<HTMLDivElement
     })
   })
 
-  const handleMouseLeave = contextSafe(() => {
+  const handleMouseLeave = contextSafe(({ gsap }) => {
     const layer = imageLayerRef.current
     if (layer === null) {
       return

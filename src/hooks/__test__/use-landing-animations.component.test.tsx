@@ -1,4 +1,4 @@
-import { type JSX, type ReactNode, useEffect, useRef } from "react"
+import { type JSX, type ReactNode, useRef } from "react"
 
 import { cleanup, render } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
@@ -26,47 +26,49 @@ const gsapStub = vi.hoisted(() => {
   }
 })
 
-vi.mock("~/src/integrations/gsap/gsap.config", () => ({
-  ScrollTrigger: {
-    batch: (targets: unknown, config: BatchConfig) => {
-      gsapStub.batchCalls.push({ config, targets })
-    },
-    refresh: () => {
-      gsapStub.refreshCount.value += 1
-    },
-  },
-  gsap: {
-    delayedCall: (_delay: number, callback: () => void) => {
-      gsapStub.delayedCalls.push(callback)
-    },
-    fromTo: (target: unknown, from: Record<string, unknown>, to: Record<string, unknown>) => {
-      gsapStub.fromToCalls.push({ from, target, to })
-    },
-    matchMedia: () => ({
-      add: (query: string, handler: () => void) => {
-        gsapStub.media.entries.push({ handler, query })
-        if (globalThis.matchMedia(query).matches) {
-          handler()
-        }
+vi.mock("~/src/integrations/gsap/gsap.loader", async () => {
+  const { createGsapContextStub, loadedGsapModule } = await import("~/src/platform/testing/mocks/gsap")
+
+  return loadedGsapModule({
+    ScrollTrigger: {
+      batch: (targets: unknown, config: BatchConfig) => {
+        gsapStub.batchCalls.push({ config, targets })
       },
-      revert: () => {
-        gsapStub.media.reverts += 1
+      refresh: () => {
+        gsapStub.refreshCount.value += 1
       },
-    }),
-    set: (target: unknown, vars: Record<string, unknown>) => {
-      gsapStub.setCalls.push({ target, vars })
     },
-    to: (target: unknown, vars: Record<string, unknown>) => {
-      gsapStub.toCalls.push({ target, vars })
+    gsap: {
+      context: createGsapContextStub,
+      delayedCall: (_delay: number, callback: () => void) => {
+        gsapStub.delayedCalls.push(callback)
+      },
+      fromTo: (target: unknown, from: Record<string, unknown>, to: Record<string, unknown>) => {
+        gsapStub.fromToCalls.push({ from, target, to })
+      },
+      matchMedia: () => ({
+        add: (query: string, handler: () => void) => {
+          gsapStub.media.entries.push({ handler, query })
+          if (globalThis.matchMedia(query).matches) {
+            handler()
+          }
+        },
+        revert: () => {
+          gsapStub.media.reverts += 1
+        },
+      }),
+      set: (target: unknown, vars: Record<string, unknown>) => {
+        gsapStub.setCalls.push({ target, vars })
+      },
+      to: (target: unknown, vars: Record<string, unknown>) => {
+        gsapStub.toCalls.push({ target, vars })
+      },
+      utils: {
+        toArray: (selector: string, scope: HTMLElement) => [...scope.querySelectorAll(selector)],
+      },
     },
-    utils: {
-      toArray: (selector: string, scope: HTMLElement) => [...scope.querySelectorAll(selector)],
-    },
-  },
-  useGSAP: (callback: () => (() => void) | undefined) => {
-    useEffect(callback, [callback])
-  },
-}))
+  })
+})
 
 const { useLandingAnimations } = await import("~/src/hooks/use-landing-animations")
 

@@ -13,10 +13,12 @@ const { ticker } = vi.hoisted(() => ({
 }))
 
 vi.mock("~/src/integrations/gsap/gsap.config", () => ({
-  ScrollTrigger: { update: vi.fn() },
-  gsap: {
-    registerPlugin: vi.fn(),
-    ticker,
+  gsapToolkit: {
+    ScrollTrigger: { update: vi.fn() },
+    gsap: {
+      registerPlugin: vi.fn(),
+      ticker,
+    },
   },
 }))
 vi.mock("~/src/hooks/use-lenis-router-scroll-sync", () => ({ useLenisRouterScrollSync: vi.fn() }))
@@ -48,12 +50,23 @@ vi.stubGlobal("scrollTo", ({ top }: Readonly<{ top: number }>) => {
 
 const clock = { seconds: 1 }
 
-const renderWithLenis = (): Lenis => {
+vi.stubGlobal("matchMedia", (query: string) => ({
+  addEventListener: () => {},
+  matches: query.includes("(hover: hover) and (pointer: fine)"),
+  media: query,
+  removeEventListener: () => {},
+}))
+
+const renderWithLenis = async (): Promise<Lenis> => {
   render(<SmoothScroll>content</SmoothScroll>)
-  const lenis = getLenisInstance()
-  if (lenis === undefined) {
-    throw new Error("SmoothScroll never published its Lenis instance")
-  }
+  const lenis = await vi.waitFor(() => {
+    const instance = getLenisInstance()
+    if (instance === undefined) {
+      throw new Error("SmoothScroll never published its Lenis instance")
+    }
+
+    return instance
+  })
   ticker.add.mock.calls[0]?.[0](clock.seconds)
 
   return lenis
@@ -79,8 +92,8 @@ afterEach(() => {
 })
 
 describe("SmoothScroll press with the real Lenis", () => {
-  it("stops a wheel glide where the page is", () => {
-    const lenis = renderWithLenis()
+  it("stops a wheel glide where the page is", async () => {
+    const lenis = await renderWithLenis()
     fireEvent.wheel(screen.getByText("content"), { deltaY: WHEEL_DELTA_PX })
     runFrames(FRAMES_INTO_THE_SCROLL)
     const pressedAt = lenis.scroll
@@ -94,8 +107,8 @@ describe("SmoothScroll press with the real Lenis", () => {
     expect(lenis.isScrolling).toBe(false)
   })
 
-  it("lets a scripted section scroll reach its section", () => {
-    const lenis = renderWithLenis()
+  it("lets a scripted section scroll reach its section", async () => {
+    const lenis = await renderWithLenis()
     lenis.scrollTo(SECTION_TOP_PX, { duration: SECTION_SCROLL_DURATION_S })
     runFrames(FRAMES_INTO_THE_SCROLL)
     const pressedAt = lenis.scroll
@@ -113,8 +126,8 @@ describe("SmoothScroll with the page scroll-locked by an open popup", () => {
   it.each([
     { element: "body", lockedElement: () => document.body },
     { element: "root element", lockedElement: () => document.documentElement },
-  ])("leaves the wheel to the browser while the $element is locked", ({ lockedElement }) => {
-    const lenis = renderWithLenis()
+  ])("leaves the wheel to the browser while the $element is locked", async ({ lockedElement }) => {
+    const lenis = await renderWithLenis()
     lockedElement().style.overflowY = "hidden"
 
     const leftToTheBrowser = fireEvent.wheel(screen.getByText("content"), { deltaY: WHEEL_DELTA_PX })
@@ -125,8 +138,8 @@ describe("SmoothScroll with the page scroll-locked by an open popup", () => {
     expect(viewport.scrollY).toBe(0)
   })
 
-  it("takes the wheel again once the lock is lifted", () => {
-    const lenis = renderWithLenis()
+  it("takes the wheel again once the lock is lifted", async () => {
+    const lenis = await renderWithLenis()
     document.body.style.overflowY = "hidden"
     fireEvent.wheel(screen.getByText("content"), { deltaY: WHEEL_DELTA_PX })
     document.body.style.overflowY = ""

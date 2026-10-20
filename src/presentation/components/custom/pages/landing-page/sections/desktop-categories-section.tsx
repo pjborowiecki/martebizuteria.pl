@@ -3,10 +3,11 @@ import { type FocusEvent, type JSX, useMemo, useRef } from "react"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { useLocale, useTranslations } from "use-intl/react"
 
-import { ScrollTrigger, gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
 import { getLenisInstance } from "~/src/integrations/lenis/lenis.instance"
 
 import { getCategoriesQuery } from "~/src/modules/product-category/use-cases/get-categories"
+
+import { useGsap } from "~/src/hooks/use-gsap"
 
 import { AspectRatio } from "~/src/presentation/components/shadcn/aspect-ratio"
 
@@ -73,8 +74,8 @@ export const DesktopCategoriesSection = (): JSX.Element => {
   const focusDroppedFromRef = useRef<EventTarget | undefined>(undefined)
   const panelCount = categories.length
   const categoryScrollKey = useMemo(() => categories.map((category) => category.id).join(":"), [categories])
-  useGSAP(
-    () => {
+  const { toolkit } = useGsap(
+    ({ gsap }) => {
       const section = sectionRef.current
       const track = trackRef.current
       if (!section || !track || panelCount === 0 || !canRunHorizontalCategoryScroll(track)) {
@@ -102,7 +103,7 @@ export const DesktopCategoriesSection = (): JSX.Element => {
     focusDroppedFromRef.current = event.relatedTarget === null ? event.target : undefined
   }
   const slideFocusedPanelIntoView = (event: FocusEvent<HTMLElement>) => {
-    const trigger = ScrollTrigger.getById(CATEGORY_SCROLL_TRIGGER_ID)
+    const trigger = toolkit?.ScrollTrigger.getById(CATEGORY_SCROLL_TRIGGER_ID)
     const panel = event.target.closest("article")
     if (
       trigger === undefined ||
@@ -115,7 +116,15 @@ export const DesktopCategoriesSection = (): JSX.Element => {
     }
 
     const trackOverflow = -resolveHorizontalTrackOffset(trackRef.current, event.currentTarget)
-    getLenisInstance()?.scrollTo(resolveHorizontalPanelScrollTop(trigger, panel.offsetLeft, trackOverflow), { immediate: true })
+    const top = resolveHorizontalPanelScrollTop(trigger, panel.offsetLeft, trackOverflow)
+    const lenis = getLenisInstance()
+    if (lenis === undefined) {
+      window.scrollTo({ behavior: "instant", top })
+      toolkit?.ScrollTrigger.update()
+
+      return
+    }
+    lenis.scrollTo(top, { immediate: true })
   }
 
   return (

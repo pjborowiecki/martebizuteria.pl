@@ -1,5 +1,5 @@
 import { cleanup, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vite-plus/test"
+import { afterEach, beforeAll, describe, expect, it, vi } from "vite-plus/test"
 
 vi.hoisted(() => {
   Object.defineProperty(globalThis, "matchMedia", {
@@ -35,6 +35,8 @@ vi.mock("~/src/modules/user/use-cases/record-customer-activity", () => ({
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { loadGsap } from "~/src/integrations/gsap/gsap.loader"
+
 import {
   ProductRelatedSection,
   type RelatedProductItem,
@@ -61,6 +63,10 @@ const products: readonly RelatedProductItem[] = [
 ]
 
 describe("ProductRelatedSection", () => {
+  beforeAll(async () => {
+    await loadGsap()
+  })
+
   afterEach(() => {
     cleanup()
   })

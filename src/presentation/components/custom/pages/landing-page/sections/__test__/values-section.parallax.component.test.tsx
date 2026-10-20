@@ -15,7 +15,7 @@ interface AnimationVars {
 }
 
 const captured = vi.hoisted(() => ({
-  callbacks: [] as (() => void)[],
+  callbacks: [] as (() => unknown)[],
   queries: [] as string[],
   targets: [] as unknown[],
   vars: [] as AnimationVars[],
@@ -30,12 +30,24 @@ vi.mock("~/src/lib/url", () => ({
   isAssetCdnUrl: (url: string) => url.startsWith("https://images.test"),
   resolveAssetURL: (pathOrUrl: string) => pathOrUrl,
 }))
-vi.mock("~/src/integrations/gsap/gsap.config", async () => {
-  const { useLayoutEffect } = await import("react")
+vi.mock("~/src/integrations/gsap/gsap.loader", async () => {
+  const { createGsapContextStub, loadedGsapModule } = await import("~/src/platform/testing/mocks/gsap")
 
-  return {
+  return loadedGsapModule({
     ScrollTrigger: { refresh: vi.fn() },
     gsap: {
+      context: () => {
+        const context = createGsapContextStub()
+
+        return {
+          add: (run: () => unknown) => {
+            captured.callbacks.push(run)
+
+            return context.add(run)
+          },
+          revert: context.revert,
+        }
+      },
       from: (target: unknown, vars: AnimationVars) => {
         captured.targets.push(target)
         captured.vars.push(vars)
@@ -51,13 +63,7 @@ vi.mock("~/src/integrations/gsap/gsap.config", async () => {
         },
       }),
     },
-    useGSAP: (callback: () => void) => {
-      captured.callbacks.push(callback)
-      useLayoutEffect(() => {
-        callback()
-      }, [callback])
-    },
-  }
+  })
 })
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"

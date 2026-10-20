@@ -3,8 +3,10 @@ import { type MouseEvent, type RefObject, useCallback, useEffect, useRef, useSta
 import { useRouterState } from "@tanstack/react-router"
 import { useShallow } from "zustand/react/shallow"
 
-import { ScrollTrigger, gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
+import { type GsapToolkit } from "~/src/integrations/gsap/gsap.loader"
 import { scrollToSectionById } from "~/src/integrations/lenis/lenis.scroll"
+
+import { useGsap } from "~/src/hooks/use-gsap"
 
 import * as CONSTANTS from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation-constants"
 import { useNavigationStore } from "~/src/presentation/components/custom/pages/landing-page/navigation/store/navigation-store"
@@ -18,13 +20,13 @@ const useNavigationHoverLogic = ({
   parallaxTargetRef,
 }: {
   activeImageIndex: RefObject<number>
-  contextSafe: <Args extends unknown[], Ret>(func: (...args: Args) => Ret) => (...args: Args) => Ret
+  contextSafe: <Args extends unknown[]>(handler: (loaded: GsapToolkit, ...args: Args) => void) => (...args: Args) => void
   isDesktop: RefObject<boolean>
   isReducedMotion: RefObject<boolean>
   parallax: RefObject<ParallaxQuickTo | undefined>
   parallaxTargetRef: RefObject<Element | undefined>
 }) => {
-  const handleHover = contextSafe((index: number) => {
+  const handleHover = contextSafe(({ gsap }, index: number) => {
     if (activeImageIndex.current === index) {
       return
     }
@@ -49,7 +51,7 @@ const useNavigationHoverLogic = ({
     activeImageIndex.current = index
   })
 
-  const handleMouseMove = contextSafe((event: MouseEvent) => {
+  const handleMouseMove = contextSafe(({ gsap }, event: MouseEvent) => {
     if (isReducedMotion.current || !isDesktop.current) {
       return
     }
@@ -87,7 +89,7 @@ const useNavigationHoverLogic = ({
       let element: HTMLElement | undefined = globalThis.undefined
 
       return {
-        onMouseEnter: contextSafe(() => {
+        onMouseEnter: contextSafe(({ gsap }) => {
           if (isReducedMotion.current || !element) {
             return
           }
@@ -99,7 +101,7 @@ const useNavigationHoverLogic = ({
             y: hoverOffsetY,
           })
         }),
-        onMouseLeave: contextSafe(() => {
+        onMouseLeave: contextSafe(({ gsap }) => {
           if (isReducedMotion.current || !element) {
             return
           }
@@ -129,12 +131,14 @@ const useNavigationHoverLogic = ({
 const createMenuTimeline = ({
   dur,
   ease,
+  gsap,
   onReverseComplete,
   panel,
   pos,
 }: {
   dur: (full: number) => number
   ease: (full: string) => string
+  gsap: GsapToolkit["gsap"]
   onReverseComplete: () => void
   panel: HTMLDialogElement
   pos: (full: number) => number
@@ -214,7 +218,7 @@ const createMenuTimeline = ({
   return tl
 }
 
-const clearNavigationMenuScrollLock = (): void => {
+const clearNavigationMenuScrollLock = (gsap: GsapToolkit["gsap"]): void => {
   gsap.set("html", { clearProps: "overflow" })
   gsap.set("body", { clearProps: "overflow,paddingRight" })
 }
@@ -224,16 +228,22 @@ const forceDismissNavigationMenu = ({
   panelRef,
   setMounted,
   tlRef,
+  toolkit,
 }: Readonly<{
   containerRef: RefObject<HTMLDivElement | null>
   panelRef: RefObject<HTMLDialogElement | null>
   setMounted: (val: boolean) => void
   tlRef: RefObject<gsap.core.Timeline | undefined>
+  toolkit: GsapToolkit | undefined
 }>): void => {
+  setMounted(false)
+  if (toolkit === undefined) {
+    return
+  }
+  const { gsap } = toolkit
   const panel = panelRef.current
   const backdrop = containerRef.current?.querySelector("[data-menu-backdrop]")
-  setMounted(false)
-  clearNavigationMenuScrollLock()
+  clearNavigationMenuScrollLock(gsap)
   const tl = tlRef.current
   if (tl !== undefined) {
     tl.pause()
@@ -265,18 +275,19 @@ const useNavigationStateEffects = ({
   setMenuOpen: (val: boolean) => void
   setScrolled: (val: boolean) => void
 }) => {
-  useGSAP(() => {
-    const trigger = ScrollTrigger.create({
-      end: "max",
-      onToggle: ({ isActive }) => {
-        setScrolled(isActive)
-      },
-      start: "top -20px",
-    })
-    setScrolled(trigger.isActive)
-  })
-  useGSAP(
-    () => {
+  useEffect(() => {
+    const updateScrolled = () => {
+      setScrolled(window.scrollY > CONSTANTS.SCROLLED_OFFSET_PX)
+    }
+    updateScrolled()
+    window.addEventListener("scroll", updateScrolled, { passive: true })
+
+    return () => {
+      window.removeEventListener("scroll", updateScrolled)
+    }
+  }, [setScrolled])
+  useGsap(
+    ({ gsap }) => {
       if (!menuOpen) {
         return
       }
@@ -288,27 +299,24 @@ const useNavigationStateEffects = ({
         gsap.set("body", { paddingRight: scrollbarWidth })
       }
     },
-    { dependencies: [menuOpen], revertOnUpdate: true },
+    { dependencies: [menuOpen], load: menuOpen, revertOnUpdate: true },
   )
-  useGSAP(
-    () => {
-      if (!menuOpen) {
-        return
-      }
+  useEffect(() => {
+    if (!menuOpen) {
+      return
+    }
 
-      const onKeyDown = (event: KeyboardEvent) => {
-        if (event.key === "Escape") {
-          setMenuOpen(false)
-        }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false)
       }
-      document.addEventListener("keydown", onKeyDown)
+    }
+    document.addEventListener("keydown", onKeyDown)
 
-      return () => {
-        document.removeEventListener("keydown", onKeyDown)
-      }
-    },
-    { dependencies: [menuOpen, setMenuOpen], revertOnUpdate: true },
-  )
+    return () => {
+      document.removeEventListener("keydown", onKeyDown)
+    }
+  }, [menuOpen, setMenuOpen])
 }
 
 const useNavigationEffects = ({
@@ -333,8 +341,8 @@ const useNavigationEffects = ({
   setMounted: (val: boolean) => void
 }) => {
   const tlRef = useRef<gsap.core.Timeline | undefined>(globalThis.undefined)
-  const { contextSafe } = useGSAP(
-    () => {
+  const { contextSafe, toolkit } = useGsap(
+    ({ gsap }) => {
       if (!containerRef.current || !panelRef.current) {
         return
       }
@@ -366,6 +374,7 @@ const useNavigationEffects = ({
           const tl = createMenuTimeline({
             dur,
             ease,
+            gsap,
             onReverseComplete: () => {
               gsap.set(panel, { autoAlpha: CONSTANTS.AUTO_ALPHA_HIDDEN, clipPath: CONSTANTS.CLIP_CLOSED })
               setMounted(false)
@@ -394,7 +403,7 @@ const useNavigationEffects = ({
         parallaxTargetRef.current = globalThis.undefined
       }
     },
-    { scope: containerRef },
+    { load: menuOpen, scope: containerRef },
   )
 
   const forceDismissMenu = useCallback(() => {
@@ -403,9 +412,10 @@ const useNavigationEffects = ({
       panelRef,
       setMounted,
       tlRef,
+      toolkit,
     })
-  }, [containerRef, panelRef, setMounted])
-  useGSAP(
+  }, [containerRef, panelRef, setMounted, toolkit])
+  useGsap(
     () => {
       const tl = tlRef.current
       if (!tl) {
@@ -420,7 +430,7 @@ const useNavigationEffects = ({
         tl.timeScale(CONSTANTS.REVERSE_TIMESCALE).reverse()
       }
     },
-    { dependencies: [menuOpen] },
+    { dependencies: [menuOpen], load: menuOpen },
   )
 
   return {

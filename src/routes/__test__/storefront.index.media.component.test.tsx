@@ -1,7 +1,7 @@
 import { renderToString } from "react-dom/server"
 
 import { QueryClient } from "@tanstack/react-query"
-import { describe, expect, it, vi } from "vite-plus/test"
+import { beforeAll, describe, expect, it, vi } from "vite-plus/test"
 
 const catalog = vi.hoisted(() => ({
   categories: ["necklaces", "bracelets", "earrings", "rings", "chokers"].map((handle, index) => ({
@@ -65,6 +65,8 @@ vi.mock("~/src/modules/product-collection/use-cases/get-collections", () => ({
 
 import { TestProviders, createTestRouter } from "~/src/platform/testing/lib/render"
 
+import { loadGsap } from "~/src/integrations/gsap/gsap.loader"
+
 import { Route } from "~/src/routes/_storefront.index"
 
 const renderLandingPage = (): string => {
@@ -87,6 +89,10 @@ const renderLandingPage = (): string => {
 const tagsNamed = (html: string, pattern: RegExp): string[] => html.match(pattern) ?? []
 
 describe("landing page media in the server-rendered html", () => {
+  beforeAll(async () => {
+    await loadGsap()
+  })
+
   it("preloads one image, the hero, at high priority", () => {
     const imagePreloads = tagsNamed(renderLandingPage(), /<link rel="preload" as="image"[^>]*>/gu)
 
