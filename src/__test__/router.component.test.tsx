@@ -1,9 +1,10 @@
-import { type JSX } from "react"
+import { type JSX, Suspense } from "react"
 
 import { useQueryClient } from "@tanstack/react-query"
+import { CatchBoundary, type ErrorComponentProps, lazyRouteComponent } from "@tanstack/react-router"
 import type * as Start from "@tanstack/react-start"
 import type * as StartServer from "@tanstack/react-start/server"
-import { cleanup, render, screen } from "@testing-library/react"
+import { act, cleanup, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 const { currentRequest, devtools, requestContext, session, staleChunk, sync } = vi.hoisted(() => ({
@@ -174,6 +175,60 @@ describe("router cache", () => {
     getRouter()
 
     expect(staleChunk.listenForStaleChunks).not.toHaveBeenCalled()
+  })
+})
+
+const ABORTED_IMPORT = new TypeError("Importing a module script failed.")
+
+const reportFailedChunk = (): void => {
+  globalThis.dispatchEvent(Object.assign(new Event("vite:preloadError", { cancelable: true }), { payload: ABORTED_IMPORT }))
+}
+
+const ChunkError = ({ error }: ErrorComponentProps): JSX.Element => <p>{String(error)}</p>
+
+describe("router reloads for failed chunks", () => {
+  afterEach(() => {
+    sessionStorage.clear()
+    vi.unstubAllGlobals()
+  })
+
+  it("marks every failed chunk as one TanStack Router has already reloaded for, so only the stale chunk recovery decides on a reload", () => {
+    getRouter()
+    reportFailedChunk()
+
+    expect(sessionStorage.getItem("tanstack_router_reload:Importing a module script failed.")).toBe("1")
+  })
+
+  it("installs the mark only in the browser", () => {
+    const addEventListener = vi.spyOn(globalThis, "addEventListener")
+    vi.stubEnv("SSR", true)
+    getRouter()
+
+    expect(addEventListener).not.toHaveBeenCalledWith("vite:preloadError", expect.any(Function))
+  })
+
+  it("shows the error screen for a page component whose chunk a navigation away aborted, instead of reloading over that navigation", async () => {
+    const reload = vi.fn<() => void>()
+    vi.stubGlobal("location", { reload })
+    getRouter()
+    const AbortedPage = lazyRouteComponent(() => {
+      reportFailedChunk()
+
+      return Promise.reject(ABORTED_IMPORT)
+    })
+
+    await act(() =>
+      render(
+        <CatchBoundary getResetKey={() => "aborted"} errorComponent={ChunkError}>
+          <Suspense fallback={<p>loading</p>}>
+            <AbortedPage />
+          </Suspense>
+        </CatchBoundary>,
+      ),
+    )
+
+    expect(await screen.findByText("TypeError: Importing a module script failed.")).toBeInTheDocument()
+    expect(reload).not.toHaveBeenCalled()
   })
 })
 

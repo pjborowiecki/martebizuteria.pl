@@ -21,6 +21,12 @@ import { routeTree } from "~/src/routeTree.gen"
 
 const getRequestNonce = createIsomorphicFn().server(() => getGlobalStartContext()?.nonce)
 
+const leaveFailedChunkReloadsToStaleChunkRecovery = (): void => {
+  globalThis.addEventListener("vite:preloadError", ({ payload }) => {
+    sessionStorage.setItem(`${ROUTER_RELOADED_FOR_ERROR_KEY_PREFIX}${payload.message}`, "1")
+  })
+}
+
 export const getRouter = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -37,6 +43,7 @@ export const getRouter = () => {
     setupQueryClientInvalidationBroadcast(queryClient)
     clearCacheOnUserChange(queryClient)
     listenForStaleChunks()
+    leaveFailedChunkReloadsToStaleChunkRecovery()
   }
 
   const router = createRouter({
@@ -81,6 +88,8 @@ export const getRouter = () => {
 
   return router
 }
+
+const ROUTER_RELOADED_FOR_ERROR_KEY_PREFIX = "tanstack_router_reload:"
 
 const ONE_MIN_IN_MS = 60_000
 
