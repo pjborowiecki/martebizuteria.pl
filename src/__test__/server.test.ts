@@ -8,6 +8,7 @@ import { type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.typ
 import { scheduleBackgroundWork } from "~/src/lib/background"
 
 import { TestExecutionContext } from "~/src/__test__/doubles/test-execution-context"
+import { TestHTMLRewriter } from "~/src/__test__/doubles/test-html-rewriter"
 import { ROUTES } from "~/src/routes"
 
 interface StartRequestContext {
@@ -17,9 +18,13 @@ interface StartRequestContext {
   readonly waitUntil: (promise: Promise<unknown>) => void
 }
 
+interface LinkHeaderEntry {
+  readonly hint: { readonly as?: string; readonly href: string; readonly rel: string }
+}
+
 interface StartRequestOptions {
   readonly context: StartRequestContext
-  readonly responseLinkHeader: boolean
+  readonly responseLinkHeader: { readonly filter: (entry: LinkHeaderEntry) => boolean }
 }
 
 const entry = vi.hoisted(() => ({
@@ -48,6 +53,8 @@ vi.mock("~/src/modules/audit-log/use-cases/process-audit-log-queue.server", () =
 vi.mock("~/src/lib/sitemap", () => sitemap)
 vi.mock("~/src/lib/retention", () => retention)
 vi.mock("~/src/modules/newsletter-campaign/use-cases/process-newsletter-queue.server", () => newsletterQueue)
+
+vi.stubGlobal("HTMLRewriter", TestHTMLRewriter)
 
 const { default: server } = await import("~/src/server")
 
@@ -104,6 +111,8 @@ const lastStartOptions = (): StartRequestOptions => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  TestHTMLRewriter.handlers.clear()
+  TestHTMLRewriter.rewritten = undefined
   entry.fetch.mockImplementation(() => Promise.resolve(new Response("page")))
 })
 
@@ -229,11 +238,10 @@ describe("worker locale handling", () => {
 })
 
 describe("worker request context", () => {
-  it("passes the request and the link header preference to the application", async () => {
+  it("passes the request to the application", async () => {
     await fetchPath("/about")
 
     expect(entry.fetch.mock.calls[0]?.[0].url).toBe("https://marte.test/about")
-    expect(lastStartOptions().responseLinkHeader).toBe(true)
   })
 
   it("exposes the worker bindings to the application", async () => {
@@ -267,6 +275,67 @@ describe("worker request context", () => {
     const { context } = await fetchPath("/about")
 
     expect(context.keptAlive).toHaveLength(1)
+  })
+})
+
+const htmlPage = (): Response => new Response("<html></html>", { headers: { "Content-Type": "text/html; charset=utf-8" } })
+
+const modulePreload = () => ({ remove: vi.fn(), setAttribute: vi.fn() })
+
+const rewriteModulePreloads = async (links: readonly ReturnType<typeof modulePreload>[]): Promise<void> => {
+  const handlers = TestHTMLRewriter.handlers.get('link[rel="modulepreload"]')
+
+  if (handlers?.element === undefined) {
+    throw new Error("the worker registered no module preload handler")
+  }
+
+  for (const link of links) {
+    await Reflect.apply(handlers.element.bind(handlers), handlers, [link])
+  }
+}
+
+describe("worker preload hints", () => {
+  it.each([
+    { hint: { as: "style", href: "/assets/globals.css", rel: "preload" }, kept: true },
+    { hint: { as: "font", href: "/fonts/manrope-latin-wght-normal.woff2", rel: "preload" }, kept: true },
+    { hint: { as: "script", href: "/assets/admin.js", rel: "modulepreload" }, kept: false },
+    { hint: { href: "https://images.marte.test", rel: "preconnect" }, kept: false },
+  ])("lists only stylesheets and fonts in the Link header, so $hint.href is kept: $kept", async ({ hint, kept }) => {
+    await fetchPath("/about")
+
+    expect(lastStartOptions().responseLinkHeader.filter({ hint })).toBe(kept)
+  })
+
+  it("keeps the first module preload, the client entry, at low priority and drops every route chunk after it", async () => {
+    entry.fetch.mockImplementation(() => Promise.resolve(htmlPage()))
+    const links = [modulePreload(), modulePreload(), modulePreload()]
+
+    await fetchPath("/about")
+    await rewriteModulePreloads(links)
+
+    expect(links.map((link) => link.setAttribute.mock.calls)).toStrictEqual([[["fetchpriority", "low"]], [], []])
+    expect(links.map((link) => link.remove.mock.calls.length)).toStrictEqual([0, 1, 1])
+  })
+
+  it("streams the rewritten page with the locale cookie and the security headers", async () => {
+    const rewritten = new Response("<html>rewritten</html>", { headers: { "Content-Type": "text/html; charset=utf-8" } })
+    entry.fetch.mockImplementation(() => Promise.resolve(htmlPage()))
+    TestHTMLRewriter.rewritten = rewritten
+
+    const { response } = await fetchPath("/en-US/about")
+
+    await expect(response.text()).resolves.toBe("<html>rewritten</html>")
+    expect(response.headers.get("set-cookie")).toContain(`${I18N.COOKIE_NAME}=en-US`)
+    expect(response.headers.get("x-frame-options")).toBe("DENY")
+  })
+
+  it("leaves a response that is not a page, such as a server function result, untouched", async () => {
+    entry.fetch.mockImplementation(() => Promise.resolve(Response.json({ ok: true })))
+
+    const { response } = await fetchPath("/_serverFn/abc")
+
+    await expect(response.json()).resolves.toStrictEqual({ ok: true })
+    expect(TestHTMLRewriter.handlers.size).toBe(0)
   })
 })
 

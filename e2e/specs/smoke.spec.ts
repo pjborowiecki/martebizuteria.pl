@@ -99,6 +99,40 @@ test.describe("smoke", () => {
     })
   }
 
+  test("hints only the client entry, at low priority, and announces only the stylesheets and first fonts in the Link header", async ({
+    request,
+  }) => {
+    const response = await request.get("/")
+    const html = await response.text()
+    const modulePreloads = html.match(/<link rel="modulepreload"[^>]*>/gu) ?? []
+    const entry = /<script type="module" async="" src="(?<src>[^"]+)"/u.exec(html)?.groups?.["src"]
+    const links = response
+      .headersArray()
+      .filter(({ name }) => name.toLowerCase() === "link")
+      .flatMap(({ value }) => value.split(/,\s*(?=<)/u))
+
+    expect(modulePreloads).toHaveLength(1)
+    expect(modulePreloads[0]).toContain(`href="${String(entry)}"`)
+    expect(modulePreloads[0]).toContain('fetchpriority="low"')
+    expect(links.filter((link) => !/; rel=preload; as=(?:style|font)\b/u.test(link))).toStrictEqual([])
+    expect(links.filter((link) => link.includes("as=font")).map((link) => /^<(?<href>[^>]+)>/u.exec(link)?.groups?.["href"])).toStrictEqual([
+      "/fonts/manrope-latin-wght-normal.woff2",
+      "/fonts/cormorant-garamond-latin-400-normal.woff2",
+      "/fonts/manrope-latin-ext-wght-normal.woff2",
+      "/fonts/cormorant-garamond-latin-ext-400-normal.woff2",
+      "/fonts/cormorant-garamond-latin-400-italic.woff2",
+    ])
+  })
+
+  test("loads a route's code on demand when the visitor navigates to it", async ({ page, productPage }) => {
+    await productPage.open("/en-US")
+
+    await page.getByRole("banner").getByRole("link", { name: "Cart" }).click()
+
+    await expect(page).toHaveURL(/\/en-US\/cart$/u)
+    await expect(productPage.heading()).toHaveText("Your cart is empty")
+  })
+
   test("answers pages and static files with headers that refuse framing and content sniffing, and leaves HTTPS pinning to deployments", async ({
     request,
   }) => {
