@@ -5,6 +5,7 @@ import {
   HTTP_STATUS,
   WORKERS_DEV_HOSTS,
   appHostsForMode,
+  bareDomainUrl,
   isDeploymentHost,
   isLocalHost,
   isLocalMode,
@@ -115,6 +116,23 @@ describe("deployment hosts", () => {
       expect(isDeploymentHost(host)).toBe(false)
     },
   )
+})
+
+describe("bareDomainUrl", () => {
+  it("moves a www address to the bare shop domain, keeping its path, query and hash", () => {
+    expect(bareDomainUrl(new URL(`https://www.${APP_DOMAIN}/en-US/products?sort=newest#grid`))).toBe(
+      `https://${APP_DOMAIN}/en-US/products?sort=newest#grid`,
+    )
+  })
+
+  it.each([
+    `https://${APP_DOMAIN}/en-US`,
+    `https://preview.${APP_DOMAIN}/`,
+    "https://martebizuteria.pjborowiecki.workers.dev/",
+    `https://www.${APP_DOMAIN}.attacker.example/`,
+  ])("leaves %s where it is", (address) => {
+    expect(bareDomainUrl(new URL(address))).toBeUndefined()
+  })
 })
 
 describe("Worker domains in wrangler.jsonc", () => {

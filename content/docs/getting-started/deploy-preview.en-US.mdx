@@ -79,7 +79,9 @@ Note the placeholder check: an id of all zeroes and dashes is rejected, which is
 
 Wrangler attaches a custom domain only in a zone of the same Cloudflare account, so `martebizuteria.pl` has to be an active zone there before the first deploy. Cloudflare then creates the DNS record and the certificate for each hostname itself. An A, AAAA or CNAME record already on `martebizuteria.pl` or `preview.martebizuteria.pl` conflicts with the custom domain: a deploy from a terminal asks before replacing it, and a deploy from CI replaces it without asking. The zone's MX and TXT records, which the shop's mailbox and the Resend sender rely on, are not touched.
 
-A deploy makes the Worker's custom domains match `routes`, so a hostname attached to the Worker by hand in the dashboard is detached by the next deploy; add it to `routes` instead. Besides deploying Workers, the API token needs the Workers Routes edit and Zone read permissions on the `martebizuteria.pl` zone to attach the domains.
+When `routes` lists custom domains, a deploy makes the Worker's custom domains match that list exactly, so a hostname attached by hand in the dashboard is detached by the next deploy; add it to `routes` instead. When `routes` is empty, as in production until launch, a deploy leaves the Worker's custom domains as they are. Besides deploying Workers, the API token needs the Workers Routes edit and Zone read permissions on the `martebizuteria.pl` zone to attach the domains.
+
+On launch day, attach `martebizuteria.pl` and `www.martebizuteria.pl` through production's `routes` as the [Go-live checklist](/docs/guides/go-live-checklist) describes; the Worker sends `www` to the bare domain itself.
 
 ### If you change the hostname
 

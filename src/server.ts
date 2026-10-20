@@ -4,6 +4,7 @@ import { REALTIME_INVALIDATION_HUB } from "~/src/integrations/realtime-invalidat
 import { handleRealtimeInvalidationWebSocket } from "~/src/integrations/realtime-invalidation/realtime-invalidation.ws.server"
 import { resolveLocale } from "~/src/integrations/use-intl/i18n.middleware"
 
+import { HTTP_STATUS, bareDomainUrl } from "~/src/modules/_core/constants/api"
 import { type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.types"
 import { type NewsletterCampaign } from "~/src/modules/newsletter-campaign/newsletter-campaign.types"
 import { isNewsletterQueueBatch } from "~/src/modules/newsletter-campaign/newsletter-campaign.utils"
@@ -95,7 +96,13 @@ const respond = async (request: Request, context: RequestContext): Promise<Respo
 
 const server: ExportedHandler<Env, WorkerQueueMessage> = {
   async fetch(request, env, ctx) {
-    const { pathname, protocol } = new URL(request.url)
+    const url = new URL(request.url)
+    const bareDomain = bareDomainUrl(url)
+    if (bareDomain !== undefined) {
+      return Response.redirect(bareDomain, HTTP_STATUS.PERMANENT_REDIRECT)
+    }
+
+    const { pathname, protocol } = url
     if (pathname === ROUTES.API_REALTIME.ADMIN_WS) {
       return handleRealtimeInvalidationWebSocket(request, env, REALTIME_INVALIDATION_HUB.ADMIN)
     }

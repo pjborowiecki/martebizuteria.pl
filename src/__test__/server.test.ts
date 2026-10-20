@@ -107,6 +107,24 @@ beforeEach(() => {
   entry.fetch.mockImplementation(() => Promise.resolve(new Response("page")))
 })
 
+describe("worker canonical host", () => {
+  it("sends a www visit to the bare shop domain, keeping its path, query and method", async () => {
+    const { response } = await fetchPath("/en-US/products?sort=newest", "https://www.martebizuteria.pl")
+
+    expect(response.status).toBe(308)
+    expect(response.headers.get("Location")).toBe("https://martebizuteria.pl/en-US/products?sort=newest")
+    expect(entry.fetch).not.toHaveBeenCalled()
+    expect(realtime.handleRealtimeInvalidationWebSocket).not.toHaveBeenCalled()
+  })
+
+  it("serves the bare shop domain itself", async () => {
+    const { response } = await fetchPath("/en-US", "https://martebizuteria.pl")
+
+    expect(response.status).not.toBe(308)
+    expect(entry.fetch).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe("worker sitemap", () => {
   it("serves the sitemap for the requested origin as cacheable xml", async () => {
     const { response } = await fetchPath("/sitemap.xml")

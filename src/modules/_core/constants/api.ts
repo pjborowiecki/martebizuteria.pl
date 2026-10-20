@@ -8,6 +8,7 @@ export const HTTP_STATUS = {
   NOT_FOUND: 404,
   NOT_MODIFIED: 304,
   OK: 200,
+  PERMANENT_REDIRECT: 308,
   SERVICE_UNAVAILABLE: 503,
   SWITCHING_PROTOCOLS: 101,
   TOO_MANY_REQUESTS: 429,
@@ -37,3 +38,16 @@ export const isLocalHost = (host: string): boolean => LOCAL_HOSTS.includes(host)
 
 export const isDeploymentHost = (host: string): boolean =>
   isLocalHost(host) || Object.values(HOSTS_BY_MODE).some((hosts) => hosts.includes(host))
+
+const WWW_HOST = `www.${APP_DOMAIN}`
+
+export const bareDomainUrl = (url: Readonly<URL>): string | undefined => {
+  if (url.host !== WWW_HOST) {
+    return undefined
+  }
+
+  const bare = new URL(url.href)
+  bare.host = APP_DOMAIN
+
+  return bare.href
+}
