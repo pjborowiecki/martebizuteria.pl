@@ -5,7 +5,6 @@ import { useNavigate, useRouter } from "@tanstack/react-router"
 import { useLocale, useTranslations } from "use-intl/react"
 import { useShallow } from "zustand/react/shallow"
 
-import { gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
 import { getLenisInstance } from "~/src/integrations/lenis/lenis.instance"
 
 import { STOREFRONT_SEARCH_DEBOUNCE_MS, STOREFRONT_SEARCH_MIN_LENGTH } from "~/src/modules/storefront-search/storefront-search.constants"
@@ -15,6 +14,7 @@ import { getTrendingSearchesQuery } from "~/src/modules/storefront-search/use-ca
 import { searchStorefrontQuery } from "~/src/modules/storefront-search/use-cases/search-storefront"
 
 import { useDebounce } from "~/src/hooks/use-debounce"
+import { useGsap } from "~/src/hooks/use-gsap"
 
 import { type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
 import {
@@ -81,10 +81,10 @@ const resolveStatus = ({ count, isError, searchable, settled }: StatusInput): Se
   return count === 0 ? "empty" : "results"
 }
 
-const useSearchOverlayAnimation = (overlayRef: RefObject<HTMLDialogElement | null>) => {
+const useSearchOverlayAnimation = (overlayRef: RefObject<HTMLDialogElement | null>, searchOpen: boolean) => {
   const timelineRef = useRef<gsap.core.Timeline | null>(null)
-  useGSAP(
-    () => {
+  const { toolkit } = useGsap(
+    ({ gsap }) => {
       const overlay = overlayRef.current
       if (overlay === null) {
         return
@@ -113,10 +113,10 @@ const useSearchOverlayAnimation = (overlayRef: RefObject<HTMLDialogElement | nul
       )
       timelineRef.current = tl
     },
-    { scope: overlayRef },
+    { load: searchOpen, scope: overlayRef },
   )
 
-  return timelineRef
+  return { timelineRef, toolkit }
 }
 
 const useSearchOverlayDialog = (
@@ -125,11 +125,11 @@ const useSearchOverlayDialog = (
   onClose: () => void,
 ) => {
   const router = useRouter()
-  const timelineRef = useSearchOverlayAnimation(refs.overlay)
+  const { timelineRef, toolkit } = useSearchOverlayAnimation(refs.overlay, searchOpen)
   useEffect(() => {
     const overlay = refs.overlay.current
     const timeline = timelineRef.current
-    if (overlay === null || timeline === null || !searchOpen) {
+    if (overlay === null || timeline === null || toolkit === undefined || !searchOpen) {
       return
     }
 
@@ -139,16 +139,16 @@ const useSearchOverlayDialog = (
     timeline.play()
     refs.input.current?.focus()
     getLenisInstance()?.stop()
-    gsap.set("html", { overflow: "hidden" })
+    toolkit.gsap.set("html", { overflow: "hidden" })
     const unsubscribe = router.subscribe("onBeforeNavigate", onClose)
 
     return () => {
       unsubscribe()
-      gsap.set("html", { clearProps: "overflow" })
+      toolkit.gsap.set("html", { clearProps: "overflow" })
       getLenisInstance()?.start()
       timeline.reverse()
     }
-  }, [onClose, refs.input, refs.overlay, router, searchOpen, timelineRef])
+  }, [onClose, refs.input, refs.overlay, router, searchOpen, timelineRef, toolkit])
 }
 
 const useSearchOverlayShortcuts = (searchOpen: boolean, onClose: () => void, onToggle: () => void) => {

@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type Lenis from "lenis"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { ScrollTrigger } from "~/src/integrations/gsap/gsap.config"
+import { gsapToolkit } from "~/src/integrations/gsap/gsap.config"
 import { getLenisInstance } from "~/src/integrations/lenis/lenis.instance"
 
 vi.mock("~/src/hooks/use-lenis-router-scroll-sync", () => ({ useLenisRouterScrollSync: vi.fn() }))
@@ -31,6 +31,13 @@ vi.stubGlobal("scrollTo", (...position: [number, number] | [Readonly<{ top: numb
 
 const clock = { ms: 1000 }
 
+vi.stubGlobal("matchMedia", (query: string) => ({
+  addEventListener: () => {},
+  matches: query.includes("(hover: hover) and (pointer: fine)"),
+  media: query,
+  removeEventListener: () => {},
+}))
+
 const lenis = (): Lenis => {
   const instance = getLenisInstance()
   if (instance === undefined) {
@@ -48,7 +55,7 @@ const runFrames = (count: number): void => {
 }
 
 const watchThePage = (): void => {
-  ScrollTrigger.create({ end: PAGE_HEIGHT_PX, start: 0 })
+  gsapToolkit.ScrollTrigger.create({ end: PAGE_HEIGHT_PX, start: 0 })
 }
 
 beforeEach(() => {
@@ -57,21 +64,22 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
-  for (const trigger of ScrollTrigger.getAll()) {
+  for (const trigger of gsapToolkit.ScrollTrigger.getAll()) {
     trigger.kill()
   }
 })
 
 describe("SmoothScroll with the real ScrollTrigger and Lenis", () => {
-  it("keeps a wheel glide going through a ScrollTrigger refresh", () => {
+  it("keeps a wheel glide going through a ScrollTrigger refresh", async () => {
     render(<SmoothScroll>content</SmoothScroll>)
+    await vi.waitFor(() => lenis())
     watchThePage()
     runFrames(1)
     fireEvent.wheel(screen.getByText("content"), { deltaY: WHEEL_DELTA_PX })
     runFrames(FRAMES_INTO_THE_SCROLL)
     const refreshedAt = viewport.scrollY
 
-    ScrollTrigger.refresh()
+    gsapToolkit.ScrollTrigger.refresh()
     runFrames(FRAMES_TO_SETTLE)
 
     expect(refreshedAt).toBeGreaterThan(0)

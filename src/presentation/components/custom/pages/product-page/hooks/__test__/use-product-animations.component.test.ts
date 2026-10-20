@@ -16,25 +16,27 @@ const gsapMock = vi.hoisted(() => ({
   to: vi.fn(),
 }))
 
-vi.mock("~/src/integrations/gsap/gsap.config", () => ({
-  ScrollTrigger: { batch: gsapMock.batch },
-  gsap: {
-    fromTo: gsapMock.fromTo,
-    matchMedia: () => ({
-      add: (query: string, run: () => void) => {
-        if (media.active.includes(query)) {
-          run()
-        }
-      },
-    }),
-    set: gsapMock.set,
-    to: gsapMock.to,
-    utils: { toArray: (selector: string, root: HTMLElement) => [...root.querySelectorAll(selector)] },
-  },
-  useGSAP: (callback: () => void) => {
-    callback()
-  },
-}))
+vi.mock("~/src/integrations/gsap/gsap.loader", async () => {
+  const { createGsapContextStub, loadedGsapModule } = await import("~/src/platform/testing/mocks/gsap")
+
+  return loadedGsapModule({
+    ScrollTrigger: { batch: gsapMock.batch },
+    gsap: {
+      context: createGsapContextStub,
+      fromTo: gsapMock.fromTo,
+      matchMedia: () => ({
+        add: (query: string, run: () => void) => {
+          if (media.active.includes(query)) {
+            run()
+          }
+        },
+      }),
+      set: gsapMock.set,
+      to: gsapMock.to,
+      utils: { toArray: (selector: string, root: HTMLElement) => [...root.querySelectorAll(selector)] },
+    },
+  })
+})
 
 const { useProductAnimations } = await import("~/src/presentation/components/custom/pages/product-page/hooks/use-product-animations")
 

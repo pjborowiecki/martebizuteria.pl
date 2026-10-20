@@ -16,7 +16,9 @@ vi.hoisted(() => {
   })
 })
 
-const { ScrollToPlugin, ScrollTrigger, gsap, useGSAP } = await import("~/src/integrations/gsap/gsap.config")
+const {
+  gsapToolkit: { ScrollTrigger, gsap },
+} = await import("~/src/integrations/gsap/gsap.config")
 
 describe("gsap.config", () => {
   it("sets the project's tween defaults once, in the browser", () => {
@@ -36,22 +38,8 @@ describe("gsap.config", () => {
     document.body.innerHTML = ""
   })
 
-  it("registers ScrollToPlugin, so the scrollTo tween property is understood", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-    const tween = gsap.to(document.createElement("div"), { duration: 0, scrollTo: 0 })
-
-    expect(warn).not.toHaveBeenCalled()
-
-    tween.kill()
-  })
-
-  it("re-exports the scroll plugins it registered", () => {
+  it("re-exports the ScrollTrigger build that matches the core", () => {
     expect(ScrollTrigger.version).toBe(gsap.version)
-    expect(ScrollToPlugin.name).toBe("scrollTo")
-  })
-
-  it("re-exports the animation hook the components use", () => {
-    expect(typeof useGSAP).toBe("function")
   })
 
   it("applies the defaults to a tween that declares none", () => {

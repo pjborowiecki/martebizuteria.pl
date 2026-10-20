@@ -1,10 +1,15 @@
 import { type RefObject } from "react"
 
-import { ScrollTrigger, gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
+import { gsapToolkit } from "~/src/integrations/gsap/gsap.config"
+import { type GsapToolkit, provideGsap } from "~/src/integrations/gsap/gsap.loader"
+
+import { useGsap } from "~/src/hooks/use-gsap"
+
+provideGsap(gsapToolkit)
 
 const startsBelowTheFold = (element: HTMLElement): boolean => element.getBoundingClientRect().top >= window.innerHeight
 
-const animateRevealElements = (elements: readonly HTMLElement[]): void => {
+const animateRevealElements = ({ gsap }: GsapToolkit, elements: readonly HTMLElement[]): void => {
   gsap.to(elements, {
     autoAlpha: AUTO_ALPHA_VISIBLE,
     duration: REVEAL_DURATION,
@@ -15,7 +20,8 @@ const animateRevealElements = (elements: readonly HTMLElement[]): void => {
   })
 }
 
-const setupScrollReveals = (root: HTMLElement): void => {
+const setupScrollReveals = (toolkit: GsapToolkit, root: HTMLElement): void => {
+  const { ScrollTrigger, gsap } = toolkit
   const revealElementsList = gsap.utils.toArray<HTMLElement>(".reveal", root).filter((element) => startsBelowTheFold(element))
   if (revealElementsList.length === 0) {
     return
@@ -27,7 +33,7 @@ const setupScrollReveals = (root: HTMLElement): void => {
   ScrollTrigger.batch(revealElementsList, {
     onEnter: (batch) => {
       const elements = batch.filter((element): element is HTMLElement => element instanceof HTMLElement)
-      animateRevealElements(elements)
+      animateRevealElements(toolkit, elements)
     },
     once: true,
     start: SCROLL_TRIGGER_BATCH_START,
@@ -35,8 +41,9 @@ const setupScrollReveals = (root: HTMLElement): void => {
 }
 
 export const useProductAnimations = ({ dependencies = [], rootRef }: ProductAnimationsProps) => {
-  useGSAP(
-    () => {
+  useGsap(
+    (toolkit) => {
+      const { gsap } = toolkit
       const root = rootRef.current
       if (root === null) {
         return
@@ -44,7 +51,7 @@ export const useProductAnimations = ({ dependencies = [], rootRef }: ProductAnim
 
       const mm = gsap.matchMedia()
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        setupScrollReveals(root)
+        setupScrollReveals(toolkit, root)
         gsap.utils.toArray<HTMLElement>(".parallax-wrap", root).forEach((wrap) => {
           const img = wrap.querySelector(".parallax-img")
           if (img === null) {

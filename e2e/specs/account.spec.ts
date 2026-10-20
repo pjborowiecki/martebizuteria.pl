@@ -217,6 +217,7 @@ test.describe("customer account", () => {
     await dialog.getByRole("button", { name: "Delete my account" }).click()
 
     await expect(page).toHaveURL(/\/en-US$/u)
+    await accountPage.waitForAppReady()
     expect(await stripeCustomerIds(request, customer.email)).toStrictEqual([])
     const goodbye = await waitForEmail(request, customer.email, "Your M'Arte account has been deleted")
     expect(goodbye.html).toContain("for 5 years from the end of the year of each order")

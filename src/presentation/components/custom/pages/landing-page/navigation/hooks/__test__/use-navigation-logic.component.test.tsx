@@ -21,8 +21,6 @@ const gsapState = vi.hoisted(() => {
     parallax: unknown[][]
     progress: number
     onReverseComplete: (() => void) | undefined
-    onScrollToggle: ((trigger: { isActive: boolean }) => void) | undefined
-    scrollActive: boolean
     sets: unknown[][]
     timelineActions: string[]
     to: unknown[][]
@@ -30,11 +28,9 @@ const gsapState = vi.hoisted(() => {
     conditions: { desktop: true, reduced: false },
     fromTo: [],
     onReverseComplete: undefined,
-    onScrollToggle: undefined,
     panelOnStart: undefined,
     parallax: [],
     progress: 0,
-    scrollActive: false,
     sets: [],
     timelineActions: [],
     to: [],
@@ -44,8 +40,11 @@ const gsapState = vi.hoisted(() => {
 })
 
 vi.mock("~/src/integrations/lenis/lenis.scroll", () => ({ scrollToSectionById: () => {} }))
-const sameDependencies = (left: readonly unknown[], right: readonly unknown[]): boolean =>
-  left.length === right.length && left.every((entry, index) => entry === right[index])
+
+const scrollThePageTo = (offset: number): void => {
+  Object.defineProperty(globalThis, "scrollY", { configurable: true, value: offset })
+  globalThis.dispatchEvent(new Event("scroll"))
+}
 
 const withScrollbar = (width: number): (() => void) => {
   Object.defineProperty(document.documentElement, "offsetWidth", { configurable: true, value: 1000 + width })
@@ -57,8 +56,8 @@ const withScrollbar = (width: number): (() => void) => {
   }
 }
 
-vi.mock("~/src/integrations/gsap/gsap.config", async () => {
-  const { useEffect, useRef: useStoredDependencies } = await import("react")
+vi.mock("~/src/integrations/gsap/gsap.loader", async () => {
+  const { createGsapContextStub, loadedGsapModule } = await import("~/src/platform/testing/mocks/gsap")
 
   const timeline = {
     fromTo: (...args: [unknown, unknown, { onStart?: () => void }, unknown?]) => {
@@ -86,15 +85,9 @@ vi.mock("~/src/integrations/gsap/gsap.config", async () => {
     timeScale: () => timeline,
   }
 
-  return {
-    ScrollTrigger: {
-      create: (config: { onToggle?: (trigger: { isActive: boolean }) => void }) => {
-        gsapState.state.onScrollToggle = config.onToggle
-
-        return { isActive: gsapState.state.scrollActive }
-      },
-    },
+  return loadedGsapModule({
     gsap: {
+      context: createGsapContextStub,
       fromTo: (...args: unknown[]) => {
         gsapState.state.fromTo.push(args)
       },
@@ -119,20 +112,7 @@ vi.mock("~/src/integrations/gsap/gsap.config", async () => {
         gsapState.state.to.push(args)
       },
     },
-    useGSAP: (callback: () => unknown, config?: { dependencies?: readonly unknown[] }) => {
-      const lastDependencies = useStoredDependencies<readonly unknown[] | undefined>(undefined)
-      useEffect(() => {
-        const dependencies = config?.dependencies ?? []
-        if (lastDependencies.current !== undefined && sameDependencies(lastDependencies.current, dependencies)) {
-          return
-        }
-        lastDependencies.current = dependencies
-        callback()
-      })
-
-      return { contextSafe: <TArgs extends unknown[], TReturn>(fn: (...args: TArgs) => TReturn) => fn }
-    },
-  }
+  })
 })
 
 const noop = () => {}
@@ -203,11 +183,9 @@ beforeEach(() => {
   gsapState.state.conditions = { desktop: true, reduced: false }
   gsapState.state.fromTo = []
   gsapState.state.onReverseComplete = undefined
-  gsapState.state.onScrollToggle = undefined
   gsapState.state.panelOnStart = undefined
   gsapState.state.parallax = []
   gsapState.state.progress = 0
-  gsapState.state.scrollActive = false
   gsapState.state.sets = []
   gsapState.state.timelineActions = []
   gsapState.state.to = []
@@ -216,6 +194,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  scrollThePageTo(0)
 })
 
 describe("navigation menu state", () => {
@@ -225,8 +204,8 @@ describe("navigation menu state", () => {
     expect(harnessState()).toBe("mounted:false open:false scrolled:false")
   })
 
-  it("adopts the scroll trigger's state on mount", () => {
-    gsapState.state.scrollActive = true
+  it("adopts the page's scroll position on mount", () => {
+    scrollThePageTo(120)
     renderWithProviders(<NavigationHarness />)
 
     expect(harnessState()).toContain("scrolled:true")
@@ -439,21 +418,40 @@ describe("navigation scroll state", () => {
     renderWithProviders(<NavigationHarness />)
 
     act(() => {
-      gsapState.state.onScrollToggle?.({ isActive: true })
+      scrollThePageTo(21)
     })
 
     expect(harnessState()).toContain("scrolled:true")
   })
 
-  it("clears the scrolled header once the page returns to the top", () => {
-    gsapState.state.scrollActive = true
+  it("keeps the header plain within the first twenty pixels", () => {
     renderWithProviders(<NavigationHarness />)
 
     act(() => {
-      gsapState.state.onScrollToggle?.({ isActive: false })
+      scrollThePageTo(20)
     })
 
     expect(harnessState()).toContain("scrolled:false")
+  })
+
+  it("clears the scrolled header once the page returns to the top", () => {
+    scrollThePageTo(120)
+    renderWithProviders(<NavigationHarness />)
+
+    act(() => {
+      scrollThePageTo(0)
+    })
+
+    expect(harnessState()).toContain("scrolled:false")
+  })
+
+  it("stops following the scroll once the header is gone", () => {
+    const { unmount } = renderWithProviders(<NavigationHarness />)
+    unmount()
+
+    scrollThePageTo(120)
+
+    expect(useNavigationStore.getState().scrolled).toBe(false)
   })
 })
 

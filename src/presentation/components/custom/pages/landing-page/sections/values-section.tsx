@@ -2,7 +2,7 @@ import { type JSX, useRef } from "react"
 
 import { useTranslations } from "use-intl/react"
 
-import { gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
+import { useGsap } from "~/src/hooks/use-gsap"
 
 import { getAssetURL } from "~/src/lib/url"
 
@@ -33,8 +33,8 @@ const ValuesImage = (): JSX.Element => {
 export const ValuesSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.valuesSection")
   const sectionRef = useRef<HTMLElement>(null)
-  useGSAP(
-    () => {
+  useGsap(
+    ({ gsap }) => {
       const section = sectionRef.current
       if (!section) {
         return

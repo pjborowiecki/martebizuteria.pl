@@ -4,7 +4,7 @@ import { noop } from "@tanstack/react-query"
 import { cn } from "cn"
 import { useTranslations } from "use-intl/react"
 
-import { gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
+import { useGsap } from "~/src/hooks/use-gsap"
 
 import { LANDING_VIDEO_POSTER, LANDING_VIDEO_SRC } from "~/src/data/landing"
 
@@ -40,8 +40,8 @@ export const VideoExperienceSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.videoExperienceSection")
   const sectionRef = useRef<HTMLElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
-  useGSAP(
-    () => {
+  useGsap(
+    ({ gsap }) => {
       const section = sectionRef.current
       if (!section) {
         return

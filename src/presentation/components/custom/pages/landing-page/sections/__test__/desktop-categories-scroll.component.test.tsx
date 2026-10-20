@@ -52,24 +52,23 @@ interface AnimationVars {
   readonly x?: () => number
 }
 
-interface UseGsapConfig {
-  readonly dependencies?: readonly unknown[]
-  readonly revertOnUpdate?: boolean
-}
-
 const catalogue = vi.hoisted(() => ({ rows: [] as unknown[] }))
 
 const scrollTrigger = vi.hoisted(() => ({
   delayedCall: vi.fn(),
   getById: vi.fn<(id: string) => { end: number; start: number } | undefined>(),
   refresh: vi.fn(),
+  update: vi.fn<() => void>(),
 }))
 
-const lenis = vi.hoisted(() => ({ scrollTo: vi.fn<(top: number, options: { immediate: boolean }) => void>() }))
+const lenis = vi.hoisted(() => ({
+  running: { value: true },
+  scrollTo: vi.fn<(top: number, options: { immediate: boolean }) => void>(),
+}))
 
 const captured = vi.hoisted(() => ({
-  configs: [] as UseGsapConfig[],
   queries: [] as string[],
+  reverts: { count: 0 },
   targets: [] as unknown[],
   vars: [] as AnimationVars[],
 }))
@@ -84,13 +83,24 @@ vi.mock("~/src/lib/url", () => ({
 vi.mock("~/src/modules/product-category/use-cases/get-categories", () => ({
   getCategoriesQuery: () => ({ queryFn: () => Promise.resolve(catalogue.rows), queryKey: ["categories", catalogue.rows.length] }),
 }))
-vi.mock("~/src/integrations/lenis/lenis.instance", () => ({ getLenisInstance: () => lenis }))
-vi.mock("~/src/integrations/gsap/gsap.config", async () => {
-  const { useLayoutEffect } = await import("react")
+vi.mock("~/src/integrations/lenis/lenis.instance", () => ({ getLenisInstance: () => (lenis.running.value ? lenis : undefined) }))
+vi.mock("~/src/integrations/gsap/gsap.loader", async () => {
+  const { createGsapContextStub, loadedGsapModule } = await import("~/src/platform/testing/mocks/gsap")
 
-  return {
-    ScrollTrigger: { getById: scrollTrigger.getById, refresh: scrollTrigger.refresh },
+  return loadedGsapModule({
+    ScrollTrigger: { getById: scrollTrigger.getById, refresh: scrollTrigger.refresh, update: scrollTrigger.update },
     gsap: {
+      context: () => {
+        const context = createGsapContextStub()
+
+        return {
+          add: context.add,
+          revert: () => {
+            captured.reverts.count += 1
+            context.revert()
+          },
+        }
+      },
       delayedCall: scrollTrigger.delayedCall,
       matchMedia: () => ({
         add: (query: string, callback: () => void) => {
@@ -105,13 +115,7 @@ vi.mock("~/src/integrations/gsap/gsap.config", async () => {
         return { kill: vi.fn(), scrollTrigger: { kill: vi.fn() } }
       },
     },
-    useGSAP: (callback: () => void, config: UseGsapConfig) => {
-      captured.configs.push(config)
-      useLayoutEffect(() => {
-        callback()
-      }, [callback])
-    },
-  }
+  })
 })
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
@@ -187,7 +191,8 @@ const scrollTriggerVars = (): ScrollTriggerConfig => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  captured.configs.length = 0
+  lenis.running.value = true
+  captured.reverts.count = 0
   captured.queries.length = 0
   captured.targets.length = 0
   captured.vars.length = 0
@@ -197,6 +202,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  vi.unstubAllGlobals()
 })
 
 describe("desktop categories horizontal scroll", () => {
@@ -261,9 +267,12 @@ describe("desktop categories horizontal scroll", () => {
   })
 
   it("throws the previous scroll away before building one for a changed catalogue", async () => {
-    await renderSection()
+    const { queryClient } = await renderSection()
+    queryClient.setQueryData(["categories", catalogue.rows.length], [...catalogue.rows, category("cat_3", "kolczyki", "Earrings")])
+    await screen.findByRole("link", { name: /Earrings/u })
 
-    expect(captured.configs.at(-1)?.revertOnUpdate).toBe(true)
+    expect(captured.reverts.count).toBe(1)
+    expect(captured.vars).toHaveLength(2)
   })
 
   it("sets no scroll up at all while the catalogue is empty", async () => {
@@ -323,6 +332,33 @@ describe("desktop categories keyboard focus", () => {
 
     expect(scrollTrigger.getById).toHaveBeenCalledWith("landing-categories")
     expect(lenis.scrollTo).toHaveBeenCalledExactlyOnceWith(2900, { immediate: true })
+  })
+
+  it("jumps the page with the browser's own scrolling while smooth scrolling is not running, as on a touch screen", async () => {
+    lenis.running.value = false
+    const scrollTo = vi.fn<(options: ScrollToOptions) => void>()
+    vi.stubGlobal("scrollTo", scrollTo)
+    const { container } = await renderSection()
+    layOutPanelsSideBySide(container, PANEL_WIDTH_PX)
+
+    focusLink("Discover Necklaces")
+
+    expect(scrollTo).toHaveBeenCalledExactlyOnceWith({ behavior: "instant", top: 2900 })
+  })
+
+  it("moves the track along at once after that jump, so the browser sees the focused link on screen and does not scroll to it itself", async () => {
+    lenis.running.value = false
+    const scrollTo = vi.fn<(options: ScrollToOptions) => void>()
+    vi.stubGlobal("scrollTo", scrollTo)
+    const { container } = await renderSection()
+    layOutPanelsSideBySide(container, PANEL_WIDTH_PX)
+
+    focusLink("Discover Necklaces")
+
+    expect(scrollTrigger.update).toHaveBeenCalledOnce()
+    expect(scrollTrigger.update.mock.invocationCallOrder[0]).toBeGreaterThan(
+      scrollTo.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
+    )
   })
 
   it("scrolls to the end of the pin for the last panel", async () => {
