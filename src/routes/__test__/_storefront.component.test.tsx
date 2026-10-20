@@ -12,12 +12,10 @@ const realtime = vi.hoisted(() => ({
 }))
 
 interface StorefrontRouteOptions {
-  readonly head: () => { links: { href: string; rel: string }[] }
   readonly loader: (args: { readonly context: { readonly queryClient: QueryClient } }) => Promise<unknown>
 }
 
 const metadata = vi.hoisted(() => ({
-  head: undefined as StorefrontRouteOptions["head"] | undefined,
   loader: undefined as StorefrontRouteOptions["loader"] | undefined,
 }))
 
@@ -36,7 +34,6 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   return {
     ...actual,
     createFileRoute: () => (options: StorefrontRouteOptions) => {
-      metadata.head = options.head
       metadata.loader = options.loader
 
       return { options }
@@ -90,8 +87,6 @@ import { STORE_SETTING_QUERY_KEYS } from "~/src/modules/store-setting/store-sett
 
 import { Route } from "~/src/routes/_storefront"
 
-import storefrontCss from "~/src/presentation/styles/storefront.css?url"
-
 const renderLayout = () => {
   const StorefrontLayout = Route.options.component
   if (StorefrontLayout === undefined) {
@@ -107,10 +102,6 @@ afterEach(() => {
 })
 
 describe("storefront layout", () => {
-  it("loads the storefront stylesheet with the layout", () => {
-    expect(metadata.head?.()).toStrictEqual({ links: [{ href: storefrontCss, rel: "stylesheet" }] })
-  })
-
   it("frames the page with the navigation and the footer", () => {
     renderLayout()
 

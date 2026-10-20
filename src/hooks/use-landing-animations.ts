@@ -2,11 +2,7 @@ import { type RefObject } from "react"
 
 import { ScrollTrigger, gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
 
-const isElementInRevealViewport = (element: HTMLElement): boolean => {
-  const rect = element.getBoundingClientRect()
-
-  return rect.top < window.innerHeight * REVEAL_IN_VIEW_THRESHOLD && rect.bottom > 0
-}
+const startsBelowTheFold = (element: HTMLElement): boolean => element.getBoundingClientRect().top >= window.innerHeight
 
 const animateRevealElements = (elements: readonly HTMLElement[]): void => {
   gsap.to(elements, {
@@ -20,7 +16,7 @@ const animateRevealElements = (elements: readonly HTMLElement[]): void => {
 }
 
 const setupScrollReveals = (root: HTMLElement): void => {
-  const revealElementsList = gsap.utils.toArray<HTMLElement>(".reveal", root)
+  const revealElementsList = gsap.utils.toArray<HTMLElement>(".reveal", root).filter((element) => startsBelowTheFold(element))
   if (revealElementsList.length === 0) {
     return
   }
@@ -36,21 +32,11 @@ const setupScrollReveals = (root: HTMLElement): void => {
     once: true,
     start: SCROLL_TRIGGER_BATCH_START,
   })
-
-  const inViewElements = revealElementsList.filter((element) => isElementInRevealViewport(element))
-  if (inViewElements.length > 0) {
-    animateRevealElements(inViewElements)
-  }
 }
 
 const setupLineReveals = (root: HTMLElement): void => {
   gsap.utils.toArray<HTMLElement>(".line-reveal", root).forEach((line) => {
-    if (isElementInRevealViewport(line)) {
-      gsap.set(line, {
-        scaleX: 1,
-        transformOrigin: "left center",
-      })
-
+    if (!startsBelowTheFold(line)) {
       return
     }
     gsap.fromTo(
@@ -98,13 +84,6 @@ const setupParallax = (root: HTMLElement): void => {
   })
 }
 
-const showReducedMotionContent = (root: HTMLElement): void => {
-  gsap.set(gsap.utils.toArray<HTMLElement>(".reveal, .line-reveal", root), {
-    autoAlpha: 1,
-    clearProps: "transform",
-  })
-}
-
 export const useLandingAnimations = ({ rootRef }: LandingAnimationsProps) => {
   useGSAP(
     () => {
@@ -121,9 +100,6 @@ export const useLandingAnimations = ({ rootRef }: LandingAnimationsProps) => {
         gsap.delayedCall(0, () => {
           ScrollTrigger.refresh()
         })
-      })
-      mm.add("(prefers-reduced-motion: reduce)", () => {
-        showReducedMotionContent(root)
       })
 
       return () => {
@@ -143,8 +119,6 @@ const PARALLAX_Y_PERCENT_END = 6
 const PARALLAX_Y_PERCENT_START = -6
 
 const REVEAL_DURATION = 0.9
-
-const REVEAL_IN_VIEW_THRESHOLD = 0.92
 
 const REVEAL_OFFSET_Y = 28
 
