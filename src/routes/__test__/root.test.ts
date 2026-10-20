@@ -40,6 +40,8 @@ import { ImagePrefetchService } from "~/src/lib/image"
 
 import { APP_ICON, APP_NAME, APP_URL, OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, THEME_COLOR } from "~/src/presentation/branding/app"
 
+import { getCriticalFontPreloads } from "~/src/presentation/document-assets"
+
 const loadRootMatch = async (pathname: string) => {
   const catchAll = createRoute({ getParentRoute: () => RootRoute, path: "$" })
   const index = createRoute({ getParentRoute: () => RootRoute, path: "/" })
@@ -166,6 +168,29 @@ describe("root head stylesheet and icons", () => {
 
     expect(match.links).toContainEqual({ href: APP_ICON, rel: "icon", type: "image/svg+xml" })
     expect(match.links).toContainEqual({ href: APP_ICON, rel: "apple-touch-icon" })
+  })
+})
+
+const fontPreloads = async (pathname: string) => {
+  const match = await loadRootMatch(pathname)
+
+  return (match.links ?? []).filter((link) => link?.as === "font")
+}
+
+describe("root head font preloads", () => {
+  it("preloads the first paint's fonts for the page's locale right after the stylesheet", async () => {
+    intl.locale = "pl-PL"
+    const match = await loadRootMatch("/products")
+
+    expect(match.links?.slice(1, 5)).toStrictEqual(getCriticalFontPreloads("pl-PL"))
+  })
+
+  it("preloads only the latin files on an English page", async () => {
+    await expect(fontPreloads("/en-US/products")).resolves.toStrictEqual(getCriticalFontPreloads("en-US"))
+  })
+
+  it("preloads no storefront font in the admin console, which does not use them", async () => {
+    await expect(fontPreloads("/admin/overview")).resolves.toStrictEqual([])
   })
 })
 

@@ -16,11 +16,11 @@ description: "Where components, styles, theme, branding and email templates live
 | `theme`              | `theme-init.ts`, `sidebar-preference.ts`, `use-admin-light-theme.ts`                                                         |
 | `pdf`                | `withdrawal-form.ts`, `complaint-form.ts` and their A4 layout, `form-document.ts`                                            |
 | `branding`           | `app.ts`, `socials.ts`                                                                                                       |
-| `document-assets.ts` | `getCriticalFontPreloads(locale)`                                                                                            |
+| `document-assets.ts` | `getCriticalFontPreloads(locale)`, `LANDING_HERO_FONT_PRELOAD`                                                               |
 
 ## Organizing components
 
-- **Shared components are flat files** in `components/custom`: `product-card.tsx`, `image.tsx`, `localized-link.tsx`, `mdx.tsx`, `docs-mdx.tsx`, `floating-field.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `seller-contact-details.tsx`, `storefront-critical-fonts-head.tsx`, `validation-field-error.tsx`, `icons.tsx`, `docs-content.tsx`, `product-price.tsx`, `sales-paused-banner.tsx`.
+- **Shared components are flat files** in `components/custom`: `product-card.tsx`, `image.tsx`, `localized-link.tsx`, `mdx.tsx`, `docs-mdx.tsx`, `floating-field.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `seller-contact-details.tsx`, `validation-field-error.tsx`, `icons.tsx`, `docs-content.tsx`, `product-price.tsx`, `sales-paused-banner.tsx`.
 - **Cross-cutting widgets get a folder** when they are a system rather than a component: `datagrid/`, `image-upload/`, `checkout/`, `defaults/`, and `display-preferences/`, the formatting-locale and time-zone fields that the account profile and the admin settings share.
 - **Page and area components live under `components/custom/pages/<area>`**: `landing-page/`, `product-page/`, `products-catalog/`, `categories/`, `collections/`, `cart-page/`, `docs/`, `content-page/`, `newsletter/`, `withdrawal/`, `auth/`, `account/`, `admin/`.
 - **Admin pages get their own folder** under `pages/admin`: `orders/`, `customers/`, `catalog/products/`, `catalog/categories/`, `catalog/collections/`, `catalog/attributes/`, `audit/`, `dashboard/`, `settings/`, `security/`, `content/`, `coupons/`, `marketing/`. The top of `pages/admin` holds the console-wide header, sidebar and stat components next to the overview page's `dashboard-*.tsx` files; `lib/` holds the shared column filters and `admin-route.ts`, and `_styles/` the layout classes.
@@ -40,12 +40,12 @@ Larger areas nest further, into `components/`, `hooks/`, `lib/`, `utils/`, `sect
 
 Stylesheets are split by the route that needs them; the storefront layout adds none of its own:
 
-| File                 | Loaded by                                | Holds                                                            |
-| -------------------- | ---------------------------------------- | ---------------------------------------------------------------- |
-| `globals.css`        | `__root.tsx`                             | The single Tailwind build, the design tokens, the `dark` variant |
-| `admin.css`          | `admin.tsx`                              | The admin shell's own token set under `[data-admin-main]`        |
-| `fonts.css`          | imported by `globals.css`                | `@font-face` rules for the self-hosted woff2 files               |
-| `critical-fonts.css` | inlined by `StorefrontCriticalFontsHead` | The `@font-face` rules needed for first paint                    |
+| File                 | Loaded by                 | Holds                                                            |
+| -------------------- | ------------------------- | ---------------------------------------------------------------- |
+| `globals.css`        | `__root.tsx`              | The single Tailwind build, the design tokens, the `dark` variant |
+| `admin.css`          | `admin.tsx`               | The admin shell's own token set under `[data-admin-main]`        |
+| `fonts.css`          | imported by `globals.css` | `@font-face` rules for the self-hosted woff2 files               |
+| `critical-fonts.css` | inlined by `__root.tsx`   | The `@font-face` rules needed for first paint                    |
 
 `globals.css` narrows Tailwind's source scan with `@source not` directives for tests, `src/platform/testing` and the unused shadcn primitives, so those files do not inflate the generated CSS.
 
@@ -55,7 +55,7 @@ Stylesheets are split by the route that needs them; the storefront layout adds n
 
 `ThemesProvider` wraps `@wrksz/themes` with `themes={["light", "dark"]}`, `enableSystem={false}` and `localStorage` storage. The admin shell forces light through `useAdminLightTheme()`.
 
-On storefront routes `StorefrontCriticalFontsHead` inlines the critical `@font-face` rules and `document-assets.ts` picks the preloads by locale: `pl-PL` gets the `latin-ext` subsets of Manrope and Cormorant Garamond, `en-US` gets `latin`. The admin shell skips fonts entirely and inlines its own critical chrome CSS instead.
+On storefront routes `__root.tsx` inlines the critical `@font-face` rules and adds the preloads `document-assets.ts` picks by locale to its `head` links: `pl-PL` gets the `latin` and `latin-ext` files of Manrope and Cormorant Garamond, `en-US` gets `latin`, and the home route adds the italic of its heading. The admin shell skips fonts entirely and inlines its own critical chrome CSS instead.
 
 ## Branding
 

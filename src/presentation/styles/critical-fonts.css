@@ -1,17 +1,17 @@
 @font-face {
   font-family: "Manrope Fallback";
   src: local("Arial");
-  size-adjust: 98.16%;
-  ascent-override: 106.6%;
-  descent-override: 30%;
+  size-adjust: 103.76%;
+  ascent-override: 102.74%;
+  descent-override: 28.91%;
   line-gap-override: 0%;
 }
 @font-face {
   font-family: "Cormorant Garamond Fallback";
   src: local("Times New Roman");
-  size-adjust: 46.09%;
-  ascent-override: 92.4%;
-  descent-override: 28.7%;
+  size-adjust: 96.09%;
+  ascent-override: 96.16%;
+  descent-override: 29.87%;
   line-gap-override: 0%;
 }
 

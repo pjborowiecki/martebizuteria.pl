@@ -55,6 +55,8 @@ import { ImagePrefetchService } from "~/src/lib/image"
 
 import { DATAGRID_PREFS_INIT_SCRIPT } from "~/src/presentation/components/custom/datagrid/datagrid-init"
 
+import criticalFontsCss from "~/src/presentation/styles/critical-fonts.css?raw"
+
 const renderRootAt = async (pathname: string, routerOptions: { readonly ssr?: { readonly nonce: string } } = {}) => {
   intl.pathname = pathname
   const catchAll = createRoute({
@@ -135,5 +137,23 @@ describe("root document inline scripts", () => {
     await screen.findByText("page body")
 
     expect(inlineScriptNonces()).toStrictEqual([null, null, null])
+  })
+})
+
+const criticalFontStyles = () => [...document.querySelectorAll("style")].filter((style) => style.textContent === criticalFontsCss)
+
+describe("root document critical fonts", () => {
+  it("inlines the first paint's font faces on a storefront page", async () => {
+    await renderRootAt("/products")
+    await screen.findByText("page body")
+
+    expect(criticalFontStyles()).toHaveLength(1)
+  })
+
+  it("leaves them out of the admin console, which does not use the storefront fonts", async () => {
+    await renderRootAt("/admin/overview")
+    await screen.findByText("page body")
+
+    expect(criticalFontStyles()).toHaveLength(0)
   })
 })

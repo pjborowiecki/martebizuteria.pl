@@ -128,22 +128,17 @@ Two typefaces, both self-hosted from `public/fonts/`:
 
 `critical-fonts.css` is inlined, not linked. It contains the metric-adjusted fallbacks (`Manrope Fallback` from Arial, `Cormorant Garamond Fallback` from Times New Roman, with `size-adjust`, `ascent-override`, `descent-override` and `line-gap-override`) plus the four `@font-face` rules the first paint needs: Manrope's variable 200–800 face and Cormorant Garamond 400 normal, each in a `latin` and a `latin-ext` subset. `fonts.css` carries the other eight Cormorant Garamond faces — 400 italic, 500, 500 italic and 600, in both subsets — and is imported normally.
 
-`StorefrontCriticalFontsHead` emits the preloads and inlines that CSS with `?raw`:
+`__root.tsx` inlines that CSS with `?raw` on every page outside `/admin`, since the admin console does not use the serif:
 
 ```tsx
-export const StorefrontCriticalFontsHead = ({ locale }: Readonly<StorefrontCriticalFontsHeadProps>): JSX.Element => (
-  <>
-    {getCriticalFontPreloads(locale).map((link) => (
-      <link key={link.href} {...link} />
-    ))}
-    <style dangerouslySetInnerHTML={CRITICAL_FONTS_STYLE_HTML} />
-  </>
-)
+{
+  !isAdmin && <style dangerouslySetInnerHTML={CRITICAL_FONTS_STYLE_HTML} />
+}
 ```
 
-`getCriticalFontPreloads` in `src/presentation/document-assets.ts` picks the subset by locale: Polish gets `latin-ext` (it needs ą, ć, ę, ł, ń, ó, ś, ź, ż), English gets plain `latin`. `__root.tsx` renders this component only when the path is not under `/admin`, since the admin console does not use the serif.
+`getCriticalFontPreloads` in `src/presentation/document-assets.ts` picks the files to preload by locale: Polish gets both the `latin` and the `latin-ext` files of Manrope and of Cormorant Garamond 400 (its text mixes plain letters with ą, ć, ę, ł, ń, ś, ź, ż), English plain `latin`. The root route adds them to its `head` links, and the home route adds `LANDING_HERO_FONT_PRELOAD`, the italic of its heading; see [Fonts & branding](/docs/ui/fonts-and-branding#locale-aware-preloads).
 
-**Changing a font** means adding the `.woff2` files to `public/fonts/`, adding `@font-face` rules with the right `unicode-range` (critical weights in `critical-fonts.css`, the rest in `fonts.css`), computing new fallback metrics, and updating `--font-sans` or `--font-serif` in the `@theme inline` block. Keep the two-file split — moving everything into `fonts.css` regresses first-paint text.
+**Changing a font** means adding the `.woff2` files to `public/fonts/`, adding `@font-face` rules with the right `unicode-range` (critical weights in `critical-fonts.css`, the rest in `fonts.css`), computing new fallback metrics from the font files (see [Fallback metrics](/docs/ui/fonts-and-branding#fallback-metrics)), and updating `--font-sans` or `--font-serif` in the `@theme inline` block. Keep the two-file split — moving everything into `fonts.css` regresses first-paint text.
 
 ## Branding constants
 

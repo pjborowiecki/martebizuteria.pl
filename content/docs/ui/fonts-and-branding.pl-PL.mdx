@@ -1,6 +1,6 @@
 ---
 title: "Fonty i branding"
-description: "Samodzielnie hostowane Manrope i Cormorant Garamond, krytyczne preloady zależne od języka, stałe marki i źródło danych sprzedawcy."
+description: "Samodzielnie hostowane Manrope i Cormorant Garamond, kroje zastępcze dopasowane metrycznie, krytyczne preloady zależne od języka, stałe marki i źródło danych sprzedawcy."
 ---
 
 ## Dwa kroje pisma
@@ -35,70 +35,72 @@ cormorant-garamond-latin-ext-600-normal.woff2
 
 CSS fontów jest świadomie podzielony na dwie części.
 
-**`src/presentation/styles/critical-fonts.css`** zawiera tylko to, czego potrzebuje pierwszy ekran: dwa kroje zastępcze dopasowane metrycznie, Cormorant Garamond 400 normal (latin i latin-ext), zmienny Manrope (latin i latin-ext) oraz definicje `--font-sans` i `--font-serif` w `:root`. Jest wklejany do sekcji `head` jako znacznik `<style>`, więc żadne żądanie arkusza nie blokuje pierwszego renderu:
+**`src/presentation/styles/critical-fonts.css`** zawiera tylko to, czego potrzebuje pierwszy ekran: dwa kroje zastępcze dopasowane metrycznie, Cormorant Garamond 400 normal (latin i latin-ext), zmienny Manrope (latin i latin-ext) oraz definicje `--font-sans` i `--font-serif` w `:root`. `src/routes/__root.tsx` wkleja go do sekcji `head` jako znacznik `<style>`, wyłącznie poza konsolą administratora, więc żadne żądanie arkusza nie blokuje pierwszego renderu:
 
 ```tsx
 import criticalFontsCss from "~/src/presentation/styles/critical-fonts.css?raw"
 
-export const StorefrontCriticalFontsHead = ({ locale }: Readonly<StorefrontCriticalFontsHeadProps>): JSX.Element => (
-  <>
-    {getCriticalFontPreloads(locale).map((link) => (
-      <link key={link.href} {...link} />
-    ))}
-    <style dangerouslySetInnerHTML={CRITICAL_FONTS_STYLE_HTML} />
-  </>
-)
-```
-
-Trasa główna renderuje go wyłącznie poza konsolą administratora:
-
-```tsx
 {
-  !isAdmin && <StorefrontCriticalFontsHead locale={locale} />
+  !isAdmin && <style dangerouslySetInnerHTML={CRITICAL_FONTS_STYLE_HTML} />
 }
 ```
 
 **`src/presentation/styles/fonts.css`** zawiera pozostałe osiem krojów Cormorant — 400 kursywa, 500 normal, 500 kursywa i 600 normal, każdy w obu podzbiorach. Jest importowany na początku `globals.css`, więc te kroje przychodzą razem z głównym arkuszem, nie blokując sekcji `head`.
 
-Kroje zastępcze unikają przeskoku układu, dopasowując metryki:
+### Metryki krojów zastępczych
+
+Zanim font strony dotrze, przeglądarka rysuje tekst lokalnym krojem zastępczym, którego metryki są dopasowane do fontu strony, więc podmiana niczego nie przesuwa:
 
 ```css
 @font-face {
   font-family: "Manrope Fallback";
   src: local("Arial");
-  size-adjust: 98.16%;
-  ascent-override: 106.6%;
-  descent-override: 30%;
+  size-adjust: 103.76%;
+  ascent-override: 102.74%;
+  descent-override: 28.91%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Cormorant Garamond Fallback";
+  src: local("Times New Roman");
+  size-adjust: 96.09%;
+  ascent-override: 96.16%;
+  descent-override: 29.87%;
   line-gap-override: 0%;
 }
 ```
+
+Wartości pochodzą z plików fontów i ze wzoru, którego używają Next.js i ReactProjects:
+
+- `size-adjust` to średnia szerokość znaku fontu strony w napisie `aaabcdeeeefghiijklmnnoopqrrssttuvwxyz` z sześcioma spacjami, liczona na jednostkę em, podzielona przez tę samą średnią kroju zastępczego (Arial 934,51 i Times New Roman 854,40 jednostki z 2048). Manrope jest mierzony przy grubości 400, czyli grubości tekstu.
+- `ascent-override`, `descent-override` i `line-gap-override` to wysokość nad linią bazową, głębokość pod nią i odstęp między wierszami z tabeli `hhea` fontu strony, na jednostkę em, podzielone przez `size-adjust`, bo przeglądarka skaluje przez `size-adjust` także te wartości.
+
+Z tymi wartościami Chromium i WebKit rysują wiersz Cormorant Garamond 400 i jego kroju zastępczego na tej samej wysokości i z szerokością różną najwyżej o 0,4%, a Manrope 400 na tej samej wysokości i z szerokością różną najwyżej o 2%. Aby je przeliczyć, odczytaj pliki `woff2` przez fontTools: uśrednij szerokości `hmtx` znaków powyższego napisu, podziel przez `head.unitsPerEm` i weź `hhea.ascent`, `hhea.descent` oraz `hhea.lineGap`; odmianę Manrope o danej grubości daje `fontTools.varLib.instancer`.
 
 `globals.css` ustawia też `font-synthesis: none` na `body`, więc brakująca grubość ani kursywa nigdy nie zostaną podrobione przez przeglądarkę.
 
 ## Preloady zależne od języka
 
-`src/presentation/document-assets.ts` eksportuje jedną funkcję. Preloaduje dokładnie dwa pliki — jeden font tekstowy i jeden ekspozycyjny — i przełącza podzbiór zależnie od języka:
+`src/presentation/document-assets.ts` wymienia pliki fontów, których potrzebuje pierwszy render. `getCriticalFontPreloads(locale)` zwraca font tekstowy i ekspozycyjny dla języka strony:
 
 ```ts
-export const getCriticalFontPreloads = (locale: SupportedLocale) => {
-  const useLatinExt = locale === "pl-PL"
-
-  return [
-    {
-      ...FONT_PRELOAD_BASE,
-      href: useLatinExt ? "/fonts/manrope-latin-ext-wght-normal.woff2" : "/fonts/manrope-latin-wght-normal.woff2",
-    },
-    {
-      ...FONT_PRELOAD_BASE,
-      href: useLatinExt ? "/fonts/cormorant-garamond-latin-ext-400-normal.woff2" : "/fonts/cormorant-garamond-latin-400-normal.woff2",
-    },
-  ] as const
-}
+export const getCriticalFontPreloads = (locale: SupportedLocale) =>
+  locale === "pl-PL"
+    ? [MANROPE_LATIN, CORMORANT_GARAMOND_LATIN, MANROPE_LATIN_EXT, CORMORANT_GARAMOND_LATIN_EXT]
+    : [MANROPE_LATIN, CORMORANT_GARAMOND_LATIN]
 ```
 
-`FONT_PRELOAD_BASE` to `{ as: "font", crossOrigin: "anonymous", rel: "preload", type: "font/woff2" }`. Plik `src/presentation/__test__/document-assets.test.ts` przypina to wszystko: dokładne adresy dla każdego języka, cztery atrybuty i fakt, że wpisów jest dokładnie dwa.
+Polski tekst łączy zwykłe litery, które są tylko w plikach `latin`, z literami ą, ć, ę, ł, ń, ś, ź i ż, które są tylko w plikach `latin-ext`, więc polska strona preloaduje oba podzbiory każdej rodziny; angielska potrzebuje tylko `latin`. Każdy wpis to `{ as: "font", crossOrigin: "anonymous", href, rel: "preload", type: "font/woff2" }`. Trasa główna dodaje je do linków w `head` zaraz po arkuszu stylów, wyłącznie poza konsolą administratora:
 
-Dodając język, rozszerz warunek. Dodając trzeci krój krytyczny, dopisz go do `critical-fonts.css` _oraz_ do tej funkcji, inaczej zostanie pobrany za późno.
+```ts
+...(isAdminPathname(path) ? [] : getCriticalFontPreloads(locale)),
+```
+
+`LANDING_HERO_FONT_PRELOAD` preloaduje `cormorant-garamond-latin-400-italic.woff2`, krój kursywy w drugim wierszu nagłówka strony głównej, czyli pierwszej rzeczy, jaką widzi odwiedzający. Dodaje go do swoich linków w `head` tylko trasa strony głównej (`_storefront.index.tsx`), więc inne strony go nie pobierają.
+
+Start wpisuje te linki do strony i wymienia je w nagłówku `Link` odpowiedzi, który Cloudflare może wysłać przed stroną jako 103 Early Hints, więc przeglądarka zaczyna pobierać fonty, zanim dotrze HTML; zobacz [Cykl życia żądania](/docs/architecture/request-lifecycle#żądanie-strony). `src/presentation/__test__/document-assets.test.ts` przypina pliki dla każdego języka, atrybuty i to, że każdy plik istnieje w `public/fonts`; `src/routes/__test__/root.test.ts` sprawdza kolejność i to, że konsola administratora nie preloaduje żadnego fontu sklepu.
+
+Dodając język, rozszerz warunek. Jeśli pierwszy ekran strony potrzebuje kolejnego kroju, dopisz go do `document-assets.ts` i do linków w `head` trasy, która go pokazuje, inaczej zostanie pobrany za późno.
 
 ## Fonty w formularzach PDF
 
