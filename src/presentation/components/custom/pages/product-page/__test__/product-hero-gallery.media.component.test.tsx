@@ -31,6 +31,13 @@ const resourceOf = (image: HTMLImageElement | undefined): readonly (string | nul
   image?.getAttribute("sizes"),
 ]
 
+const serverHtml = (count: number): string =>
+  renderToString(
+    <TestProviders queryClient={new QueryClient()} router={createTestRouter()}>
+      <ProductHeroGallery images={images(count)} title={TITLE} />
+    </TestProviders>,
+  )
+
 afterEach(() => {
   cleanup()
 })
@@ -64,12 +71,19 @@ describe.each([1, 3])("ProductHeroGallery media with %i image(s)", (count) => {
     expect(allImages.every((image) => image.getAttribute("decoding") === "async")).toBe(true)
   })
 
+  it("server-renders only the first phone slide's image, leaving the others to the running carousel", () => {
+    const page = document.createElement("div")
+    page.innerHTML = serverHtml(count)
+
+    const phoneImages = layoutImages(page, String.raw`.lg\:hidden`)
+
+    expect(phoneImages).toHaveLength(1)
+    expect(phoneImages[0]?.getAttribute("src")).toContain("serenity-0.webp")
+    expect(layoutImages(page, String.raw`.lg\:block`)).toHaveLength(count)
+  })
+
   it("preloads a single image from the server-rendered html", () => {
-    const html = renderToString(
-      <TestProviders queryClient={new QueryClient()} router={createTestRouter()}>
-        <ProductHeroGallery images={images(count)} title={TITLE} />
-      </TestProviders>,
-    )
+    const html = serverHtml(count)
     const imagePreloads = html.match(/<link rel="preload" as="image"[^>]*>/gu) ?? []
 
     expect(imagePreloads).toHaveLength(1)
