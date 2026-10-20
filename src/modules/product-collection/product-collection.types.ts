@@ -5,7 +5,9 @@ import { type productCollection } from "~/src/modules/product-collection/product
 import { type productCollectionZodSchemas } from "~/src/modules/product-collection/product-collection.zod"
 
 export interface ProductCollection {
-  adminListItem: z.infer<(typeof productCollectionZodSchemas)["adminListItem"]>
+  adminListItem: ProductCollection["select"] & {
+    productCount: number
+  }
   createInput: z.infer<(typeof productCollectionZodSchemas)["createInput"]>
   deleteInput: z.infer<(typeof productCollectionZodSchemas)["deleteInput"]>
   formValues: z.infer<(typeof productCollectionZodSchemas)["formValues"]>

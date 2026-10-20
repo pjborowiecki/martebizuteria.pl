@@ -1,11 +1,9 @@
-import { createSchemaFactory } from "drizzle-zod"
 import { isValidPhoneNumber, parsePhoneNumberWithError } from "libphonenumber-js/mobile"
 import zod from "zod/v4"
 
 import { isValidNip, normalizeNip } from "~/src/modules/_core/utils/polish-business-ids"
-import { address } from "~/src/modules/address/address.schema"
+import { ADDRESS_COLUMN_LENGTH } from "~/src/modules/address/address.constants"
 import { COMPANY_NAME_MAX_LENGTH } from "~/src/modules/checkout/checkout.constants"
-import { checkout } from "~/src/modules/checkout/checkout.schema"
 import { DELIVERY_COUNTRY_CODES } from "~/src/modules/delivery-method/delivery-method.constants"
 import { DISCOUNT_CODE_MAX_LENGTH } from "~/src/modules/discount/discount.constants"
 
@@ -88,29 +86,16 @@ export const refineCheckout = (data: CheckoutValues, ctx: zod.RefinementCtx): vo
   }
 }
 
-const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
-  zodInstance: zod,
+const baseAddressSchema = zod.object({
+  address1: zod.string().min(1, "validation.addressRequired"),
+  address2: zod.string().max(ADDRESS_COLUMN_LENGTH.address2).nullable().optional(),
+  city: zod.string().min(1, "validation.cityRequired"),
+  countryCode: zod.string().min(1, "validation.countryRequired"),
+  firstName: zod.string().min(1, "validation.firstNameRequired"),
+  lastName: zod.string().min(1, "validation.lastNameRequired"),
+  postalCode: zod.string().min(1, "validation.postCodeRequired"),
+  province: zod.string().max(ADDRESS_COLUMN_LENGTH.province).nullable().optional(),
 })
-
-const baseAddressSchema = createInsertSchema(address)
-  .pick({
-    address1: true,
-    address2: true,
-    city: true,
-    countryCode: true,
-    firstName: true,
-    lastName: true,
-    postalCode: true,
-    province: true,
-  })
-  .extend({
-    address1: zod.string().min(1, "validation.addressRequired"),
-    city: zod.string().min(1, "validation.cityRequired"),
-    countryCode: zod.string().min(1, "validation.countryRequired"),
-    firstName: zod.string().min(1, "validation.firstNameRequired"),
-    lastName: zod.string().min(1, "validation.lastNameRequired"),
-    postalCode: zod.string().min(1, "validation.postCodeRequired"),
-  })
 
 const checkoutBaseSchema = baseAddressSchema.extend({
   billingAddress1: zod.string().optional(),
@@ -145,12 +130,6 @@ export const checkoutSchema = checkoutBaseSchema.superRefine(refineCheckout)
 export type CheckoutValues = zod.output<typeof checkoutBaseSchema>
 
 export type CheckoutFormSchema = zod.input<typeof checkoutSchema>
-
-export const checkoutZodSchemas = {
-  insert: createInsertSchema(checkout),
-  select: createSelectSchema(checkout),
-  update: createUpdateSchema(checkout),
-}
 
 export const checkoutMetadataMinorUnitsSchema = zod.string().regex(/^\d+$/u).transform(Number)
 

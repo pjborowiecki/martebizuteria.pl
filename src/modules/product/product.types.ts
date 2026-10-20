@@ -99,7 +99,7 @@ interface AdminProductsPageInput {
 }
 
 export interface Product {
-  adminListItem: z.infer<(typeof productZodSchemas)["adminListItem"]>
+  adminListItem: Product["select"] & z.infer<(typeof productZodSchemas)["adminListItem"]>
   adminProductsExportInput: Omit<AdminProductsPageInput, "page" | "pageSize">
   adminProductsPageInput: AdminProductsPageInput
   deleteInput: z.infer<(typeof productZodSchemas)["deleteInput"]>

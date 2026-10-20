@@ -1,4 +1,3 @@
-import { createSchemaFactory } from "drizzle-zod"
 import zod from "zod/v4"
 
 import { CHECKOUT_SESSION_ID_MAX_LENGTH } from "~/src/integrations/stripe/stripe.constants"
@@ -14,12 +13,7 @@ import {
   DISCOUNT_TYPE,
   DISCOUNT_TYPES,
 } from "~/src/modules/discount/discount.constants"
-import { discount } from "~/src/modules/discount/discount.schema"
 import { PRODUCT_VARIANT_COLUMN_LENGTH } from "~/src/modules/product-variant/product-variant.constants"
-
-const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
-  zodInstance: zod,
-})
 
 const codeField = zod
   .string()
@@ -84,9 +78,6 @@ export const discountZodSchemas = {
   checkoutCodeFormValues: zod.object({ code: zod.string().trim().min(MIN_FIELD_LENGTH).max(DISCOUNT_CODE_MAX_LENGTH) }),
   createDiscountInput: zod.object({ values: adminDiscountFormValues }),
   deleteDiscountsInput: zod.object({ ids: zod.array(uuidField).min(MIN_FIELD_LENGTH) }),
-  insert: createInsertSchema(discount),
-  select: createSelectSchema(discount),
-  update: createUpdateSchema(discount),
   updateDiscountInput: zod.object({ id: uuidField, values: adminDiscountFormValues }),
   validateDiscountInput: zod.object({
     code: codeField,

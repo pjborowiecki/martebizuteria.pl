@@ -1,4 +1,3 @@
-import { createSchemaFactory } from "drizzle-zod"
 import zod from "zod/v4"
 
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
@@ -11,15 +10,6 @@ import {
   CATEGORY_MIN_LENGTH,
   CATEGORY_STATUSES,
 } from "~/src/modules/product-category/product-category.constants"
-import { productCategory } from "~/src/modules/product-category/product-category.schema"
-
-const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
-  zodInstance: zod,
-})
-
-const categoryInsertSchema = createInsertSchema(productCategory)
-
-const categorySelectSchema = createSelectSchema(productCategory)
 
 const categoryIdSchema = zod.string().trim().min(CATEGORY_MIN_LENGTH).max(CATEGORY_COLUMN_LENGTH.id)
 
@@ -81,24 +71,17 @@ const categoryFormValuesSchema = zod.object({
 })
 
 export const productCategoryZodSchemas = {
-  adminListItem: categorySelectSchema.extend({
-    parentTitles: categoryLocaleMapSchema(CATEGORY_COLUMN_LENGTH.title).optional(),
-    productCount: zod.number(),
-  }),
   createInput: categoryCreateInputSchema,
   deleteInput: zod.array(categoryIdSchema).min(CATEGORY_MIN_LENGTH),
   formValues: categoryFormValuesSchema,
   handleInput: handleField,
-  insert: categoryInsertSchema,
   reorderInput: zod.array(categoryIdSchema).min(CATEGORY_MIN_LENGTH),
-  select: categorySelectSchema,
   stats: zod.object({
     active: zod.number(),
     avgProducts: zod.number(),
     draft: zod.number(),
     total: zod.number(),
   }),
-  update: createUpdateSchema(productCategory),
   updateInput: categoryCreateInputSchema.extend({
     id: categoryIdSchema,
   }),

@@ -7,7 +7,10 @@ import { type productCategoryZodSchemas } from "~/src/modules/product-category/p
 type LocaleMap = ProductAttribute["localeMap"]
 
 export interface ProductCategory {
-  adminListItem: z.infer<(typeof productCategoryZodSchemas)["adminListItem"]>
+  adminListItem: ProductCategory["select"] & {
+    parentTitles?: LocaleMap | undefined
+    productCount: number
+  }
   createInput: z.infer<(typeof productCategoryZodSchemas)["createInput"]>
   deleteInput: z.infer<(typeof productCategoryZodSchemas)["deleteInput"]>
   formValues: z.infer<(typeof productCategoryZodSchemas)["formValues"]>

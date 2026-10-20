@@ -7,11 +7,9 @@ export const UUID_STRING_LENGTH = 36
 
 export const timestamp = (name: string) => integer(name, { mode: "timestamp_ms" })
 
-const nowMs = sql`(unixepoch() * 1000)`
-
 export const timestampNow = (name: string) =>
   timestamp(name)
-    .default(nowMs)
+    .default(sql`(unixepoch() * 1000)`)
     .$defaultFn(() => new Date())
     .notNull()
 

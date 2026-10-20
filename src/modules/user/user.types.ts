@@ -109,10 +109,10 @@ export interface User {
   adminCustomerAddressForm: z.infer<(typeof userZodSchemas)["adminCustomerAddressForm"]>
   adminCustomerAggregateStatsInput: AdminCustomerAggregateStatsInput
   adminCustomerAuditTimelineRow: AdminCustomerAuditTimelineRow
-  adminCustomerDetail: z.infer<(typeof userZodSchemas)["adminCustomerDetail"]>
+  adminCustomerDetail: User["select"] & z.infer<(typeof userZodSchemas)["adminCustomerDetail"]>
   adminCustomerFormValues: z.infer<(typeof userZodSchemas)["adminCustomerFormValues"]>
   adminCustomerFullAddressRow: AdminCustomerFullAddressRow
-  adminCustomerListItem: z.infer<(typeof userZodSchemas)["adminCustomerListItem"]>
+  adminCustomerListItem: User["select"] & z.infer<(typeof userZodSchemas)["adminCustomerListItem"]>
   adminCustomerStats: z.infer<(typeof userZodSchemas)["adminCustomerStats"]>
   adminCustomerTimelineInput: AdminCustomerTimelineInput
   adminCustomerTimelineOrder: AdminCustomerTimelineOrder

@@ -175,23 +175,3 @@ describe("product attribute stats", () => {
     expect(productAttributeZodSchemas.stats.safeParse({ inUse: 3, total: 5, unused: 2 }).success).toBe(false)
   })
 })
-
-describe("product attribute admin list item", () => {
-  it("adds a numeric product count to the selected row", () => {
-    const row = {
-      allowedValues: [allowedValue],
-      createdAt: new Date("2026-01-01T00:00:00.000Z"),
-      handle: "colour",
-      id: "attr-1",
-      productCount: 4,
-      rank: 0,
-      titles,
-      type: PRODUCT_ATTRIBUTE_TYPE.SELECT,
-      unit: null,
-      updatedAt: new Date("2026-01-02T00:00:00.000Z"),
-    }
-
-    expect(productAttributeZodSchemas.adminListItem.parse(row).productCount).toBe(4)
-    expect(productAttributeZodSchemas.adminListItem.safeParse({ ...row, productCount: "4" }).success).toBe(false)
-  })
-})

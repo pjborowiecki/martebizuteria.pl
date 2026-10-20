@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { type CheckoutFormSchema, checkoutSchema, checkoutZodSchemas } from "~/src/modules/checkout/checkout.zod"
+import { type CheckoutFormSchema, checkoutSchema } from "~/src/modules/checkout/checkout.zod"
 
 const VALID_SHIPPING: CheckoutFormSchema = {
   address1: "Krucza 12/4",
@@ -236,27 +236,6 @@ describe("checkoutSchema locker delivery", () => {
 
   it("does not ask for a locker for a courier delivery", () => {
     expect(issuePaths({ ...VALID_SHIPPING, deliveryMethodType: "courier" })).toStrictEqual([])
-  })
-})
-
-describe("checkoutZodSchemas table schemas", () => {
-  it("defaults a new checkout row to the pending status", () => {
-    const parsed = checkoutZodSchemas.insert.parse({ email: "shopper@example.com", id: "chk_1" })
-
-    expect(parsed.status).toBeUndefined()
-  })
-
-  it("requires an email on the insert schema", () => {
-    expect(checkoutZodSchemas.insert.safeParse({ id: "chk_1" }).success).toBe(false)
-  })
-
-  it("rejects a status the column does not allow", () => {
-    expect(checkoutZodSchemas.update.safeParse({ status: "refunded" }).success).toBe(false)
-    expect(checkoutZodSchemas.update.safeParse({ status: "abandoned" }).success).toBe(true)
-  })
-
-  it("requires the generated columns on the select schema", () => {
-    expect(checkoutZodSchemas.select.safeParse({ email: "shopper@example.com", id: "chk_1" }).success).toBe(false)
   })
 })
 

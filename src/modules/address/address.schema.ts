@@ -3,22 +3,23 @@ import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
 import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
+import { ADDRESS_COLUMN_LENGTH } from "~/src/modules/address/address.constants"
 import { user } from "~/src/modules/user/user.schema"
 
 export const address = sqliteTable(
   "address",
   {
-    address1: text("address1", { length: 512 }).notNull(),
-    address2: text("address2", { length: 512 }),
-    city: text("city", { length: 256 }).notNull(),
+    address1: text("address1", { length: ADDRESS_COLUMN_LENGTH.address1 }).notNull(),
+    address2: text("address2", { length: ADDRESS_COLUMN_LENGTH.address2 }),
+    city: text("city", { length: ADDRESS_COLUMN_LENGTH.city }).notNull(),
     countryCode: text("country_code", { length: 2 }).notNull(),
-    firstName: text("first_name", { length: 256 }),
+    firstName: text("first_name", { length: ADDRESS_COLUMN_LENGTH.firstName }),
     id: text("id").primaryKey(),
     isDefault: integer("is_default", { mode: "boolean" }).default(false).notNull(),
-    lastName: text("last_name", { length: 256 }),
-    phone: text("phone", { length: 32 }),
-    postalCode: text("postal_code", { length: 32 }),
-    province: text("province", { length: 256 }),
+    lastName: text("last_name", { length: ADDRESS_COLUMN_LENGTH.lastName }),
+    phone: text("phone", { length: ADDRESS_COLUMN_LENGTH.phone }),
+    postalCode: text("postal_code", { length: ADDRESS_COLUMN_LENGTH.postalCode }),
+    province: text("province", { length: ADDRESS_COLUMN_LENGTH.province }),
     userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
     ...timestamps(),
   },

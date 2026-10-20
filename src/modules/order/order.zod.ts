@@ -1,4 +1,3 @@
-import { createSchemaFactory } from "drizzle-zod"
 import zod from "zod/v4"
 
 import { INPOST_PARCEL_MAX_WEIGHT_KG } from "~/src/integrations/inpost/inpost.constants"
@@ -27,11 +26,6 @@ import {
   ORDER_TRACKING_NUMBER_MAX_LENGTH,
   ORDER_TRACKING_URL_MAX_LENGTH,
 } from "~/src/modules/order/order.constants"
-import { order } from "~/src/modules/order/order.schema"
-
-const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
-  zodInstance: zod,
-})
 
 const FIRST_ORDERS_PAGE = 1
 
@@ -121,13 +115,10 @@ export const orderZodSchemas = {
   disputeMetadata,
   email,
   emailDelivery: zod.object({ idempotencyKey: zod.string().min(MIN_FIELD_LENGTH), orderEmail: email }),
-  insert: createInsertSchema(order),
   metadata: zod.record(zod.string(), zod.unknown()),
   orderConfirmationInput: zod.object({
     sessionId: zod.string().trim().min(MIN_FIELD_LENGTH).max(CHECKOUT_SESSION_ID_MAX_LENGTH),
   }),
-  select: createSelectSchema(order),
-  update: createUpdateSchema(order),
 }
 
 export const adminDashboardZodSchemas = {
