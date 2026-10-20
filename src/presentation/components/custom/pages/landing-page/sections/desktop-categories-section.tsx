@@ -27,10 +27,8 @@ import { ROUTES } from "~/src/routes"
 
 const DesktopCategoryPanel = ({
   category,
-  index,
 }: Readonly<{
   category: LandingCategoryPanel
-  index: number
 }>): JSX.Element => {
   const locale = useLocale()
   const t = useTranslations("pages.landing.categoriesSection")
@@ -57,7 +55,6 @@ const DesktopCategoryPanel = ({
             alt={panel.title}
             className="absolute inset-0 size-full object-cover transition-transform duration-[1.4s] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform group-hover:scale-105"
             height={1200}
-            priority={index === 0}
             sizes="(min-width: 1024px) 45vw, 100vw"
             src={panel.image}
             width={1000}
@@ -138,8 +135,8 @@ export const DesktopCategoriesSection = (): JSX.Element => {
           </div>
         </article>
 
-        {categories.map((category, index) => (
-          <DesktopCategoryPanel key={category.id} category={category} index={index} />
+        {categories.map((category) => (
+          <DesktopCategoryPanel key={category.id} category={category} />
         ))}
       </div>
     </section>

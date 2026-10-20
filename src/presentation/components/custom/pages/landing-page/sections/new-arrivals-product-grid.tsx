@@ -20,11 +20,9 @@ import { ProductCard } from "~/src/presentation/components/custom/product-card"
 
 const LandingNewArrivalCard = ({
   className,
-  index,
   product,
 }: Readonly<{
   className?: string
-  index: number
   product: LandingNewArrivalsProduct
 }>): JSX.Element => {
   const locale = useLocale()
@@ -52,7 +50,6 @@ const LandingNewArrivalCard = ({
       name={name}
       params={params}
       parallax
-      priority={index < PRIORITY_IMAGE_COUNT}
       price={price}
       priceReduction={variant?.priceReduction}
       productId={product.id}
@@ -70,8 +67,8 @@ export const NewArrivalsProductGrid = (): JSX.Element => {
 
   return (
     <div className="grid gap-x-5 gap-y-10 sm:grid-cols-2 xl:grid-cols-3">
-      {products.map((product, index) => (
-        <LandingNewArrivalCard key={product.id} className="reveal" index={index} product={product} />
+      {products.map((product) => (
+        <LandingNewArrivalCard key={product.id} className="reveal" product={product} />
       ))}
     </div>
   )
@@ -84,8 +81,6 @@ export const NewArrivalsProductGridSkeleton = (): JSX.Element => (
     ))}
   </div>
 )
-
-const PRIORITY_IMAGE_COUNT = 3
 
 type LandingNewArrivalsProduct = Pick<Product["select"], "handle" | "id" | "subtitles" | "thumbnail" | "titles"> & {
   readonly variants?: readonly {

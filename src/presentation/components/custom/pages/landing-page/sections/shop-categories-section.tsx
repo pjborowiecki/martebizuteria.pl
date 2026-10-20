@@ -33,7 +33,7 @@ export const ShopCategoriesSection = (): JSX.Element => {
 
       <div className="reveal grid gap-5 lg:grid-cols-[8fr_5fr] lg:gap-6">
         {cat1 !== undefined && (
-          <StorefrontCategoryCard aspectRatioClass="lg:aspect-8/5" category={cat1} priority sizes="(max-width: 1024px) 100vw, 62vw" />
+          <StorefrontCategoryCard aspectRatioClass="lg:aspect-8/5" category={cat1} sizes="(max-width: 1024px) 100vw, 62vw" />
         )}
         {cat2 !== undefined && (
           <StorefrontCategoryCard aspectRatioClass="lg:aspect-square" category={cat2} sizes="(max-width: 1024px) 100vw, 38vw" />

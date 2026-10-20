@@ -18,10 +18,8 @@ import { ROUTES } from "~/src/routes"
 
 const MobileCategoryPanel = ({
   category,
-  index,
 }: Readonly<{
   category: LandingCategoryPanel
-  index: number
 }>): JSX.Element => {
   const locale = useLocale()
   const t = useTranslations("pages.landing.categoriesSection")
@@ -35,7 +33,6 @@ const MobileCategoryPanel = ({
           alt={panel.title}
           className="absolute inset-0 size-full object-cover transition-transform duration-[1.4s] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform group-hover:scale-[1.03]"
           height={1000}
-          priority={index === 0}
           sizes="(min-width: 1024px) 33vw, 100vw"
           src={panel.image}
           width={1250}
@@ -70,8 +67,8 @@ export const MobileCategoriesSection = (): JSX.Element => {
       </div>
 
       <div className="space-y-6 lg:grid lg:grid-cols-3 lg:gap-6 lg:space-y-0">
-        {categories.map((category, index) => (
-          <MobileCategoryPanel key={category.id} category={category} index={index} />
+        {categories.map((category) => (
+          <MobileCategoryPanel key={category.id} category={category} />
         ))}
       </div>
     </section>

@@ -82,11 +82,11 @@ describe("Image loading priority", () => {
     expect(image).not.toHaveAttribute("fetchpriority")
   })
 
-  it("eagerly loads a priority image and decodes it synchronously", () => {
+  it("eagerly loads a priority image at high fetch priority without blocking the paint on its decode", () => {
     const image = renderImage({ priority: true })
 
     expect(image).toHaveAttribute("loading", "eager")
-    expect(image).toHaveAttribute("decoding", "sync")
+    expect(image).toHaveAttribute("decoding", "async")
     expect(image).toHaveAttribute("fetchpriority", "high")
   })
 
@@ -96,10 +96,6 @@ describe("Image loading priority", () => {
 
   it("lets priority win over an explicit lazy loading mode", () => {
     expect(renderImage({ loading: "lazy", priority: true })).toHaveAttribute("loading", "eager")
-  })
-
-  it("lets priority win over an explicit decoding hint", () => {
-    expect(renderImage({ decoding: "async", priority: true })).toHaveAttribute("decoding", "sync")
   })
 
   it("keeps the caller's decoding hint when the image is not a priority", () => {
