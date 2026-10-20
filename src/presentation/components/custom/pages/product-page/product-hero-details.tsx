@@ -93,7 +93,7 @@ const ProductAdditionalInfo = ({
     <div className="divide-y divide-border/60">
       {sections.map((section) => (
         <div key={section.key} className="space-y-1.5 py-5 first:pt-0 last:pb-0">
-          <h4 className="text-sm font-medium text-foreground">{section.title}</h4>
+          <h3 className="text-sm font-medium text-foreground">{section.title}</h3>
           <p className="text-sm/relaxed text-muted-foreground">{section.body}</p>
         </div>
       ))}
@@ -186,7 +186,10 @@ export const ProductHeroDetails = ({ description, specifications }: ProductHeroD
     <Accordion className="w-full" defaultValue={defaultValue}>
       {accordionItems.map((section) => (
         <AccordionItem key={section.key} value={section.key}>
-          <AccordionTrigger className="py-5 pl-2 text-[12px] tracking-[0.2em] uppercase hover:text-foreground/70 hover:no-underline sm:pl-3">
+          <AccordionTrigger
+            className="py-5 pl-2 text-[12px] tracking-[0.2em] uppercase hover:text-foreground/70 hover:no-underline sm:pl-3"
+            heading="h2"
+          >
             {section.title}
           </AccordionTrigger>
           <AccordionContent className="pb-6 pl-2 sm:pl-3">{section.content}</AccordionContent>

@@ -18,6 +18,15 @@ describe("ProductMobileBuyBar", () => {
     expect(screen.getByRole("button", { name: "Add to cart" })).toBeEnabled()
   })
 
+  it("names the bar as a page region, since it sits outside the page's main content", () => {
+    renderWithProviders(<ProductMobileBuyBar canPurchase isAdded={false} onAddToCart={vi.fn<() => void>()} price="1 299,00 zl" />)
+
+    const bar = screen.getByRole("region", { name: "Quick purchase" })
+
+    expect(bar).toContainElement(screen.getByText("1 299,00 zl"))
+    expect(bar).toContainElement(screen.getByRole("button", { name: "Add to cart" }))
+  })
+
   it("confirms the item is in the cart after it was added", () => {
     renderWithProviders(<ProductMobileBuyBar canPurchase isAdded onAddToCart={vi.fn<() => void>()} price="1 299,00 zl" />)
 

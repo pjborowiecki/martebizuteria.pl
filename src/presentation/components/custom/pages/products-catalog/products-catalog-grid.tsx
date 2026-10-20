@@ -102,11 +102,11 @@ const CatalogResultsToolbar = ({
     >
       {tFilters("clearAll")}
     </button>
-    <p className="text-[11px] tracking-[0.22em] text-muted-foreground uppercase tabular-nums">
+    <h2 className="text-[11px] tracking-[0.22em] text-muted-foreground uppercase tabular-nums">
       {t("resultsCount", {
         count: total,
       })}
-    </p>
+    </h2>
   </div>
 )
 

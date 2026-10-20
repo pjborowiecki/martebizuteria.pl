@@ -69,6 +69,14 @@ describe("auth layout route", () => {
     expect(screen.getByTestId("navigation")).toBeInTheDocument()
   })
 
+  it("holds the editorial panel and the form in the page's main landmark", () => {
+    renderAuthLayout()
+
+    expect(screen.getByRole("main")).toContainElement(screen.getByTestId("auth-editorial"))
+    expect(screen.getByRole("main")).toContainElement(screen.getByTestId("outlet"))
+    expect(screen.getByRole("main")).not.toContainElement(screen.getByTestId("navigation"))
+  })
+
   it("shows the editorial panel beside the form", () => {
     renderAuthLayout()
 

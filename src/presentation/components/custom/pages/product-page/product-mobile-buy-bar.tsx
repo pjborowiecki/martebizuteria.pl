@@ -8,7 +8,10 @@ export const ProductMobileBuyBar = ({ canPurchase, isAdded, onAddToCart, price }
   const t = useTranslations("pages.product.heroSection")
 
   return (
-    <div className="sticky bottom-0 z-40 border-t border-border/60 bg-background/95 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md lg:hidden">
+    <section
+      aria-label={t("buyBar")}
+      className="sticky bottom-0 z-40 border-t border-border/60 bg-background/95 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md lg:hidden"
+    >
       <div className="storefront-container flex items-center gap-4">
         <p className="min-w-0 shrink-0 text-sm tracking-[0.06em] tabular-nums">{price}</p>
         <Button
@@ -20,7 +23,7 @@ export const ProductMobileBuyBar = ({ canPurchase, isAdded, onAddToCart, price }
           {isAdded ? t("addedToCart") : t("addToCart")}
         </Button>
       </div>
-    </div>
+    </section>
   )
 }
 

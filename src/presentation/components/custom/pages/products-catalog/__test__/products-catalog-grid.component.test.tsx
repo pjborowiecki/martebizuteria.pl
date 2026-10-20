@@ -179,6 +179,13 @@ describe("ProductsCatalogGrid toolbar", () => {
     expect(screen.getByText("17 products")).toBeInTheDocument()
   })
 
+  it("heads the cards with the result count, one level above their names", () => {
+    renderGrid({ products: products(2), total: 17 })
+
+    expect(screen.getByRole("heading", { level: 2, name: "17 products" })).toBeInTheDocument()
+    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(2)
+  })
+
   it("counts a single result in the singular", () => {
     renderGrid({ products: products(1), total: 1 })
 
