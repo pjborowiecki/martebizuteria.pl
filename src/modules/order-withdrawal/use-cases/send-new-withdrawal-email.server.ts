@@ -1,9 +1,8 @@
-import { env } from "cloudflare:workers"
-
 import { createElement } from "react"
 
 import { createTranslator } from "use-intl"
 
+import { shopSenderAddress } from "~/src/integrations/resend/resend.config"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
@@ -38,10 +37,10 @@ const sendShopNotice = async (
       statement,
     }),
     subject: createTranslator({ locale, messages })("notice.subject", { orderNumber }),
-    to: env.RESEND_EMAIL_FROM,
+    to: shopSenderAddress(),
   })
 
-  return { failure, label: `${SHOP_NOTICE_LABEL} → ${env.RESEND_EMAIL_FROM}` }
+  return { failure, label: `${SHOP_NOTICE_LABEL} → ${shopSenderAddress()}` }
 }
 
 export const sendNewWithdrawalEmail = (notice: Readonly<WithdrawalShopNotice>): Promise<boolean> =>

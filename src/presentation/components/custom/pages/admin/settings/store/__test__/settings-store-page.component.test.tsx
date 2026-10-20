@@ -23,6 +23,12 @@ vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", () => ({
     queryKey: ["admin", "store-setting", "seller-details"],
   }),
 }))
+vi.mock("~/src/integrations/resend/resend.shop-sender", () => ({
+  getShopSenderQuery: () => ({
+    queryFn: () => Promise.reject(new Error("the shop's sending address is seeded by the test")),
+    queryKey: ["admin", "resend", "shop-sender"],
+  }),
+}))
 vi.mock("~/src/modules/store-setting/use-cases/update-seller-details", () => ({
   updateSellerDetailsMutation: { mutationFn: mocks.save, mutationKey: ["store-setting", "updateSellerDetails"] },
 }))
@@ -42,6 +48,8 @@ const LOADED_AT = new Date("2026-10-16T12:00:00.000Z")
 
 const SAVED_AT = new Date("2026-10-16T13:00:00.000Z")
 
+const SENDER_ADDRESS = "hello@pjborowiecki.com"
+
 const SELLER = {
   city: "Bochnia",
   countryCode: "PL",
@@ -58,6 +66,7 @@ const renderCard = () => {
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })
   queryClient.setQueryData(STORE_SETTING_QUERY_KEYS.ADMIN.SELLER_DETAILS, { ...SELLER, updatedAt: LOADED_AT })
   queryClient.setQueryData(STORE_SETTING_QUERY_KEYS.SELLER_DETAILS, { ...SELLER, updatedAt: LOADED_AT })
+  queryClient.setQueryData(["admin", "resend", "shop-sender"], { address: SENDER_ADDRESS })
   const view = renderWithProviders(
     <Suspense fallback={<p>loading</p>}>
       <SettingsStorePage />
@@ -96,12 +105,12 @@ describe("SettingsStorePage", () => {
     expect(screen.getByLabelText("Contact phone")).toHaveValue(SELLER.phone)
   })
 
-  it("explains that customers see the contact email and reply to it, while the shop's emails are still sent from its own sending address", () => {
+  it("explains that customers see the contact email and reply to it, and names the address the shop's emails are actually sent from", () => {
     renderCard()
 
     expect(
       screen.getByRole("button", {
-        name: /^Customers see this address on the site and in the shop's emails, and their replies come here\. The emails themselves are still sent from the shop's own sending address, not from this one\./u,
+        name: /^Customers see this address on the site and in the shop's emails, and their replies come here\. The emails themselves are sent from the shop's sending address, hello@pjborowiecki\.com, which this field does not change\./u,
       }),
     ).toBeInTheDocument()
   })

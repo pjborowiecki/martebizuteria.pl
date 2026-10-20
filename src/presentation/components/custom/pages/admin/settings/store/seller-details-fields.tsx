@@ -35,15 +35,23 @@ const NUMBER_AND_CONTACT_FIELDS = [
 const fieldMaxLength = (field: TextFieldSpec["field"]): number | undefined =>
   field === "nip" || field === "regon" ? undefined : SELLER_DETAILS_MAX_LENGTH[field]
 
-const SellerDetailsTextField = ({ disabled, error, onChange, spec, value }: Readonly<SellerDetailsTextFieldProps>): JSX.Element => {
+const SellerDetailsTextField = ({
+  disabled,
+  error,
+  onChange,
+  senderAddress,
+  spec,
+  value,
+}: Readonly<SellerDetailsTextFieldProps>): JSX.Element => {
   const t = useTranslations("pages.admin.settings.store.sellerDetails")
   const maxLength = fieldMaxLength(spec.field)
+  const hint = spec.hint === "emailHint" ? t("emailHint", { sender: senderAddress }) : spec.hint && t(spec.hint)
 
   return (
     <Field className={cn("gap-2", spec.wide === true && "sm:col-span-2")} data-invalid={error !== undefined}>
       <CatalogFormFieldLabel
         counter={maxLength === undefined ? undefined : `${String(value.length)}/${String(maxLength)}`}
-        hint={spec.hint === undefined ? undefined : t(spec.hint)}
+        hint={hint}
         label={t(spec.field)}
         required
       />
@@ -105,7 +113,13 @@ const CountryField = ({ disabled, error, onChange, value }: Readonly<CountryFiel
   )
 }
 
-export const SellerDetailsFields = ({ disabled, errors, onChange, values }: Readonly<SellerDetailsFieldsProps>): JSX.Element => (
+export const SellerDetailsFields = ({
+  disabled,
+  errors,
+  onChange,
+  senderAddress,
+  values,
+}: Readonly<SellerDetailsFieldsProps>): JSX.Element => (
   <div className="grid gap-5 sm:grid-cols-2">
     {NAME_AND_ADDRESS_FIELDS.map((spec) => (
       <SellerDetailsTextField
@@ -113,6 +127,7 @@ export const SellerDetailsFields = ({ disabled, errors, onChange, values }: Read
         error={errors[spec.field]}
         key={spec.field}
         onChange={onChange}
+        senderAddress={senderAddress}
         spec={spec}
         value={values[spec.field]}
       />
@@ -124,6 +139,7 @@ export const SellerDetailsFields = ({ disabled, errors, onChange, values }: Read
         error={errors[spec.field]}
         key={spec.field}
         onChange={onChange}
+        senderAddress={senderAddress}
         spec={spec}
         value={values[spec.field]}
       />
@@ -143,6 +159,7 @@ interface SellerDetailsTextFieldProps {
   readonly disabled: boolean
   readonly error: string | undefined
   readonly onChange: (patch: Partial<StoreSetting["sellerDetails"]>) => void
+  readonly senderAddress: string
   readonly spec: TextFieldSpec
   readonly value: string
 }
@@ -158,5 +175,6 @@ interface SellerDetailsFieldsProps {
   readonly disabled: boolean
   readonly errors: SellerDetailsFieldErrors
   readonly onChange: (patch: Partial<StoreSetting["sellerDetails"]>) => void
+  readonly senderAddress: string
   readonly values: StoreSetting["sellerDetails"]
 }

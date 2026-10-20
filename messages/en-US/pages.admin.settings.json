@@ -127,7 +127,7 @@
       "nip": "NIP",
       "regon": "REGON",
       "email": "Contact email",
-      "emailHint": "Customers see this address on the site and in the shop's emails, and their replies come here. The emails themselves are still sent from the shop's own sending address, not from this one.",
+      "emailHint": "Customers see this address on the site and in the shop's emails, and their replies come here. The emails themselves are sent from the shop's sending address, {sender}, which this field does not change.",
       "phone": "Contact phone",
       "phoneHint": "With the country code, e.g. +48 600 000 000.",
       "saved": "Seller details saved.",
