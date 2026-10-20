@@ -58,6 +58,24 @@ declare module "@tanstack/react-start" {
   }
 }
 
+const keepOnlyEntryModulePreload = (page: Response): Response => {
+  let entryKept = false
+
+  return new HTMLRewriter()
+    .on('link[rel="modulepreload"]', {
+      element: (link) => {
+        if (entryKept) {
+          link.remove()
+          return
+        }
+
+        link.setAttribute("fetchpriority", "low")
+        entryKept = true
+      },
+    })
+    .transform(page)
+}
+
 const respond = async (request: Request, context: RequestContext): Promise<Response> => {
   const { origin, pathname, protocol } = new URL(request.url)
   if (pathname === "/sitemap.xml") {
@@ -73,16 +91,19 @@ const respond = async (request: Request, context: RequestContext): Promise<Respo
     return redirect
   }
 
-  const response = await executionContextStorage.run(
+  const rendered = await executionContextStorage.run(
     {
       waitUntil: context.waitUntil,
     },
     () =>
       handler.fetch(request, {
         context,
-        responseLinkHeader: true,
+        responseLinkHeader: {
+          filter: ({ hint }) => hint.as === "style" || hint.as === "font",
+        },
       }),
   )
+  const response = rendered.headers.get("Content-Type")?.startsWith("text/html") === true ? keepOnlyEntryModulePreload(rendered) : rendered
 
   if (!setCookie) {
     return response
