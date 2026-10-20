@@ -128,22 +128,17 @@ Dwa kroje pisma, oba hostowane lokalnie z `public/fonts/`:
 
 `critical-fonts.css` jest wstawiany w treść dokumentu, nie linkowany. Zawiera kroje zastępcze dopasowane metrycznie (`Manrope Fallback` z Ariala, `Cormorant Garamond Fallback` z Times New Roman, z `size-adjust`, `ascent-override`, `descent-override` i `line-gap-override`) oraz cztery reguły `@font-face` potrzebne przy pierwszym renderowaniu: zmienny krój Manrope 200–800 i Cormorant Garamond 400 normal, każdy w podzbiorze `latin` i `latin-ext`. `fonts.css` niesie pozostałe osiem krojów Cormorant Garamond — 400 kursywę, 500, 500 kursywę i 600, w obu podzbiorach — i jest importowany zwyczajnie.
 
-`StorefrontCriticalFontsHead` emituje preloady i wstawia ten CSS przez `?raw`:
+`__root.tsx` wstawia ten CSS przez `?raw` na każdej stronie poza `/admin`, bo panel nie używa kroju szeryfowego:
 
 ```tsx
-export const StorefrontCriticalFontsHead = ({ locale }: Readonly<StorefrontCriticalFontsHeadProps>): JSX.Element => (
-  <>
-    {getCriticalFontPreloads(locale).map((link) => (
-      <link key={link.href} {...link} />
-    ))}
-    <style dangerouslySetInnerHTML={CRITICAL_FONTS_STYLE_HTML} />
-  </>
-)
+{
+  !isAdmin && <style dangerouslySetInnerHTML={CRITICAL_FONTS_STYLE_HTML} />
+}
 ```
 
-`getCriticalFontPreloads` w `src/presentation/document-assets.ts` wybiera podzbiór znaków zależnie od języka: polski dostaje `latin-ext` (potrzebuje ą, ć, ę, ł, ń, ó, ś, ź, ż), angielski zwykły `latin`. `__root.tsx` renderuje ten komponent tylko wtedy, gdy ścieżka nie jest pod `/admin`, bo panel nie używa kroju szeryfowego.
+`getCriticalFontPreloads` w `src/presentation/document-assets.ts` wybiera pliki do preloadu zależnie od języka: polski dostaje pliki `latin` i `latin-ext` Manrope i Cormorant Garamond 400 (jego tekst łączy zwykłe litery z ą, ć, ę, ł, ń, ś, ź, ż), angielski zwykły `latin`. Trasa główna dodaje je do swoich linków w `head`, a trasa strony głównej dodaje `LANDING_HERO_FONT_PRELOAD`, kursywę swojego nagłówka; zobacz [Fonty i branding](/docs/ui/fonts-and-branding#preloady-zależne-od-języka).
 
-**Zmiana kroju pisma** oznacza dodanie plików `.woff2` do `public/fonts/`, dopisanie reguł `@font-face` z właściwym `unicode-range` (grubości krytyczne w `critical-fonts.css`, pozostałe w `fonts.css`), wyliczenie nowych metryk kroju zastępczego i aktualizację `--font-sans` albo `--font-serif` w bloku `@theme inline`. Zachowaj podział na dwa pliki — przeniesienie wszystkiego do `fonts.css` pogarsza pierwsze renderowanie tekstu.
+**Zmiana kroju pisma** oznacza dodanie plików `.woff2` do `public/fonts/`, dopisanie reguł `@font-face` z właściwym `unicode-range` (grubości krytyczne w `critical-fonts.css`, pozostałe w `fonts.css`), wyliczenie nowych metryk kroju zastępczego z plików fontów (zobacz [Metryki krojów zastępczych](/docs/ui/fonts-and-branding#metryki-krojów-zastępczych)) i aktualizację `--font-sans` albo `--font-serif` w bloku `@theme inline`. Zachowaj podział na dwa pliki — przeniesienie wszystkiego do `fonts.css` pogarsza pierwsze renderowanie tekstu.
 
 ## Stałe brandingowe
 

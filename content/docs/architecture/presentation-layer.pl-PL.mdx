@@ -16,11 +16,11 @@ description: "Gdzie mieszkają komponenty, style, motyw, branding i szablony e-m
 | `theme`              | `theme-init.ts`, `sidebar-preference.ts`, `use-admin-light-theme.ts`                                                        |
 | `pdf`                | `withdrawal-form.ts`, `complaint-form.ts` i ich układ A4, `form-document.ts`                                                |
 | `branding`           | `app.ts`, `socials.ts`                                                                                                      |
-| `document-assets.ts` | `getCriticalFontPreloads(locale)`                                                                                           |
+| `document-assets.ts` | `getCriticalFontPreloads(locale)`, `LANDING_HERO_FONT_PRELOAD`                                                              |
 
 ## Organizacja komponentów
 
-- **Komponenty współdzielone to płaskie pliki** w `components/custom`: `product-card.tsx`, `image.tsx`, `localized-link.tsx`, `mdx.tsx`, `docs-mdx.tsx`, `floating-field.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `seller-contact-details.tsx`, `storefront-critical-fonts-head.tsx`, `validation-field-error.tsx`, `icons.tsx`, `docs-content.tsx`, `product-price.tsx`, `sales-paused-banner.tsx`.
+- **Komponenty współdzielone to płaskie pliki** w `components/custom`: `product-card.tsx`, `image.tsx`, `localized-link.tsx`, `mdx.tsx`, `docs-mdx.tsx`, `floating-field.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `seller-contact-details.tsx`, `validation-field-error.tsx`, `icons.tsx`, `docs-content.tsx`, `product-price.tsx`, `sales-paused-banner.tsx`.
 - **Przekrojowe widżety dostają katalog**, gdy są systemem, a nie komponentem: `datagrid/`, `image-upload/`, `checkout/`, `defaults/` oraz `display-preferences/`, czyli pola locale formatowania i strefy czasowej wspólne dla profilu konta i ustawień panelu.
 - **Komponenty stron i obszarów leżą w `components/custom/pages/<area>`**: `landing-page/`, `product-page/`, `products-catalog/`, `categories/`, `collections/`, `cart-page/`, `docs/`, `content-page/`, `newsletter/`, `withdrawal/`, `auth/`, `account/`, `admin/`.
 - **Każda strona administracyjna ma własny katalog** w `pages/admin`: `orders/`, `customers/`, `catalog/products/`, `catalog/categories/`, `catalog/collections/`, `catalog/attributes/`, `audit/`, `dashboard/`, `settings/`, `security/`, `content/`, `coupons/`, `marketing/`. Na najwyższym poziomie `pages/admin` leżą wspólne dla całego panelu komponenty nagłówka, paska bocznego i statystyk obok plików `dashboard-*.tsx` strony przeglądu; `lib/` zawiera współdzielone filtry kolumn i `admin-route.ts`, a `_styles/` klasy layoutu.
@@ -40,12 +40,12 @@ Większe obszary zagnieżdżają się dalej, w podkatalogi `components/`, `hooks
 
 Arkusze stylów są podzielone według trasy, która ich potrzebuje; layout sklepu nie dodaje własnego:
 
-| Plik                 | Ładowany przez                                | Zawiera                                                       |
-| -------------------- | --------------------------------------------- | ------------------------------------------------------------- |
-| `globals.css`        | `__root.tsx`                                  | Jedyny build Tailwind, tokeny designu, wariant `dark`         |
-| `admin.css`          | `admin.tsx`                                   | Własny zestaw tokenów panelu pod `[data-admin-main]`          |
-| `fonts.css`          | importowany przez `globals.css`               | Reguły `@font-face` dla samodzielnie hostowanych plików woff2 |
-| `critical-fonts.css` | wstawiany przez `StorefrontCriticalFontsHead` | Reguły `@font-face` potrzebne do pierwszego renderu           |
+| Plik                 | Ładowany przez                  | Zawiera                                                       |
+| -------------------- | ------------------------------- | ------------------------------------------------------------- |
+| `globals.css`        | `__root.tsx`                    | Jedyny build Tailwind, tokeny designu, wariant `dark`         |
+| `admin.css`          | `admin.tsx`                     | Własny zestaw tokenów panelu pod `[data-admin-main]`          |
+| `fonts.css`          | importowany przez `globals.css` | Reguły `@font-face` dla samodzielnie hostowanych plików woff2 |
+| `critical-fonts.css` | wstawiany przez `__root.tsx`    | Reguły `@font-face` potrzebne do pierwszego renderu           |
 
 `globals.css` zawęża skanowanie źródeł przez Tailwind dyrektywami `@source not` dla testów, `src/platform/testing` i nieużywanych prymitywów shadcn, żeby te pliki nie rozdmuchiwały generowanego CSS.
 
@@ -55,7 +55,7 @@ Arkusze stylów są podzielone według trasy, która ich potrzebuje; layout skle
 
 `ThemesProvider` opakowuje `@wrksz/themes` z `themes={["light", "dark"]}`, `enableSystem={false}` i magazynem `localStorage`. Panel administracyjny wymusza tryb jasny przez `useAdminLightTheme()`.
 
-Na trasach sklepu `StorefrontCriticalFontsHead` wstawia krytyczne reguły `@font-face`, a `document-assets.ts` wybiera preloady według locale: `pl-PL` otrzymuje subsety `latin-ext` fontów Manrope i Cormorant Garamond, `en-US` — `latin`. Panel administracyjny pomija fonty całkowicie i wstawia zamiast tego własny krytyczny CSS swojego chrome'u.
+Na trasach sklepu `__root.tsx` wstawia krytyczne reguły `@font-face` i dodaje do swoich linków w `head` preloady, które `document-assets.ts` wybiera według locale: `pl-PL` otrzymuje pliki `latin` i `latin-ext` fontów Manrope i Cormorant Garamond, `en-US` — `latin`, a trasa strony głównej dodaje kursywę swojego nagłówka. Panel administracyjny pomija fonty całkowicie i wstawia zamiast tego własny krytyczny CSS swojego chrome'u.
 
 ## Branding
 

@@ -17,7 +17,7 @@ interface LandingLoaderContext {
 
 interface RouteDefinition {
   readonly component?: () => JSX.Element
-  readonly head?: unknown
+  readonly head?: (context: { readonly loaderData?: PageMeta }) => unknown
   readonly loader?: (args: { readonly context: LandingLoaderContext }) => Promise<PageMeta>
   readonly staticData?: unknown
 }
@@ -107,6 +107,8 @@ vi.mock("~/src/presentation/components/custom/pages/landing-page/sections/newsle
 }))
 
 import { type PageMeta, buildStoreStructuredData, pageHead } from "~/src/lib/seo"
+
+import { LANDING_HERO_FONT_PRELOAD } from "~/src/presentation/document-assets"
 
 await import("~/src/routes/_storefront.index")
 
@@ -220,8 +222,10 @@ describe("landing route loader", () => {
 })
 
 describe("landing route wiring", () => {
-  it("registers the shared page head builder", () => {
-    expect(route.head).toBe(pageHead)
+  it("builds the page head with the shared builder and preloads the italic face of the hero heading", () => {
+    const loaderData = { description: "Handmade silver jewellery", title: "M'Arte" }
+
+    expect(route.head?.({ loaderData })).toStrictEqual({ ...pageHead({ loaderData }), links: [LANDING_HERO_FONT_PRELOAD] })
   })
 
   it("preloads the landing and category namespaces", () => {

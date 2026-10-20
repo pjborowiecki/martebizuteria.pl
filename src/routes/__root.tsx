@@ -27,9 +27,11 @@ import { DATAGRID_PREFS_INIT_SCRIPT } from "~/src/presentation/components/custom
 import { isAdminPathname } from "~/src/presentation/components/custom/pages/admin/lib/admin-route"
 import { VerificationToast } from "~/src/presentation/components/custom/pages/auth/verification-toast"
 import { SmoothScroll } from "~/src/presentation/components/custom/smooth-scroll"
-import { StorefrontCriticalFontsHead } from "~/src/presentation/components/custom/storefront-critical-fonts-head"
 
+import criticalFontsCss from "~/src/presentation/styles/critical-fonts.css?raw"
 import globalsCss from "~/src/presentation/styles/globals.css?url"
+
+import { getCriticalFontPreloads } from "~/src/presentation/document-assets"
 
 const RootComponent = () => {
   const { internalPathname } = Route.useRouteContext()
@@ -69,7 +71,7 @@ const RootDocument = ({ children }: Readonly<{ children: ReactNode }>) => {
         <script nonce={nonce} dangerouslySetInnerHTML={THEME_INIT_SCRIPT_HTML} />
         <script nonce={nonce} dangerouslySetInnerHTML={SIDEBAR_INIT_SCRIPT_HTML} />
         <script nonce={nonce} dangerouslySetInnerHTML={DATAGRID_PREFS_INIT_SCRIPT_HTML} />
-        {!isAdmin && <StorefrontCriticalFontsHead locale={locale} />}
+        {!isAdmin && <style dangerouslySetInnerHTML={CRITICAL_FONTS_STYLE_HTML} />}
         <HeadContent />
       </head>
       <body>
@@ -92,6 +94,10 @@ const DATAGRID_PREFS_INIT_SCRIPT_HTML = {
 
 const SIDEBAR_INIT_SCRIPT_HTML = {
   __html: SIDEBAR_INIT_SCRIPT,
+}
+
+const CRITICAL_FONTS_STYLE_HTML = {
+  __html: criticalFontsCss,
 }
 
 const PRODUCTION = "production"
@@ -144,6 +150,7 @@ const Route = createRootRouteWithContext<RouterContext>()({
           href: globalsCss,
           rel: "stylesheet",
         },
+        ...(isAdminPathname(path) ? [] : getCriticalFontPreloads(locale)),
         {
           href: APP_ICON,
           rel: "icon",

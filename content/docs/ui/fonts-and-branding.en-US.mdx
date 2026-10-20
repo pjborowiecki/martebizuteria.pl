@@ -1,6 +1,6 @@
 ---
 title: "Fonts & branding"
-description: "Self-hosted Manrope and Cormorant Garamond, locale-aware critical preloads, the brand constants and where the seller's details come from."
+description: "Self-hosted Manrope and Cormorant Garamond, metric-matched fallbacks, locale-aware critical preloads, the brand constants and where the seller's details come from."
 ---
 
 ## Two typefaces
@@ -35,70 +35,72 @@ cormorant-garamond-latin-ext-600-normal.woff2
 
 The font CSS is deliberately split in two.
 
-**`src/presentation/styles/critical-fonts.css`** carries only what the first screen needs: the two metric-matched fallback faces, Cormorant Garamond 400 normal (latin and latin-ext) and Manrope variable (latin and latin-ext), plus the `--font-sans` and `--font-serif` definitions on `:root`. It is inlined into the document head as a `<style>` tag, so no stylesheet request blocks the first paint:
+**`src/presentation/styles/critical-fonts.css`** carries only what the first screen needs: the two metric-matched fallback faces, Cormorant Garamond 400 normal (latin and latin-ext) and Manrope variable (latin and latin-ext), plus the `--font-sans` and `--font-serif` definitions on `:root`. `src/routes/__root.tsx` inlines it into the document head as a `<style>` tag, outside the admin console only, so no stylesheet request blocks the first paint:
 
 ```tsx
 import criticalFontsCss from "~/src/presentation/styles/critical-fonts.css?raw"
 
-export const StorefrontCriticalFontsHead = ({ locale }: Readonly<StorefrontCriticalFontsHeadProps>): JSX.Element => (
-  <>
-    {getCriticalFontPreloads(locale).map((link) => (
-      <link key={link.href} {...link} />
-    ))}
-    <style dangerouslySetInnerHTML={CRITICAL_FONTS_STYLE_HTML} />
-  </>
-)
-```
-
-The root route renders it only outside the admin console:
-
-```tsx
 {
-  !isAdmin && <StorefrontCriticalFontsHead locale={locale} />
+  !isAdmin && <style dangerouslySetInnerHTML={CRITICAL_FONTS_STYLE_HTML} />
 }
 ```
 
 **`src/presentation/styles/fonts.css`** carries the remaining eight Cormorant faces — 400 italic, 500 normal, 500 italic and 600 normal, each in both subsets. It is imported at the top of `globals.css`, so those faces arrive with the main stylesheet rather than blocking the head.
 
-The fallback faces avoid layout shift by matching metrics:
+### Fallback metrics
+
+Until a web font arrives, the browser draws the text with a local fallback face whose metrics are adjusted to the web font, so the swap moves nothing:
 
 ```css
 @font-face {
   font-family: "Manrope Fallback";
   src: local("Arial");
-  size-adjust: 98.16%;
-  ascent-override: 106.6%;
-  descent-override: 30%;
+  size-adjust: 103.76%;
+  ascent-override: 102.74%;
+  descent-override: 28.91%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Cormorant Garamond Fallback";
+  src: local("Times New Roman");
+  size-adjust: 96.09%;
+  ascent-override: 96.16%;
+  descent-override: 29.87%;
   line-gap-override: 0%;
 }
 ```
+
+The values come from the font files, with the formula Next.js and ReactProjects use:
+
+- `size-adjust` is the web font's average advance width over the string `aaabcdeeeefghiijklmnnoopqrrssttuvwxyz` plus six spaces, per unit of em, divided by the same average of the fallback (Arial 934.51 and Times New Roman 854.40 units of 2048). Manrope is measured at weight 400, the body text weight.
+- `ascent-override`, `descent-override` and `line-gap-override` are the web font's `hhea` ascender, descender and line gap per unit of em, divided by `size-adjust`, because the browser scales the overrides by `size-adjust` too.
+
+With these values Chromium and WebKit draw a line of Cormorant Garamond 400 and its fallback at the same height and within 0.4% of the same width, and Manrope 400 at the same height and within 2%. To recompute them, read the `woff2` files with fontTools: average the `hmtx` advances of the string above, divide by `head.unitsPerEm`, and take `hhea.ascent`, `hhea.descent` and `hhea.lineGap`; a Manrope instance at a given weight comes from `fontTools.varLib.instancer`.
 
 `globals.css` also sets `font-synthesis: none` on `body`, so a missing weight or italic is never faked by the browser.
 
 ## Locale-aware preloads
 
-`src/presentation/document-assets.ts` exports one function. It preloads exactly two files — one body font, one display font — and switches subset on the locale:
+`src/presentation/document-assets.ts` lists the font files the first paint needs. `getCriticalFontPreloads(locale)` returns the body and display fonts for the page's language:
 
 ```ts
-export const getCriticalFontPreloads = (locale: SupportedLocale) => {
-  const useLatinExt = locale === "pl-PL"
-
-  return [
-    {
-      ...FONT_PRELOAD_BASE,
-      href: useLatinExt ? "/fonts/manrope-latin-ext-wght-normal.woff2" : "/fonts/manrope-latin-wght-normal.woff2",
-    },
-    {
-      ...FONT_PRELOAD_BASE,
-      href: useLatinExt ? "/fonts/cormorant-garamond-latin-ext-400-normal.woff2" : "/fonts/cormorant-garamond-latin-400-normal.woff2",
-    },
-  ] as const
-}
+export const getCriticalFontPreloads = (locale: SupportedLocale) =>
+  locale === "pl-PL"
+    ? [MANROPE_LATIN, CORMORANT_GARAMOND_LATIN, MANROPE_LATIN_EXT, CORMORANT_GARAMOND_LATIN_EXT]
+    : [MANROPE_LATIN, CORMORANT_GARAMOND_LATIN]
 ```
 
-`FONT_PRELOAD_BASE` is `{ as: "font", crossOrigin: "anonymous", rel: "preload", type: "font/woff2" }`. `src/presentation/__test__/document-assets.test.ts` pins all of this: the exact hrefs per locale, the four attributes, and the fact that there are exactly two entries.
+Polish text mixes plain letters, which only the `latin` files hold, with ą, ć, ę, ł, ń, ś, ź and ż, which only the `latin-ext` files hold, so a Polish page preloads both subsets of each family; an English page needs only `latin`. Each entry is `{ as: "font", crossOrigin: "anonymous", href, rel: "preload", type: "font/woff2" }`. The root route puts them in its `head` links after the stylesheet, outside the admin console only:
 
-If you add a locale, extend the branch. If you add a third critical face, add it to `critical-fonts.css` _and_ to this function, or it will be fetched late.
+```ts
+...(isAdminPathname(path) ? [] : getCriticalFontPreloads(locale)),
+```
+
+`LANDING_HERO_FONT_PRELOAD` preloads `cormorant-garamond-latin-400-italic.woff2`, the face of the italic second line of the home page heading, which is the first thing a visitor sees. Only the home route (`_storefront.index.tsx`) adds it to its `head` links, so the other pages do not download it.
+
+Start renders these links into the page and lists them in the response's `Link` header, which Cloudflare can send ahead of the page as 103 Early Hints, so the browser starts the fonts before the HTML arrives; see [Request lifecycle](/docs/architecture/request-lifecycle#page-request). `src/presentation/__test__/document-assets.test.ts` pins the files per locale, the attributes and that every file exists in `public/fonts`; `src/routes/__test__/root.test.ts` checks the order and that the admin console preloads no storefront font.
+
+If you add a locale, extend the branch. If the first screen of a page needs another face, add it to `document-assets.ts` and to the `head` links of the route that shows it, or it will be fetched late.
 
 ## Fonts in the PDF forms
 

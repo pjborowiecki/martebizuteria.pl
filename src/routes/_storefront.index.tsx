@@ -31,6 +31,7 @@ import { ValuesSection } from "~/src/presentation/components/custom/pages/landin
 import { VideoExperienceSection } from "~/src/presentation/components/custom/pages/landing-page/sections/video-experience-section"
 
 import type landingMessages from "~/messages/en-US/pages.landing.json"
+import { LANDING_HERO_FONT_PRELOAD } from "~/src/presentation/document-assets"
 
 const HomePage = (): JSX.Element => {
   const rootRef = useRef<HTMLDivElement>(null)
@@ -61,7 +62,10 @@ const HomePage = (): JSX.Element => {
 
 export const Route = createFileRoute("/_storefront/")({
   component: HomePage,
-  head: pageHead,
+  head: (context) => ({
+    ...pageHead(context),
+    links: [LANDING_HERO_FONT_PRELOAD],
+  }),
   loader: async ({ context }) => {
     const { locale } = context
     const [messages, newArrivals, seller] = await Promise.all([
