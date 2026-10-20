@@ -1,5 +1,7 @@
-import { cleanup, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vite-plus/test"
+import { cleanup, fireEvent, screen } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
+
+const motion = vi.hoisted(() => ({ reduced: false }))
 
 vi.hoisted(() => {
   Object.defineProperty(globalThis, "matchMedia", {
@@ -8,7 +10,7 @@ vi.hoisted(() => {
       addEventListener: () => {},
       addListener: () => {},
       dispatchEvent: () => false,
-      matches: false,
+      matches: motion.reduced && query === "(prefers-reduced-motion: reduce)",
       media: query,
       onchange: null,
       removeEventListener: () => {},
@@ -17,6 +19,17 @@ vi.hoisted(() => {
     writable: true,
   })
 })
+
+type VisibilityCallback = (entries: readonly { readonly isIntersecting: boolean }[]) => void
+
+const viewport = vi.hoisted(() => ({
+  observers: [] as {
+    callback: VisibilityCallback
+    disconnected: boolean
+    options: IntersectionObserverInit | undefined
+    targets: Element[]
+  }[],
+}))
 
 vi.mock("~/src/lib/url", () => ({
   getAssetCdnBase: () => "https://images.test",
@@ -30,9 +43,66 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { VideoExperienceSection } from "~/src/presentation/components/custom/pages/landing-page/sections/video-experience-section"
 
+class RecordingIntersectionObserver {
+  private readonly record: (typeof viewport.observers)[number]
+
+  constructor(callback: VisibilityCallback, options?: IntersectionObserverInit) {
+    this.record = { callback, disconnected: false, options, targets: [] }
+    viewport.observers.push(this.record)
+  }
+
+  observe(target: Element): void {
+    this.record.targets.push(target)
+  }
+
+  disconnect(): void {
+    this.record.disconnected = true
+  }
+}
+
+const media = {
+  pause: vi.fn<() => void>(),
+  play: vi.fn<() => Promise<void>>(),
+}
+
+const ambienceVideo = (): HTMLVideoElement => {
+  const video = screen.getByLabelText("M'Arte atelier ambience video")
+  if (!(video instanceof HTMLVideoElement)) {
+    throw new Error("expected the ambience video element")
+  }
+
+  return video
+}
+
+const poster = (container: HTMLElement): HTMLImageElement => {
+  const image = container.querySelector("img")
+  if (image === null) {
+    throw new Error("expected the video poster image")
+  }
+
+  return image
+}
+
+const scrollVideo = (isIntersecting: boolean): void => {
+  for (const { callback, targets } of viewport.observers) {
+    callback(targets.map(() => ({ isIntersecting })))
+  }
+}
+
+beforeEach(() => {
+  motion.reduced = false
+  viewport.observers.length = 0
+  media.play.mockReset().mockResolvedValue()
+  media.pause.mockReset()
+  vi.stubGlobal("IntersectionObserver", RecordingIntersectionObserver)
+  vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(media.play)
+  vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(media.pause)
+})
+
 describe("VideoExperienceSection", () => {
   afterEach(() => {
     cleanup()
+    vi.restoreAllMocks()
   })
 
   it("renders the two heading lines", () => {
@@ -48,15 +118,105 @@ describe("VideoExperienceSection", () => {
     expect(screen.getByText(/Some stories deserve their own shape/u)).toBeInTheDocument()
   })
 
-  it("plays the ambience video muted, looping and inline", () => {
+  it("downloads nothing of the ambience video while the page loads", () => {
     renderWithProviders(<VideoExperienceSection />)
 
-    const video = screen.getByLabelText("M'Arte atelier ambience video")
+    const video = ambienceVideo()
 
-    expect(video.tagName).toBe("VIDEO")
+    expect(video).toHaveAttribute("preload", "none")
+    expect(video).not.toHaveAttribute("autoplay")
+    expect(video).not.toHaveAttribute("poster")
+    expect(media.play).not.toHaveBeenCalled()
+  })
+
+  it("keeps the video muted, looping, inline and at its 1920 by 1080 frame size", () => {
+    renderWithProviders(<VideoExperienceSection />)
+
+    const video = ambienceVideo()
+
+    expect(video.muted).toBe(true)
     expect(video).toHaveAttribute("loop")
-    expect(video).toHaveAttribute("preload", "auto")
-    expect(video).toHaveAttribute("poster")
+    expect(video).toHaveAttribute("playsinline")
+    expect(video).toHaveAttribute("width", "1920")
+    expect(video).toHaveAttribute("height", "1080")
+  })
+
+  it("covers the video with a lazily loaded marketing still of the same frame size until it plays", () => {
+    const { container } = renderWithProviders(<VideoExperienceSection />)
+
+    const image = poster(container)
+
+    expect(image.getAttribute("src")).toContain("marketing/editorial.webp")
+    expect(image).toHaveAttribute("alt", "")
+    expect(image).toHaveAttribute("loading", "lazy")
+    expect(image).toHaveAttribute("decoding", "async")
+    expect(image).not.toHaveAttribute("fetchpriority")
+    expect(image.style.maxWidth).toBe("1920px")
+    expect(image.style.maxHeight).toBe("1080px")
+    expect(image).not.toHaveClass("invisible")
+  })
+
+  it("starts the video once a quarter of it is on screen and pauses it when it leaves", () => {
+    renderWithProviders(<VideoExperienceSection />)
+
+    expect(viewport.observers).toHaveLength(1)
+    expect(viewport.observers[0]?.options).toStrictEqual({ threshold: 0.25 })
+    expect(viewport.observers[0]?.targets).toStrictEqual([ambienceVideo()])
+
+    scrollVideo(true)
+
+    expect(media.play).toHaveBeenCalledOnce()
+    expect(media.pause).not.toHaveBeenCalled()
+
+    scrollVideo(false)
+
+    expect(media.pause).toHaveBeenCalledOnce()
+  })
+
+  it("leaves the still in place when the browser refuses to play the video", async () => {
+    media.play.mockRejectedValue(new DOMException("blocked", "NotAllowedError"))
+    const { container } = renderWithProviders(<VideoExperienceSection />)
+
+    scrollVideo(true)
+    await Promise.resolve()
+
+    expect(media.play).toHaveBeenCalledOnce()
+    expect(poster(container)).not.toHaveClass("invisible")
+  })
+
+  it("hides the still once the video is playing and brings it back if the video fails", () => {
+    const { container } = renderWithProviders(<VideoExperienceSection />)
+
+    fireEvent.playing(ambienceVideo())
+
+    expect(poster(container)).toHaveClass("invisible")
+
+    fireEvent.error(ambienceVideo())
+
+    expect(poster(container)).not.toHaveClass("invisible")
+  })
+
+  it("stops watching the video when the section unmounts", () => {
+    const { unmount } = renderWithProviders(<VideoExperienceSection />)
+
+    unmount()
+
+    expect(viewport.observers[0]?.disconnected).toBe(true)
+  })
+
+  it("never plays the video for visitors who prefer reduced motion and shows them the still", () => {
+    motion.reduced = true
+    const { container, unmount } = renderWithProviders(<VideoExperienceSection />)
+
+    scrollVideo(true)
+
+    expect(viewport.observers).toHaveLength(0)
+    expect(media.play).not.toHaveBeenCalled()
+    expect(poster(container)).not.toHaveClass("invisible")
+
+    unmount()
+
+    expect(media.play).not.toHaveBeenCalled()
   })
 
   it("links the two calls to action to collections and products", () => {

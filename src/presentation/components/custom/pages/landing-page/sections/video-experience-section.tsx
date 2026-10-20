@@ -1,18 +1,45 @@
-import { type JSX, useRef } from "react"
+import { type JSX, useRef, useState } from "react"
 
+import { noop } from "@tanstack/react-query"
+import { cn } from "cn"
 import { useTranslations } from "use-intl/react"
 
 import { gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
 
 import { LANDING_VIDEO_POSTER, LANDING_VIDEO_SRC } from "~/src/data/landing"
 
+import { Image } from "~/src/presentation/components/custom/image"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
 import { ROUTES } from "~/src/routes"
 
+const playWhileOnScreen = (video: HTMLVideoElement | null): (() => void) | undefined => {
+  if (video === null || globalThis.matchMedia(REDUCED_MOTION_QUERY).matches) {
+    return
+  }
+
+  const observer = new IntersectionObserver(
+    ([entry]) => {
+      if (entry?.isIntersecting !== true) {
+        video.pause()
+        return
+      }
+
+      video.play().catch(noop)
+    },
+    { threshold: VISIBLE_FRACTION },
+  )
+  observer.observe(video)
+
+  return () => {
+    observer.disconnect()
+  }
+}
+
 export const VideoExperienceSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.videoExperienceSection")
   const sectionRef = useRef<HTMLElement>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
   useGSAP(
     () => {
       const section = sectionRef.current
@@ -38,15 +65,30 @@ export const VideoExperienceSection = (): JSX.Element => {
     >
       <div className="absolute inset-0">
         <video
+          ref={playWhileOnScreen}
           aria-label={t("videoLabel")}
           className="h-full w-full object-cover"
-          autoPlay
+          height={VIDEO_HEIGHT}
           muted
           loop
+          onError={() => {
+            setIsPlaying(false)
+          }}
+          onPlaying={() => {
+            setIsPlaying(true)
+          }}
           playsInline
-          preload="auto"
-          poster={LANDING_VIDEO_POSTER}
+          preload="none"
           src={LANDING_VIDEO_SRC}
+          width={VIDEO_WIDTH}
+        />
+        <Image
+          alt=""
+          className={cn("pointer-events-none absolute inset-0 size-full object-cover", { invisible: isPlaying })}
+          height={VIDEO_HEIGHT}
+          sizes="100vw"
+          src={LANDING_VIDEO_POSTER}
+          width={VIDEO_WIDTH}
         />
       </div>
 
@@ -91,3 +133,11 @@ export const VideoExperienceSection = (): JSX.Element => {
     </section>
   )
 }
+
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)"
+
+const VIDEO_HEIGHT = 1080
+
+const VIDEO_WIDTH = 1920
+
+const VISIBLE_FRACTION = 0.25
