@@ -11,8 +11,6 @@ const PUBLIC_PAGES = [
 
 const PAGES_UNDER_POLICY = ["/en-US", `/en-US/products/${PRODUCTS.lapis.handle}`, "/en-US/auth/sign-in", "/en-US/docs"] as const
 
-const ZOD_EVAL_PROBE = "eval"
-
 interface PolicyViolation {
   readonly blockedURI: string
   readonly effectiveDirective: string
@@ -95,7 +93,7 @@ test.describe("smoke", () => {
 
       expect(nonce).not.toBeNull()
       expect(response?.headers()["content-security-policy"]).toContain(`'nonce-${String(nonce)}'`)
-      expect(violations.filter(({ blockedURI }) => blockedURI !== ZOD_EVAL_PROBE)).toStrictEqual([])
+      expect(violations).toStrictEqual([])
     })
   }
 

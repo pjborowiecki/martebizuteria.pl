@@ -46,6 +46,8 @@ vi.mock("~/src/presentation/components/shadcn/sonner", () => ({
   Toaster: ({ variant }: Readonly<{ variant: string }>): JSX.Element => <span data-testid="toaster" data-variant={variant} />,
 }))
 
+import { ZOD_JITLESS_INIT_SCRIPT } from "~/src/integrations/zod/zod.config"
+
 import { Route as RootRoute } from "~/src/routes/__root"
 
 import { SIDEBAR_INIT_SCRIPT } from "~/src/presentation/theme/sidebar-preference"
@@ -118,25 +120,32 @@ describe("root layout component", () => {
 })
 
 describe("root document inline scripts", () => {
-  const INLINE_SCRIPTS = new Set([THEME_INIT_SCRIPT, SIDEBAR_INIT_SCRIPT, DATAGRID_PREFS_INIT_SCRIPT])
+  const INLINE_SCRIPTS = new Set([ZOD_JITLESS_INIT_SCRIPT, THEME_INIT_SCRIPT, SIDEBAR_INIT_SCRIPT, DATAGRID_PREFS_INIT_SCRIPT])
 
   const inlineScriptNonces = () =>
     [...document.querySelectorAll("script")]
       .filter((script) => INLINE_SCRIPTS.has(script.textContent))
       .map((script) => script.getAttribute("nonce"))
 
-  it("runs the theme, sidebar and data grid scripts under the nonce the response's policy allows", async () => {
+  it("runs the Zod, theme, sidebar and data grid scripts under the nonce the response's policy allows", async () => {
     await renderRootAt("/products", { ssr: { nonce: "ZG9jdW1lbnQtbm9uY2U=" } })
     await screen.findByText("page body")
 
-    expect(inlineScriptNonces()).toStrictEqual(["ZG9jdW1lbnQtbm9uY2U=", "ZG9jdW1lbnQtbm9uY2U=", "ZG9jdW1lbnQtbm9uY2U="])
+    expect(inlineScriptNonces()).toStrictEqual(Array.from({ length: 4 }, () => "ZG9jdW1lbnQtbm9uY2U="))
   })
 
   it("renders the scripts without a nonce when the router has none", async () => {
     await renderRootAt("/products")
     await screen.findByText("page body")
 
-    expect(inlineScriptNonces()).toStrictEqual([null, null, null])
+    expect(inlineScriptNonces()).toStrictEqual([null, null, null, null])
+  })
+
+  it("configures Zod before any other script, ahead of the application bundle that builds its schemas", async () => {
+    await renderRootAt("/admin/overview")
+    await screen.findByText("page body")
+
+    expect(document.querySelector("script")?.textContent).toBe(ZOD_JITLESS_INIT_SCRIPT)
   })
 })
 

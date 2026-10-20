@@ -137,7 +137,7 @@ validateSearch: storefrontProductsSearchSchema,
 
 Widgets, dialogs, forms and table columns live under `src/presentation/components/custom/` and read their own translations and their own queries. The simpler routes use `head: pageHead` from `src/lib/seo.ts`, which turns the loader's `{ title, description }` into `<title>`, `description` and the two matching Open Graph tags, plus the page's own `og:image` and `twitter:image` when the loader returns an `image` and a JSON-LD script when it returns `structuredData`.
 
-`src/routes/__root.tsx` owns the document shell: `beforeLoad` resolves the locale and, in one `Promise.all`, preloads every namespace the matched routes ask for and the user's `displayPreferencesQuery`, `shellComponent` renders `<html lang>` with the theme, sidebar and datagrid init scripts, and `head` assembles the canonical and `hreflang` links from `localeLinks`. Storefront pages are wrapped in `SmoothScroll`; admin pages are not.
+`src/routes/__root.tsx` owns the document shell: `beforeLoad` resolves the locale and, in one `Promise.all`, preloads every namespace the matched routes ask for and the user's `displayPreferencesQuery`, `shellComponent` renders `<html lang>` with the Zod configuration script and the theme, sidebar and datagrid init scripts, and `head` assembles the canonical and `hreflang` links from `localeLinks`. Storefront pages are wrapped in `SmoothScroll`; admin pages are not.
 
 ## Server functions
 
