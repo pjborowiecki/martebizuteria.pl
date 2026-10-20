@@ -32,7 +32,7 @@ GET /en-US/products/pierscionek-z-perla
   executionContextStorage.run({ waitUntil })
   router rewrite.input   /products/pierscionek-z-perla
   __root beforeLoad      getCurrentLocale, preloadNamespaces(root + trasa), displayPreferencesQuery
-  _storefront            brak guarda, ładuje storefront.css
+  _storefront            brak guarda; ładuje kolekcje menu, stan sprzedaży i dane sprzedawcy
   loader trasy           getProductQuery (staleTime: "static") + wiadomości pages.product
                          defer(getRelatedProductsQuery)
   SSR                    HTML + serializowany cache zapytań + nagłówek Link

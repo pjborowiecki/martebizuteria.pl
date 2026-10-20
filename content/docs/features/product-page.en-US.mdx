@@ -87,6 +87,8 @@ Note the return type. **A missing product and an out-of-stock product are both `
 
 `product-variant-picker.tsx` renders the option groups; `product-hero-gallery.tsx` swaps its images when the selected variant changes, because `ProductHeroSection` recomputes `images` from `selectedVariant?.imageUrls`.
 
+The gallery renders every image twice, once in the phone carousel (`lg:hidden`) and once in the desktop column (`hidden lg:block`). The first image is the page's Largest Contentful Paint at both breakpoints, so both of its copies get `priority`, and every other image is lazy at default priority. All copies share one `sizes`, `(width < 64rem) 100vw, 58vw`, along with the same source and dimensions, so at any viewport the browser resolves both copies of the first image to the same URL: React's server render emits one image preload, and the copy that is hidden at that breakpoint costs no second download.
+
 ## Add to cart
 
 `use-product-hero-cart.ts` is the only place the product page writes to the basket. It is stock-aware:
@@ -167,7 +169,7 @@ The route maps the rows into the shape `ProductRelatedSection` needs, resolving 
 
 ## Animation
 
-`hooks/use-product-animations.ts` is called with the page root and `dependencies: [handle]`, so the reveal animations replay when the visitor navigates from one product to another.
+`hooks/use-product-animations.ts` is called with the page root and `dependencies: [handle]`, so the reveal animations replay when the visitor navigates from one product to another. It hides and fades in only the `.reveal` elements that start below the fold, such as the related products; the breadcrumb, the gallery and the buy box are on screen when the page loads and stay exactly as the server painted them, so the main image is the Largest Contentful Paint from the first frame. Under `prefers-reduced-motion: reduce` it hides and moves nothing.
 
 ## Related pages
 

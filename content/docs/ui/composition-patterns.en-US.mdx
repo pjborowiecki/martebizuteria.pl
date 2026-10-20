@@ -26,12 +26,11 @@ const HomePage = (): JSX.Element => {
 }
 ```
 
-A layout route does the same for chrome. `src/routes/_storefront.tsx` mounts `Navigation`, `Footer`, the paused-sales notice, the cart banner and the activity tracker, subscribes to realtime invalidation, attaches its route stylesheet, and loads the collections the navigation's full-screen menu shows together with the sales status the notice reads and the seller's details the footer shows:
+A layout route does the same for chrome. `src/routes/_storefront.tsx` mounts `Navigation`, `Footer`, the paused-sales notice, the cart banner and the activity tracker, subscribes to realtime invalidation and loads the collections the navigation's full-screen menu shows together with the sales status the notice reads and the seller's details the footer shows:
 
 ```tsx
 export const Route = createFileRoute("/_storefront")({
   component: StorefrontLayout,
-  head: () => ({ links: [{ href: storefrontCss, rel: "stylesheet" }] }),
   loader: async ({ context }) => {
     await Promise.all([
       context.queryClient.query({ ...getCollectionsQuery(), staleTime: "static" }).catch(noop),
@@ -163,11 +162,13 @@ Use `custom/image.tsx`, not a bare `<img>`. It wraps `@unpic/react` and takes `a
 
 | Prop          | Effect                                                                        |
 | ------------- | ----------------------------------------------------------------------------- |
-| `priority`    | `loading="eager"`, `decoding="sync"`, `fetchPriority="high"`, higher quality  |
+| `priority`    | `loading="eager"` and `fetchPriority="high"`; decoding stays `async`          |
 | `optimize`    | Defaults to `true`; `false` resolves the raw asset URL with `resolveAssetURL` |
 | `quality`     | Overrides the default and priority quality from `IMAGE_CONSTANTS`             |
 | `blurDataURL` | Passed to unpic as `background`                                               |
 | `sizes`       | The responsive `sizes` attribute                                              |
+
+Without `priority` an image is `loading="lazy"` and `decoding="async"` at the browser's default priority. Give `priority` to one image per page, the one the Largest Contentful Paint lands on: the landing hero and the product page's main image. React's server renderer turns every image that is not lazy into a `<link rel="preload" as="image">` at the top of the document, so each extra priority image competes with the real one for the first round trips. When a layout renders the same picture twice for two breakpoints, as the product gallery does in its phone carousel and its desktop column, give both copies the same `src`, `width`, `height` and `sizes`: the browser then resolves them to one URL at any viewport, React emits a single preload, and the hidden copy costs no second download.
 
 `width` and `height` are required, which keeps the layout stable. With `optimize` on, an image on the `VITE_R2_URL` host is resized on that host through Cloudflare Image Transformations and unpic writes the `srcset`; an image on an `r2.dev` host is served at its original size, because `r2.dev` cannot transform images.
 

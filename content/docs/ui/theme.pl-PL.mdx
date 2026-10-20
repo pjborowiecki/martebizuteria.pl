@@ -159,7 +159,7 @@ Konsola jest więc zawsze jasna, niezależnie od zapisanego motywu. Współdzia�
 
 `admin.css` stylizuje też paski przewijania tabel danych, przemalowuje powiadomienia Sonner wewnątrz powłoki panelu, tak aby korzystały z palety panelu bocznego, oraz mapuje zmienne MDXEditor `--base*` i `--accent*` na tokeny shadcn dla `.content-editor` i `.mdxeditor-popup-container`, z obwódką fokusu i zawijanym paskiem narzędzi edytora treści. `src/presentation/components/custom/pages/admin/_styles/admin-layout.styles.ts` przechowuje `ADMIN_SHELL_CHROME_BG` i współdzielone łańcuchy klas — `ADMIN_LAYOUT_BG_CLASS` (`bg-zinc-100`), `ADMIN_CARD_CLASS`, zestaw `ADMIN_STAT_*`, klasy treści strony (`ADMIN_PAGE_BODY_CLASS` i dwie klasy stron katalogu), klasy przycisków nagłówka, klasy siatki i kart pulpitu oraz klasy etykiety i natywnego selecta w dialogach.
 
-Arkusz sklepu, `storefront.css`, jest znacznie mniejszy: ustawia stan początkowy animacji `.reveal` i `.line-reveal` w obrębie `[data-landing-page]` i spłaszcza oba przy `prefers-reduced-motion: reduce`.
+Layout sklepu nie dodaje własnego arkusza stylów. Jego animacje odsłaniania nie potrzebują ukrytego stanu początkowego w CSS, bo na stronach sklepu nic nie jest ukryte, zanim uruchomią się skrypty: `useLandingAnimations` i `useProductAnimations` ukrywają po hydratacji tylko elementy zaczynające się poniżej pierwszego ekranu, a przy `prefers-reduced-motion: reduce` nie robią nic.
 
 ## Preferencje zapisywane w przeglądarce
 

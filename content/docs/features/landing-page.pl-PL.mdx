@@ -95,11 +95,15 @@ Aby opublikować artykuł, dodaj jego slug do `BLOG_POST_SLUGS` i nadaj mu w obu
 
 ```ts
 export const LANDING_HERO_IMG = getAssetURL("marketing/hero.webp")
-export const LANDING_VIDEO_POSTER = getAssetURL("placeholder.svg")
+export const LANDING_VIDEO_POSTER = getAssetURL("marketing/editorial.webp")
 export const LANDING_VIDEO_SRC = getAssetURL("marketing/landing-video.mp4")
 ```
 
 `getAssetURL` (`src/lib/url.ts`) rozwiązuje je względem publicznego adresu R2. Zdjęcie pokazuje `HeroSection`, a wideo `VideoExperienceSection`.
+
+Zdjęcie w hero jest Largest Contentful Paint strony na telefonach i komputerach i jedynym obrazem na stronie z `priority`: tylko ono ma `loading="eager"` z `fetchPriority="high"`, więc renderowanie Reacta na serwerze umieszcza w nagłówku dokładnie jeden preload obrazu. Każde inne zdjęcie na stronie, nowości, panele i karty kategorii, kolekcje i zdjęcia redakcyjne, ma `loading="lazy"` przy domyślnym priorytecie przeglądarki.
+
+Wideo nie pobiera się razem ze stroną. `<video>` ma `preload="none"` i nie ma `autoplay`; funkcja ref obserwuje je przez `IntersectionObserver`, wywołuje `play()`, gdy na ekranie jest jedna czwarta filmu, i `pause()`, gdy z niego zniknie, a dla odwiedzających, którzy proszą o ograniczenie ruchu, nie robi nic i zostawia im kadr. Dopóki wideo nie gra, zakrywa je `LANDING_VIDEO_POSTER` przez wspólny komponent `Image`, ładowany leniwie i ustawiony na kadr wideo 1920 × 1080; kadr chowa się, gdy wideo zgłosi `playing`, i wraca przy `error`. W buckecie nie ma jeszcze klatki z filmu, więc kadrem jest `marketing/editorial.webp`, złote naszyjniki z zawieszką w kształcie muszli, którą pokazuje też film; aby użyć klatki z filmu, wyślij ją do `marketing/` i wskaż ją w `LANDING_VIDEO_POSTER`.
 
 ## Kolekcje
 
@@ -109,13 +113,15 @@ export const LANDING_VIDEO_SRC = getAssetURL("marketing/landing-video.mp4")
 
 `src/hooks/use-landing-animations.ts` jest wywoływany raz z komponentu strony, z referencją do `<main>`. Pobiera GSAP i `ScrollTrigger` z `src/integrations/gsap/gsap.config.ts` i podłącza trzy efekty po nazwie klasy:
 
-| Klasa            | Efekt                                                                                                                      |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `.reveal`        | jednorazowe pojawienie się z przesunięciem, wsadowo przez `ScrollTrigger.batch`; elementy już widoczne animują się od razu |
-| `.line-reveal`   | linia rozciąga się od lewej, jednorazowo                                                                                   |
-| `.parallax-wrap` | element `.parallax-img` wewnątrz przesuwa się wraz z przewijaniem kontenera                                                |
+| Klasa            | Efekt                                                                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.reveal`        | jednorazowe pojawienie się z przesunięciem, wsadowo przez `ScrollTrigger.batch`, dla elementów zaczynających się poniżej pierwszego ekranu |
+| `.line-reveal`   | linia rozciąga się od lewej, jednorazowo, jeśli zaczyna się poniżej pierwszego ekranu                                                      |
+| `.parallax-wrap` | element `.parallax-img` wewnątrz przesuwa się wraz z przewijaniem kontenera                                                                |
 
 Nowa sekcja dołącza do tej choreografii przez dodanie klasy `reveal` na swoim elemencie zewnętrznym — nie ma nic do rejestrowania.
+
+Przed uruchomieniem skryptów nic nie jest ukryte: żaden arkusz stylów nie ustawia stanu początkowego, a po hydratacji hook ukrywa `.reveal` albo zwija `.line-reveal` tylko wtedy, gdy jego górna krawędź leży poniżej dolnej krawędzi okna. Wszystko, co odwiedzający już widzi, przede wszystkim hero, zostaje dokładnie takie, jak namalował je serwer, więc pierwsze renderowanie niesie Largest Contentful Paint, a układ się nie przesuwa. Odsłanianie i paralaksa są rejestrowane w `gsap.matchMedia()` dla `(prefers-reduced-motion: no-preference)`, więc przy ograniczonym ruchu nic nie jest ukrywane ani przesuwane.
 
 Samo płynne przewijanie to Lenis, montowany przez `src/presentation/components/custom/smooth-scroll.tsx` i synchronizowany z routerem przez `src/hooks/use-lenis-router-scroll-sync.ts`.
 

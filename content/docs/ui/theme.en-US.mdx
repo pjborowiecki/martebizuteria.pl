@@ -159,7 +159,7 @@ So the console is always light regardless of the stored theme. Three things coop
 
 `admin.css` also styles the data-grid scrollbars, re-skins Sonner toasts inside the admin shell so they use the sidebar palette, and maps MDXEditor's `--base*` and `--accent*` variables onto the shadcn tokens for `.content-editor` and `.mdxeditor-popup-container`, with a focus ring and a wrapping toolbar for the content editor. `src/presentation/components/custom/pages/admin/_styles/admin-layout.styles.ts` holds `ADMIN_SHELL_CHROME_BG` and the shared class strings — `ADMIN_LAYOUT_BG_CLASS` (`bg-zinc-100`), `ADMIN_CARD_CLASS`, the `ADMIN_STAT_*` set, the page-body classes (`ADMIN_PAGE_BODY_CLASS` and the two catalog page classes), the header button classes, the dashboard grid and card classes, and the dialog label and native-select classes.
 
-The storefront's route stylesheet, `storefront.css`, is much smaller: it sets the pre-animation state of `.reveal` and `.line-reveal` under `[data-landing-page]` and flattens both under `prefers-reduced-motion: reduce`.
+The storefront layout adds no stylesheet of its own. Its reveal animations need no hidden starting state in CSS, because nothing on a storefront page is hidden before the scripts run: `useLandingAnimations` and `useProductAnimations` hide only the elements that start below the fold, once the page has hydrated, and do nothing under `prefers-reduced-motion: reduce`.
 
 ## Preferences stored in the browser
 
