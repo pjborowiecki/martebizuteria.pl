@@ -2,6 +2,7 @@ import { type JSX, useCallback, useEffect, useMemo, useState } from "react"
 
 import { cn } from "cn"
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
+import { useTranslations } from "use-intl/react"
 
 import { AspectRatio } from "~/src/presentation/components/shadcn/aspect-ratio"
 import { Button } from "~/src/presentation/components/shadcn/button"
@@ -40,6 +41,7 @@ const ProductHeroCarouselDot = ({
   index: number
   selectedIndex: number
 }>): JSX.Element => {
+  const t = useTranslations("pages.product.heroSection.gallery")
   const handleDotClick = useCallback(() => {
     api?.scrollTo(index)
   }, [api, index])
@@ -47,7 +49,7 @@ const ProductHeroCarouselDot = ({
   return (
     <button
       type="button"
-      aria-label={`Image ${index + 1}`}
+      aria-label={t("image", { number: index + 1 })}
       aria-current={selectedIndex === index ? "true" : undefined}
       onClick={handleDotClick}
       className="flex size-10 items-center justify-center"
@@ -102,6 +104,7 @@ const ProductHeroCarouselDots = ({
 }
 
 const ProductHeroMobileCarousel = ({ images, title }: Readonly<ProductHeroGalleryProps>): JSX.Element => {
+  const t = useTranslations("pages.product.heroSection.gallery")
   const [api, setApi] = useState<CarouselApi | undefined>()
   const handleSetApi = useCallback((carouselApi: CarouselApi) => {
     setApi(carouselApi)
@@ -137,6 +140,7 @@ const ProductHeroMobileCarousel = ({ images, title }: Readonly<ProductHeroGaller
         </CarouselContent>
 
         <Button
+          aria-label={t("previousImage")}
           className="absolute top-1/2 left-3 size-10 -translate-y-1/2 rounded-none border-0 bg-background/85 shadow-none backdrop-blur-sm hover:bg-background"
           onClick={scrollPrev}
           size="icon-sm"
@@ -146,6 +150,7 @@ const ProductHeroMobileCarousel = ({ images, title }: Readonly<ProductHeroGaller
           <ChevronLeftIcon />
         </Button>
         <Button
+          aria-label={t("nextImage")}
           className="absolute top-1/2 right-3 size-10 -translate-y-1/2 rounded-none border-0 bg-background/85 shadow-none backdrop-blur-sm hover:bg-background"
           onClick={scrollNext}
           size="icon-sm"

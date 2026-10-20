@@ -1,4 +1,5 @@
 import { cleanup, screen, waitFor, within } from "@testing-library/react"
+import { createTranslator } from "use-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 vi.hoisted(() => {
@@ -56,6 +57,7 @@ import { Navigation } from "~/src/presentation/components/custom/pages/landing-p
 import { NAVIGATION_MENU_ID } from "~/src/presentation/components/custom/pages/landing-page/navigation/constants"
 import { useNavigationStore } from "~/src/presentation/components/custom/pages/landing-page/navigation/store/navigation-store"
 
+import polishCustomMessages from "~/messages/pl-PL/components.custom.json"
 import { ROUTES } from "~/src/routes"
 
 describe("Navigation", () => {
@@ -107,6 +109,47 @@ describe("Navigation", () => {
     renderWithProviders(<Navigation />)
 
     expect(screen.getByRole("link", { name: /Cart/u })).toHaveAttribute("href", ROUTES.CART)
+  })
+
+  it("names the cart link with the count its badge shows", () => {
+    useCartStore.setState({
+      items: [
+        {
+          id: "var_1",
+          image: "/ring.avif",
+          price: "199,00 zł",
+          qty: 2,
+          rawPrice: 19_900,
+          slug: "ring",
+          title: "Ring",
+          variantId: "var_1",
+          variantTitle: "",
+        },
+      ],
+    })
+    renderWithProviders(<Navigation />)
+
+    const cartLink = screen.getByRole("link", { name: "Cart, 2 items" })
+
+    expect(cartLink).toHaveTextContent("2")
+  })
+
+  it("names an empty cart link with its zero count", () => {
+    renderWithProviders(<Navigation />)
+
+    expect(screen.getByRole("link", { name: "Cart, 0 items" })).toHaveTextContent("0")
+  })
+
+  it("names the cart link with the Polish plural of its count", () => {
+    const t = createTranslator({ locale: "pl-PL", messages: { navigation: polishCustomMessages.navigation }, namespace: "navigation" })
+
+    expect([0, 1, 2, 5, 22].map((count) => t("cart", { count }))).toStrictEqual([
+      "Koszyk, 0 produktów",
+      "Koszyk, 1 produkt",
+      "Koszyk, 2 produkty",
+      "Koszyk, 5 produktów",
+      "Koszyk, 22 produkty",
+    ])
   })
 
   it("renders the search overlay alongside the header", () => {
