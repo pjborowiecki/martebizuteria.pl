@@ -64,7 +64,7 @@
       "added": "Dodano"
     },
     "account": "Konto",
-    "cart": "Koszyk",
+    "cart": "Koszyk, {count, plural, one {# produkt} few {# produkty} many {# produktów} other {# produktu}}",
     "desktopNavLabel": "Główne",
     "overlayNavLabel": "Nawigacja",
     "desktop": {

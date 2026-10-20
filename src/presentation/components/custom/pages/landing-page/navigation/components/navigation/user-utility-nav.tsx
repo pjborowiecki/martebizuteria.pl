@@ -57,7 +57,7 @@ export const UserUtilityNav = (): JSX.Element => {
       </LocalizedLink>
       <LocalizedLink
         to={ROUTES.CART}
-        aria-label={t("cart")}
+        aria-label={t("cart", { count: itemCount })}
         onMouseEnter={cartHover.onMouseEnter}
         onMouseLeave={cartHover.onMouseLeave}
         className={cn(

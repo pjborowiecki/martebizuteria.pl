@@ -64,7 +64,7 @@
       "added": "Added"
     },
     "account": "Account",
-    "cart": "Cart",
+    "cart": "Cart, {count, plural, one {# item} other {# items}}",
     "desktopNavLabel": "Primary",
     "overlayNavLabel": "Site navigation",
     "desktop": {

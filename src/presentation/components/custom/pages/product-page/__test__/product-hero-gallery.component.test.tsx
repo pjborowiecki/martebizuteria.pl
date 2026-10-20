@@ -1,10 +1,14 @@
-import { cleanup, screen } from "@testing-library/react"
+import { cleanup, render, screen } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
+import { IntlProvider } from "use-intl/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { ProductHeroGallery } from "~/src/presentation/components/custom/pages/product-page/product-hero-gallery"
+
+import polishShadcnMessages from "~/messages/pl-PL/components.shadcn.json"
+import polishProductMessages from "~/messages/pl-PL/pages.product.json"
 
 vi.mock("~/src/presentation/components/custom/image", () => ({
   Image: ({ alt, src }: { readonly alt: string; readonly src: string }) => <img alt={alt} src={src} />,
@@ -111,10 +115,29 @@ describe("ProductHeroGallery", () => {
     expect(screen.queryAllByRole("img")).toStrictEqual([])
   })
 
+  it("names the previous and next controls for screen readers", () => {
+    renderWithProviders(<ProductHeroGallery images={images(2)} title={TITLE} />)
+
+    expect(screen.getByRole("button", { name: "Previous image" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Next image" })).toBeInTheDocument()
+  })
+
+  it("names the controls and dots in Polish on the Polish storefront", () => {
+    render(
+      <IntlProvider locale="pl-PL" messages={{ components: { shadcn: polishShadcnMessages }, pages: { product: polishProductMessages } }}>
+        <ProductHeroGallery images={images(2)} title={TITLE} />
+      </IntlProvider>,
+    )
+
+    expect(screen.getByRole("button", { name: "Poprzednie zdjęcie" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Następne zdjęcie" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Zdjęcie 2" })).toBeInTheDocument()
+  })
+
   it("moves to the next image from the right hand control", async () => {
     renderWithProviders(<ProductHeroGallery images={images(3)} title={TITLE} />)
 
-    await userEvent.click(carouselControl(1))
+    await userEvent.click(screen.getByRole("button", { name: "Next image" }))
 
     expect(screen.getByRole("button", { name: "Image 2" })).toHaveAttribute("aria-current", "true")
     expect(screen.getByRole("button", { name: "Image 1" })).not.toHaveAttribute("aria-current")
@@ -123,7 +146,7 @@ describe("ProductHeroGallery", () => {
   it("loops back to the last image from the left hand control", async () => {
     renderWithProviders(<ProductHeroGallery images={images(3)} title={TITLE} />)
 
-    await userEvent.click(carouselControl(0))
+    await userEvent.click(screen.getByRole("button", { name: "Previous image" }))
 
     expect(screen.getByRole("button", { name: "Image 3" })).toHaveAttribute("aria-current", "true")
   })
@@ -137,12 +160,3 @@ describe("ProductHeroGallery", () => {
     expect(screen.getByRole("button", { name: "Image 1" })).not.toHaveAttribute("aria-current")
   })
 })
-
-const carouselControl = (index: number): HTMLElement => {
-  const control = screen.getAllByRole("button")[index]
-  if (control === undefined) {
-    throw new Error(`expected a carousel control at index ${index}`)
-  }
-
-  return control
-}
