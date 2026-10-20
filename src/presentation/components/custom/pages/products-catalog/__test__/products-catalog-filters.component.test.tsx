@@ -55,6 +55,18 @@ describe("ProductsCatalogFilters sorting", () => {
     }
   })
 
+  it("heads every filter section one level under the page title", () => {
+    renderFilters()
+
+    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toStrictEqual([
+      "Sort by",
+      "Category",
+      "Collection",
+      "Price",
+    ])
+    expect(screen.queryAllByRole("heading", { level: 3 })).toStrictEqual([])
+  })
+
   it("caps indentation for deeply nested category branches", () => {
     const fourthLevel = categoryFixture("four", "Four", [categoryFixture("five", "Five")])
     const thirdLevel = categoryFixture("three", "Three", [fourthLevel])

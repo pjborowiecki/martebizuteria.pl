@@ -55,7 +55,7 @@ Wszystkie strony sklepu leżą pod layoutem bez ścieżki `_storefront.tsx`, kt�
 
 ## Uwierzytelnianie
 
-Layoutem `/auth` jest `auth.tsx`, a jego `beforeLoad` uruchamia `redirectIfSignedIn`, który odsyła już zalogowaną osobę na ścieżkę z parametru wyszukiwania `?redirect`, jeśli jest bezpieczną ścieżką w obrębie tej samej witryny, a w przeciwnym razie do `/admin` albo `/account/overview`, zależnie od roli. `auth.sign-in.tsx` deklaruje ten parametr w `validateSearch`. Layout renderuje `Navigation` sklepu, a jego loader ładuje `getCollectionsQuery()` dla pełnoekranowego menu.
+Layoutem `/auth` jest `auth.tsx`, a jego `beforeLoad` uruchamia `redirectIfSignedIn`, który odsyła już zalogowaną osobę na ścieżkę z parametru wyszukiwania `?redirect`, jeśli jest bezpieczną ścieżką w obrębie tej samej witryny, a w przeciwnym razie do `/admin` albo `/account/overview`, zależnie od roli. `auth.sign-in.tsx` deklaruje ten parametr w `validateSearch`. Layout renderuje `Navigation` sklepu nad punktem orientacyjnym `<main>`, w którym są panel edytorialny i formularz, a jego loader ładuje `getCollectionsQuery()` dla pełnoekranowego menu.
 
 Po udanym logowaniu hasłem albo udanej weryfikacji dwuskładnikowej formularz wywołuje `usePostAuthRedirect` z `src/hooks/use-post-auth-redirect.ts`. Ten hook usuwa z cache wyłącznie wpis sesji, czyści dopasowania zapisane w routerze i unieważnia router. Strażnik layoutu `/auth` uruchamia się wtedy ponownie, pobiera świeżą sesję i przekierowuje, więc formularze nigdy same nie wybierają celu. Gdy świeża sesja dotrze, `clearCacheOnUserChange`, opisane niżej w sekcji Strażnicy, zapomina to, co trafiło do cache przed zalogowaniem.
 

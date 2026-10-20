@@ -15,7 +15,7 @@ const AuthLayoutRoute = (): JSX.Element => (
     <Navigation />
     <div className="h-[calc(100svh-var(--nav-height,80px))]" />
 
-    <div className="fixed inset-0 top-(--nav-height,80px) z-0 grid lg:grid-cols-2">
+    <main className="fixed inset-0 top-(--nav-height,80px) z-0 grid lg:grid-cols-2">
       <AuthEditorial />
 
       <div className="flex items-center-safe justify-center overflow-y-auto px-4 py-10 sm:px-12 sm:py-16 lg:px-16 xl:px-24">
@@ -23,7 +23,7 @@ const AuthLayoutRoute = (): JSX.Element => (
           <Outlet />
         </div>
       </div>
-    </div>
+    </main>
   </>
 )
 

@@ -145,7 +145,7 @@ Najniższa cena należy do dnia obniżki, więc nie zmienia się, dopóki obniż
 
 ## Specyfikacje i szczegóły
 
-`product-hero-details.tsx` renderuje szczegóły jako akordeon: opis i listę specyfikacji, gdy produkt je ma, a potem „Dodatkowe informacje” i „Producent” przy każdym produkcie; pierwsza sekcja jest otwarta. `product-hero-detail-line.ts` eksportuje `resolveProductHeroDetailLine(subtitle, specifications, locale)`, które składa jedną linię podsumowania pod tytułem — z podtytułu, a gdy go brak, ze specyfikacji.
+`product-hero-details.tsx` renderuje szczegóły jako akordeon: opis i listę specyfikacji, gdy produkt je ma, a potem „Dodatkowe informacje” i „Producent” przy każdym produkcie; pierwsza sekcja jest otwarta. Tytuły sekcji są nagłówkami `<h2>` (`AccordionTrigger` z `heading="h2"`), o jeden poziom pod `<h1>` z nazwą produktu, a cztery notki w „Dodatkowych informacjach” to `<h3>`, więc konspekt strony nie pomija żadnego poziomu. `product-hero-detail-line.ts` eksportuje `resolveProductHeroDetailLine(subtitle, specifications, locale)`, które składa jedną linię podsumowania pod tytułem — z podtytułu, a gdy go brak, ze specyfikacji.
 
 Specyfikacje pochodzą z systemu atrybutów produktu: wiersze `attribute_on_product` mapowane przez `mapAttributeRowsToSpecifications`. Sposób definiowania atrybutów opisuje [Panel katalogu](/docs/features/admin-catalog).
 
@@ -153,7 +153,7 @@ Sekcja „Producent” podaje to, czego unijne rozporządzenie w sprawie ogólne
 
 ## Pasek zakupu na mobile
 
-`product-mobile-buy-bar.tsx` to przypięty pasek dolny. `ProductHeroInfo` pokazuje go przez `IntersectionObserver` na wierszu zakupu, zabezpieczony przez `matchMedia("(max-width: 1023px)")` — pojawia się więc tylko na małych ekranach i tylko wtedy, gdy prawdziwy wiersz dodania do koszyka wyjechał poza widok.
+`product-mobile-buy-bar.tsx` to przypięty pasek dolny. `ProductHeroInfo` pokazuje go przez `IntersectionObserver` na wierszu zakupu, zabezpieczony przez `matchMedia("(max-width: 1023px)")` — pojawia się więc tylko na małych ekranach i tylko wtedy, gdy prawdziwy wiersz dodania do koszyka wyjechał poza widok. Trafia przez portal do `document.body`, poza punkty orientacyjne strony, dlatego pasek jest elementem `<section>` nazwanym przez `pages.product.heroSection.buyBar` („Szybki zakup”, po angielsku „Quick purchase”), który czytniki ekranu wymieniają jako osobny region.
 
 ## Produkty powiązane
 

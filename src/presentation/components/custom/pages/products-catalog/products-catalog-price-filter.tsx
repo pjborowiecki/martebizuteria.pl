@@ -45,7 +45,7 @@ export const ProductsCatalogPriceFilter = ({ onSearchChange, search }: ProductsC
 
   return (
     <section className="space-y-4 border-t border-border/30 pt-8">
-      <h3 className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("price")}</h3>
+      <h2 className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("price")}</h2>
       <div className="grid grid-cols-2 gap-x-6 gap-y-4">
         <div className="space-y-2">
           <label htmlFor={minPriceId} className="text-[10px] tracking-[0.2em] text-muted-foreground uppercase">

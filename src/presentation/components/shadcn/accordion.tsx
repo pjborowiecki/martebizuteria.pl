@@ -12,8 +12,13 @@ const AccordionItem = ({ className, ...props }: Readonly<AccordionPrimitive.Item
   <AccordionPrimitive.Item data-slot="accordion-item" className={cn("not-last:border-b", className)} {...props} />
 )
 
-const AccordionTrigger = ({ className, children, ...props }: Readonly<AccordionPrimitive.Trigger.Props>): JSX.Element => (
-  <AccordionPrimitive.Header className="flex">
+const AccordionTrigger = ({
+  className,
+  children,
+  heading = "h3",
+  ...props
+}: Readonly<AccordionPrimitive.Trigger.Props & { heading?: keyof typeof ACCORDION_HEADINGS }>): JSX.Element => (
+  <AccordionPrimitive.Header className="flex" render={ACCORDION_HEADINGS[heading]}>
     <AccordionPrimitive.Trigger
       data-slot="accordion-trigger"
       className={cn(
@@ -51,5 +56,13 @@ const AccordionContent = ({ className, children, ...props }: Readonly<AccordionP
     </div>
   </AccordionPrimitive.Panel>
 )
+
+const ACCORDION_HEADINGS = {
+  h2: <h2 />,
+  h3: <h3 />,
+  h4: <h4 />,
+  h5: <h5 />,
+  h6: <h6 />,
+} as const
 
 export { Accordion, AccordionContent, AccordionItem, AccordionTrigger }

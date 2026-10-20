@@ -145,7 +145,7 @@ The lowest price belongs to the day of the reduction, so it stays the same while
 
 ## Specifications and details
 
-`product-hero-details.tsx` renders the details as an accordion: the description and the specification list when the product has them, then "Additional information" and "Manufacturer" on every product, with the first section open. `product-hero-detail-line.ts` exports `resolveProductHeroDetailLine(subtitle, specifications, locale)`, which produces the single summary line under the title from the subtitle or, failing that, the specifications.
+`product-hero-details.tsx` renders the details as an accordion: the description and the specification list when the product has them, then "Additional information" and "Manufacturer" on every product, with the first section open. The section titles are `<h2>` headings (`AccordionTrigger` with `heading="h2"`), one level under the product name's `<h1>`, and the four notes inside "Additional information" are `<h3>`, so the page's outline never skips a level. `product-hero-detail-line.ts` exports `resolveProductHeroDetailLine(subtitle, specifications, locale)`, which produces the single summary line under the title from the subtitle or, failing that, the specifications.
 
 Specifications come from the product attribute system: `attribute_on_product` rows mapped by `mapAttributeRowsToSpecifications`. See [Admin catalog](/docs/features/admin-catalog) for how attributes are defined.
 
@@ -153,7 +153,7 @@ The "Manufacturer" section gives what the EU General Product Safety Regulation (
 
 ## Mobile buy bar
 
-`product-mobile-buy-bar.tsx` is a fixed bottom bar. `ProductHeroInfo` shows it with an `IntersectionObserver` on the purchase row, guarded by `matchMedia("(max-width: 1023px)")` — so it only appears on small screens once the real add-to-cart row has scrolled out of view.
+`product-mobile-buy-bar.tsx` is a fixed bottom bar. `ProductHeroInfo` shows it with an `IntersectionObserver` on the purchase row, guarded by `matchMedia("(max-width: 1023px)")` — so it only appears on small screens once the real add-to-cart row has scrolled out of view. It is portaled into `document.body`, outside the page's landmarks, so the bar is a `<section>` named by `pages.product.heroSection.buyBar` ("Quick purchase", "Szybki zakup"), which screen readers list as a region of its own.
 
 ## Related products
 

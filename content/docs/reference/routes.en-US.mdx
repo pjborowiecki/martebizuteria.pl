@@ -55,7 +55,7 @@ All storefront pages sit under the pathless layout `_storefront.tsx`, which supp
 
 ## Authentication
 
-The `/auth` layout is `auth.tsx` and its `beforeLoad` runs `redirectIfSignedIn`, which sends an already signed-in visitor to the `?redirect` search parameter when it is a safe same-site path, and otherwise to `/admin` or `/account/overview` depending on their role. `auth.sign-in.tsx` declares that parameter in `validateSearch`. The layout renders the storefront `Navigation`, and its loader loads `getCollectionsQuery()` for the full-screen menu.
+The `/auth` layout is `auth.tsx` and its `beforeLoad` runs `redirectIfSignedIn`, which sends an already signed-in visitor to the `?redirect` search parameter when it is a safe same-site path, and otherwise to `/admin` or `/account/overview` depending on their role. `auth.sign-in.tsx` declares that parameter in `validateSearch`. The layout renders the storefront `Navigation` above a `<main>` landmark that holds the editorial panel and the form, and its loader loads `getCollectionsQuery()` for the full-screen menu.
 
 After a successful password sign-in or two-factor challenge, the form calls `usePostAuthRedirect` from `src/hooks/use-post-auth-redirect.ts`. It removes the cached session entry only, clears the router's cached matches and invalidates the router. The `/auth` layout guard then runs again, fetches the fresh session and redirects, so the forms never choose a destination themselves. When the fresh session arrives, `clearCacheOnUserChange`, described under Guards below, forgets what was cached while signed out.
 

@@ -34,6 +34,12 @@ describe("ProductsCatalogPriceFilter", () => {
     expect(screen.getByText("Amounts in PLN")).toBeInTheDocument()
   })
 
+  it("heads the section beside the other filters, one level under the page title", () => {
+    renderFilter()
+
+    expect(screen.getByRole("heading", { level: 2, name: "Price" })).toBeInTheDocument()
+  })
+
   it("starts both bounds empty when no price filter is applied", () => {
     const { from, to } = renderFilter()
 

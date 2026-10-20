@@ -29,7 +29,7 @@ const FilterSection = ({
   title: string
 }>): JSX.Element => (
   <section className="space-y-4 border-t border-border/30 pt-8 first:border-t-0 first:pt-0">
-    <h3 className="text-xs tracking-[0.24em] text-muted-foreground uppercase lg:text-[10px] lg:tracking-[0.28em]">{title}</h3>
+    <h2 className="text-xs tracking-[0.24em] text-muted-foreground uppercase lg:text-[10px] lg:tracking-[0.28em]">{title}</h2>
     {children}
   </section>
 )

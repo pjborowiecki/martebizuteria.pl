@@ -66,6 +66,27 @@ describe("ProductHeroDetails sections", () => {
     expect(sectionNames()).toStrictEqual(["Additional information", "Manufacturer"])
   })
 
+  it("heads every section one level under the product title", () => {
+    renderWithProviders(<ProductHeroDetails description="A hand made ring." specifications={[spec({})]} />, {
+      queryClient: createSellerDetailsQueryClient(),
+    })
+
+    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toStrictEqual([
+      "Description",
+      "Details",
+      "Additional information",
+      "Manufacturer",
+    ])
+  })
+
+  it("heads the notes inside the additional information one level under the section", async () => {
+    renderWithProviders(<ProductHeroDetails description="" specifications={[]} />, { queryClient: createSellerDetailsQueryClient() })
+
+    expect(screen.getByRole("heading", { level: 2, name: "Additional information" })).toBeInTheDocument()
+    expect(await screen.findByRole("heading", { level: 3, name: "Fast fulfillment" })).toBeInTheDocument()
+    expect(screen.queryAllByRole("heading", { level: 4 })).toStrictEqual([])
+  })
+
   it("keeps the additional information closed while the description leads", async () => {
     renderWithProviders(<ProductHeroDetails description="A hand made ring." specifications={[]} />, {
       queryClient: createSellerDetailsQueryClient(),
