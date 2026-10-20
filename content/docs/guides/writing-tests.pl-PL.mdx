@@ -265,13 +265,14 @@ vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
 
 ### Inne funkcje pomocnicze
 
-| Plik                              | Co daje testowi                                                                                                                                                                                |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lib/auth-browser.ts`             | `openAuthBrowser(ip)`, klienta zachowującego ciasteczka między wywołaniami `auth.handler` z Better Auth, oraz `createPasswordCustomer(email)`; używają ich testy integracyjne uwierzytelniania |
-| `lib/cut-text.ts`                 | `markAsCut(element)`, które podrabia `clientWidth` i `scrollWidth`, żeby kod je porównujący, jak `catalog-truncated-text-cell.tsx`, widział tekst jako ucięty (jsdom niczego nie układa)       |
-| `mocks/display-preferences.ts`    | `resolveRequestDisplayPreferences`, które odpowiada `{ formatLocale: "pl-PL", timeZone: "Europe/Warsaw" }`                                                                                     |
-| `mocks/broadcast-channel.ts`      | `StubBroadcastChannel`, którego statyczny szpieg `posted` zapisuje każde `postMessage`; podstaw go przez `vi.stubGlobal("BroadcastChannel", StubBroadcastChannel)`                             |
-| `mocks/providers.ts`, `worker.ts` | Emulatory Stripe, Resend i InPost oraz testowy Worker, na którym działa zestaw end-to-end                                                                                                      |
+| Plik                              | Co daje testowi                                                                                                                                                                                                                                                        |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lib/auth-browser.ts`             | `openAuthBrowser(ip)`, klienta zachowującego ciasteczka między wywołaniami `auth.handler` z Better Auth, oraz `createPasswordCustomer(email)`; używają ich testy integracyjne uwierzytelniania                                                                         |
+| `lib/cut-text.ts`                 | `markAsCut(element)`, które podrabia `clientWidth` i `scrollWidth`, żeby kod je porównujący, jak `catalog-truncated-text-cell.tsx`, widział tekst jako ucięty (jsdom niczego nie układa)                                                                               |
+| `mocks/display-preferences.ts`    | `resolveRequestDisplayPreferences`, które odpowiada `{ formatLocale: "pl-PL", timeZone: "Europe/Warsaw" }`                                                                                                                                                             |
+| `mocks/broadcast-channel.ts`      | `StubBroadcastChannel`, którego statyczny szpieg `posted` zapisuje każde `postMessage`; podstaw go przez `vi.stubGlobal("BroadcastChannel", StubBroadcastChannel)`                                                                                                     |
+| `mocks/gsap.ts`                   | `loadedGsapModule(toolkit)`, który w fabryce `vi.mock` zastępuje `~/src/integrations/gsap/gsap.loader` już wczytanym zestawem atrap, oraz `createGsapContextStub()` do użycia jako jego `gsap.context`; zobacz [GSAP i Lenis](/docs/integrations/gsap-and-lenis#testy) |
+| `mocks/providers.ts`, `worker.ts` | Emulatory Stripe, Resend i InPost oraz testowy Worker, na którym działa zestaw end-to-end                                                                                                                                                                              |
 
 ## Testowanie trasy
 

@@ -59,7 +59,7 @@ Four request paths short-circuit inside `src/server.ts` before the React framewo
 | --------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------- |
 | Framework       | TanStack Start 1.168 + TanStack Router 1.170                                          | `vite.config.ts`, `src/router.tsx`                  |
 | UI              | React 19.3, Tailwind CSS 4, shadcn primitives, Base UI                                | `src/presentation/`                                 |
-| Data            | D1 + Drizzle ORM 0.45, `drizzle-zod` for schemas                                      | `src/integrations/drizzle-orm/`                     |
+| Data            | D1 + Drizzle ORM 0.45, hand-written Zod 4 schemas                                     | `src/integrations/drizzle-orm/`                     |
 | Client cache    | TanStack Query 5.104, query options exported per use case                             | `src/integrations/tanstack-query/`                  |
 | Auth            | Better Auth 1.7 with `admin`, `twoFactor`, `multiSession` plugins                     | `src/integrations/better-auth/auth.server.ts`       |
 | Payments        | Stripe 23.0 server SDK on API version `2026-09-30.endive` + `@stripe/react-stripe-js` | `src/integrations/stripe/`                          |

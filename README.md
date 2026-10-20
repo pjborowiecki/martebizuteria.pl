@@ -81,11 +81,11 @@ This README is the operational summary. The docs site is the reference; when the
 | Hosting                  | Cloudflare Workers with smart placement, Workers Logs and Workers Issues enabled                                          |
 | Storage                  | D1 (SQLite) for all application data, R2 for media, KV (`CACHE`) for short-lived flags, static assets binding             |
 | Coordination             | Durable Object (`RealtimeInvalidationHub`) and Cloudflare Queues for the audit log and the newsletter                     |
-| Database access          | Drizzle ORM, `drizzle-zod`, and checked-in SQLite migrations applied by Wrangler                                          |
+| Database access          | Drizzle ORM and checked-in SQLite migrations applied by Wrangler; Zod schemas are written by hand, without the tables     |
 | Auth and authorization   | Better Auth (admin, multi-session, two-factor plugins) with D1 as the sole store                                          |
 | Data and forms           | TanStack Query and Table, React Hook Form with Zod resolvers, `nuqs` for URL state, Zustand                               |
 | UI                       | Tailwind CSS 4, shadcn-styled components over Base UI, Lucide icons, Recharts, Embla, Vaul, Sonner                        |
-| Motion and scrolling     | GSAP with `@gsap/react`, Lenis smooth scroll synchronized with the router                                                 |
+| Motion and scrolling     | GSAP and Lenis loaded on demand; Lenis smooth scroll for mouse and trackpad, synchronized with the router                 |
 | Localization and content | `use-intl` with ICU messages split by namespace, Fumadocs and MDX for docs, MDXEditor for legal pages                     |
 | External services        | Stripe for payments, Resend for email, InPost for parcel-locker lookup and shipments, MapLibre for locker maps            |
 | Verification             | Vite+/Vitest with node, integration and jsdom component projects; Testing Library; Playwright against a local test Worker |
@@ -255,7 +255,7 @@ Conventions that are enforced rather than suggested:
 
 - **Import from the defining file.** There are no barrel files and no constant bags. The formatter's 17 custom import groups give every file a layer-named import order automatically, so a misplaced dependency is visible in the diff.
 - **Query and mutation keys are readonly tuples** owned by the feature's `*.constants.ts`. Inputs that change the result belong in the key. Invalidate only what a mutation changes.
-- **Server-only code is marked.** Files that must never reach the client import `@tanstack/react-start/server-only` or are named `*.server.ts`. `scripts/verify-build.ts` fails the build if a client asset still imports `cloudflare:workers` or a `node:*` module.
+- **Server-only code is marked.** Files that must never reach the client import `@tanstack/react-start/server-only` or are named `*.server.ts`. `scripts/verify-build.ts` fails the build if a client asset still imports `cloudflare:workers` or a `node:*` module, or carries Drizzle ORM.
 - **Tests sit beside their owner** in `__test__/` directories, which the router's `routeFileIgnorePattern` excludes from route generation.
 
 Authentication and authorization entry points are in [`src/integrations/better-auth/`](src/integrations/better-auth):
@@ -558,7 +558,7 @@ Each deploy script runs seven stages in order before it deploys, and each one fa
 2. [`verify-stripe-keys.ts`](scripts/verify-stripe-keys.ts) reads the mode of `VITE_STRIPE_PUBLISHABLE_KEY` and `STRIPE_SECRET_KEY` from their prefixes. Production needs `pk_live_` with `sk_live_` or a restricted `rk_live_`, preview needs `pk_test_` with `sk_test_` or `rk_test_`, and a missing key or a publishable key whose mode differs from the secret key's fails everywhere. It prints the mode, never a key.
 3. [`verify-email-sender.ts`](scripts/verify-email-sender.ts) asks Resend whether it would send as `RESEND_EMAIL_FROM` with `RESEND_API_KEY`, and rejects a display-name sender, `onboarding@resend.dev`, an address at `martebizuteria.pl` outside production (test orders would mail the shop), or a domain that is missing from the Resend account or not verified, printing the DNS records still to publish. With a sending-only key it reads the domain through the optional `RESEND_MANAGEMENT_API_KEY`, or else sends one test e-mail to `delivered@resend.dev`.
 4. `build:preview` / `build:production` clears `dist`, compiles content, and builds with `CLOUDFLARE_ENV` and `--mode` both set to the target environment.
-5. [`verify-build.ts`](scripts/verify-build.ts) checks that `.wrangler/deploy/config.json` points at `dist/server/wrangler.json`, that the built Worker's `APP_ENV` and name match the requested environment, that `main` and `dist/client` exist with fonts, CSS and JavaScript — and then transpile-scans every client chunk and **fails on any `cloudflare:workers` or `node:*` import** that leaked into the browser bundle.
+5. [`verify-build.ts`](scripts/verify-build.ts) checks that `.wrangler/deploy/config.json` points at `dist/server/wrangler.json`, that the built Worker's `APP_ENV` and name match the requested environment, that `main` and `dist/client` exist with fonts, CSS and JavaScript — and then transpile-scans every client chunk and **fails on any `cloudflare:workers` or `node:*` import** that leaked into the browser bundle, and on any chunk that carries Drizzle ORM (the `Symbol.for` call that registers its `drizzle:entityKind` symbol).
 6. [`prepare-deploy-secrets.ts`](scripts/prepare-deploy-secrets.ts) writes a `0600` secrets file containing only the keys declared in `secrets.required`, which is what keeps `CLOUDFLARE_*` management credentials out of the Worker.
 7. `db:migrate:preview` / `db:migrate:production` applies the migrations the target database has not recorded yet. A failing migration is rolled back on its own, the ones before it stay applied, and nothing is deployed.
 

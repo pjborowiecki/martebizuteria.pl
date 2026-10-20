@@ -75,7 +75,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
 ## Component tests
 
-`renderWithProviders` from `src/platform/testing/lib/render.tsx` wraps the tree in use-intl's `IntlProvider` (with `TEST_LOCALE`, `TEST_MESSAGES` and `I18N.DEFAULT_TIMEZONE`), a real `QueryClientProvider` with retries disabled, and a `RouterContextProvider` over a memory-history router. `setup.ts` also stubs `IntersectionObserver`, `ResizeObserver` and `matchMedia`, which the GSAP and Lenis code paths need in jsdom, gives `HTMLDialogElement` working `showModal` and `close`, makes `document.elementFromPoint` return `null` and mocks `getRequest`. It sets a 15-second test timeout and a 5-second Testing Library `asyncUtilTimeout`, and clears the timers a test file left pending once the file has finished.
+`renderWithProviders` from `src/platform/testing/lib/render.tsx` wraps the tree in use-intl's `IntlProvider` (with `TEST_LOCALE`, `TEST_MESSAGES` and `I18N.DEFAULT_TIMEZONE`), a real `QueryClientProvider` with retries disabled, and a `RouterContextProvider` over a memory-history router. `setup.ts` also stubs `IntersectionObserver`, `ResizeObserver` and `matchMedia`, which the GSAP and Lenis code paths need in jsdom, gives `HTMLDialogElement` working `showModal` and `close`, makes `document.elementFromPoint` return `null` and mocks `getRequest`. It sets a 15-second test timeout and a 5-second Testing Library `asyncUtilTimeout`, waits after every test until the modules a component imported on demand, such as GSAP, have loaded, and clears the timers a test file left pending once the file has finished.
 
 ## What the suites are aimed at
 

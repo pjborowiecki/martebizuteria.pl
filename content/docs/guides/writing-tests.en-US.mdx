@@ -265,13 +265,14 @@ vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
 
 ### Other helpers
 
-| File                              | What it gives a test                                                                                                                                                                   |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lib/auth-browser.ts`             | `openAuthBrowser(ip)`, a client that keeps cookies across calls to Better Auth's `auth.handler`, and `createPasswordCustomer(email)`; the auth integration tests use them              |
-| `lib/cut-text.ts`                 | `markAsCut(element)`, which fakes `clientWidth` and `scrollWidth` so code that compares them, such as `catalog-truncated-text-cell.tsx`, sees the text as cut (jsdom lays nothing out) |
-| `mocks/display-preferences.ts`    | A `resolveRequestDisplayPreferences` that answers `{ formatLocale: "pl-PL", timeZone: "Europe/Warsaw" }`                                                                               |
-| `mocks/broadcast-channel.ts`      | `StubBroadcastChannel`, whose static `posted` spy records every `postMessage`; stub it with `vi.stubGlobal("BroadcastChannel", StubBroadcastChannel)`                                  |
-| `mocks/providers.ts`, `worker.ts` | The Stripe, Resend and InPost emulators and the test Worker the end-to-end suite runs against                                                                                          |
+| File                              | What it gives a test                                                                                                                                                                                                                                                         |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lib/auth-browser.ts`             | `openAuthBrowser(ip)`, a client that keeps cookies across calls to Better Auth's `auth.handler`, and `createPasswordCustomer(email)`; the auth integration tests use them                                                                                                    |
+| `lib/cut-text.ts`                 | `markAsCut(element)`, which fakes `clientWidth` and `scrollWidth` so code that compares them, such as `catalog-truncated-text-cell.tsx`, sees the text as cut (jsdom lays nothing out)                                                                                       |
+| `mocks/display-preferences.ts`    | A `resolveRequestDisplayPreferences` that answers `{ formatLocale: "pl-PL", timeZone: "Europe/Warsaw" }`                                                                                                                                                                     |
+| `mocks/broadcast-channel.ts`      | `StubBroadcastChannel`, whose static `posted` spy records every `postMessage`; stub it with `vi.stubGlobal("BroadcastChannel", StubBroadcastChannel)`                                                                                                                        |
+| `mocks/gsap.ts`                   | `loadedGsapModule(toolkit)`, which replaces `~/src/integrations/gsap/gsap.loader` in a `vi.mock` factory with a toolkit of fakes already loaded, and `createGsapContextStub()` to serve as its `gsap.context`; see [GSAP and Lenis](/docs/integrations/gsap-and-lenis#tests) |
+| `mocks/providers.ts`, `worker.ts` | The Stripe, Resend and InPost emulators and the test Worker the end-to-end suite runs against                                                                                                                                                                                |
 
 ## Testing a route
 

@@ -112,7 +112,7 @@ A module owns one Drizzle table and everything derived from it. Inside a module:
 - `*.accessors.ts` also holds the prepared statements and batch builders; a server-only operation that is not an RPC endpoint is `use-cases/<verb>-<noun>.server.ts`. A module holds no other kind of file.
 - `use-cases/<verb>-<noun>.ts` holds one operation. It exports the `createServerFn` server function, plus the `queryOptions` or mutation key that callers use. Loaders, components and cache invalidation all import the same options object, so they share one query key by construction.
 - Constants — column lengths, status enums, error codes, query keys, mutation keys, table column ids — live in `*.constants.ts` as `SCREAMING_SNAKE_CASE` objects prefixed by the entity, for example `CATEGORY_QUERY_KEYS` and `CATEGORY_ERROR_CODES`.
-- `*.zod.ts` builds Zod schemas, usually from `drizzle-zod`'s `createSchemaFactory`, and exports them as a single `<entity>ZodSchemas` object plus named input schemas.
+- `*.zod.ts` writes its Zod schemas by hand and never imports the table, so Drizzle ORM stays out of the browser bundle, and usually exports them as a single `<entity>ZodSchemas` object plus named input schemas.
 - `*.types.ts` derives types from the table rather than restating them:
 
 ```ts

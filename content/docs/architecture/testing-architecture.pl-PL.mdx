@@ -75,7 +75,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
 ## Testy komponentów
 
-`renderWithProviders` z `src/platform/testing/lib/render.tsx` owija drzewo w `IntlProvider` z use-intl (z `TEST_LOCALE`, `TEST_MESSAGES` i `I18N.DEFAULT_TIMEZONE`), prawdziwy `QueryClientProvider` z wyłączonymi ponowieniami oraz `RouterContextProvider` nad routerem z historią pamięciową. `setup.ts` stubuje dodatkowo `IntersectionObserver`, `ResizeObserver` i `matchMedia`, których ścieżki kodu GSAP i Lenis potrzebują w jsdom, daje `HTMLDialogElement` działające `showModal` i `close`, sprawia, że `document.elementFromPoint` zwraca `null`, i mockuje `getRequest`. Ustawia 15-sekundowy limit czasu testu i 5-sekundowy `asyncUtilTimeout` Testing Library, a po zakończeniu pliku testowego czyści timery, które zostawił oczekujące.
+`renderWithProviders` z `src/platform/testing/lib/render.tsx` owija drzewo w `IntlProvider` z use-intl (z `TEST_LOCALE`, `TEST_MESSAGES` i `I18N.DEFAULT_TIMEZONE`), prawdziwy `QueryClientProvider` z wyłączonymi ponowieniami oraz `RouterContextProvider` nad routerem z historią pamięciową. `setup.ts` stubuje dodatkowo `IntersectionObserver`, `ResizeObserver` i `matchMedia`, których ścieżki kodu GSAP i Lenis potrzebują w jsdom, daje `HTMLDialogElement` działające `showModal` i `close`, sprawia, że `document.elementFromPoint` zwraca `null`, i mockuje `getRequest`. Ustawia 15-sekundowy limit czasu testu i 5-sekundowy `asyncUtilTimeout` Testing Library, po każdym teście czeka, aż wczytają się moduły, które komponent zaimportował na żądanie, na przykład GSAP, a po zakończeniu pliku testowego czyści timery, które zostawił oczekujące.
 
 ## W co celują pakiety testów
 

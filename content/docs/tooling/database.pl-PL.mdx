@@ -45,7 +45,7 @@ import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas"
 export const db = drizzle(env.DB, { schema })
 ```
 
-Import `server-only` sprawia, że pakiet klienta, który sięgnąłby po `db`, wysypie się już na etapie kompilacji, a nie w czasie działania, a `scripts/verify-build.ts` sprawdza to samo założenie powtórnie, skanując skompilowane zasoby klienta w poszukiwaniu importów `cloudflare:workers` i `node:`.
+Import `server-only` sprawia, że pakiet klienta, który sięgnąłby po `db`, wysypie się już na etapie kompilacji, a nie w czasie działania, a `scripts/verify-build.ts` sprawdza to samo założenie powtórnie, skanując skompilowane zasoby klienta w poszukiwaniu importów `cloudflare:workers` i `node:` oraz samego Drizzle ORM.
 
 ### Tabele
 
@@ -83,6 +83,8 @@ Wrangler dodaje jeszcze jedną, `d1_migrations`, która jest jego własną księ
 | `calendarPeriodKey(column, periods)` | Klucz ostatniego z `periods` (`{ key, start }`), który zaczyna się nie później niż `column`, przekazany jednym parametrem JSON, do grupowania po dniach lub miesiącach w danej strefie, takich jak wykres zamówień na pulpicie panelu i miesięczne wydatki klienta w strefie czasowej wyświetlania oglądającego |
 | `inJsonList(column, values)`         | `column in (select value from json_each(...))`, z całą listą przekazaną jednym parametrem JSON, więc lista dowolnej długości zajmuje jeden ze 100 parametrów D1                                                                                                                                                 |
 | `notInJsonList(column, values)`      | To samo z `not in`                                                                                                                                                                                                                                                                                              |
+
+Pliki stałych modułów i `product-attribute.zod.ts` importują z tego pliku `UUID_STRING_LENGTH`, a one trafiają do przeglądarki. Dlatego plik deklaruje tylko stałe i funkcje i przy wczytaniu niczego z Drizzle nie wywołuje, więc build klienta pomija `drizzle-orm`, zamiast wysyłać go razem ze stałą.
 
 Nowa tabela kończy się na `...timestamps()` i używa `timestamp(...)` dla każdej innej kolumny daty. Robi tak 35 z 43 tabel; `audit_log`, `category_on_product`, `collection_on_product`, `order_number_sequence`, `price_history`, `rate_limit`, `storefront_search` i `user_email_history` nie mają `timestamps()`. 21 tabel generuje klucz główny przez `text("id").primaryKey().$defaultFn(() => crypto.randomUUID())`. Pozostałe klucze tekstowe nadaje kod, który zapisuje wiersz — Better Auth na przykład wydaje identyfikatory UUIDv7 przez `generateId` w `auth.server.ts` — a kilka tabel ma inny klucz: całkowitoliczbowe `id` w `price_history` i `user_email_history`, `period` w `order_number_sequence`, klucz złożony z produktu i kategorii albo kolekcji w `category_on_product` i `collection_on_product`, a `storefront_search` nie ma żadnego.
 

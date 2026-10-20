@@ -56,7 +56,7 @@ Zadanie `verify`, z limitem 25 minut, na `ubuntu-latest`, z `persist-credentials
 
 Drugie zadanie, `e2e`, wywołuje `e2e-reusable.yml` z `browser: chromium`.
 
-Krok kompilacji działa na atrapowym `.env.preview`, który akcja setup skopiowała z `.env.test`, i to wystarcza, bo `scripts/verify-build.ts` sprawdza kształt wyniku — konfigurację wdrożenia, nazwę Workera, zmienną `APP_ENV`, obecność fontów, JS-a i CSS-a klienta oraz brak importów `cloudflare:workers` i `node:` w zasobach klienta — a nie wartości jakichkolwiek danych uwierzytelniających.
+Krok kompilacji działa na atrapowym `.env.preview`, który akcja setup skopiowała z `.env.test`, i to wystarcza, bo `scripts/verify-build.ts` sprawdza kształt wyniku — konfigurację wdrożenia, nazwę Workera, zmienną `APP_ENV`, obecność fontów, JS-a i CSS-a klienta oraz brak importów `cloudflare:workers` i `node:` oraz Drizzle ORM w zasobach klienta — a nie wartości jakichkolwiek danych uwierzytelniających.
 
 ## Przepływy end-to-end
 
@@ -134,7 +134,7 @@ Działa przed kompilacją, żeby nadawca, którego Resend by odrzucił, zatrzyma
 
 ### 4. kompilacja
 
-`bun run build:preview` usuwa `dist`, odtwarza `.source/`, uruchamia `CLOUDFLARE_ENV=preview vp build --mode preview`, a potem `bun scripts/verify-build.ts preview`. `verify-build.ts` czyta `.wrangler/deploy/config.json`, idzie za jego `configPath` i sprawdza, że wskazuje dokładnie na `dist/server/wrangler.json`; że `vars.APP_ENV` skompilowanej konfiguracji odpowiada celowi, a jej `name` to `martebizuteria-preview` (albo `martebizuteria` dla produkcji); że istnieje jej `main`, a katalog zasobów wskazuje na `dist/client`; że istnieje `dist/client/fonts`; że `dist/client/assets` zawiera co najmniej jeden plik `.js` i jeden `.css`; a na koniec skanuje każdy plik `.js` klienta przez `new Bun.Transpiler({ loader: "js" })` i przerywa przy jakimkolwiek imporcie `cloudflare:workers` lub modułu `node:`.
+`bun run build:preview` usuwa `dist`, odtwarza `.source/`, uruchamia `CLOUDFLARE_ENV=preview vp build --mode preview`, a potem `bun scripts/verify-build.ts preview`. `verify-build.ts` czyta `.wrangler/deploy/config.json`, idzie za jego `configPath` i sprawdza, że wskazuje dokładnie na `dist/server/wrangler.json`; że `vars.APP_ENV` skompilowanej konfiguracji odpowiada celowi, a jej `name` to `martebizuteria-preview` (albo `martebizuteria` dla produkcji); że istnieje jej `main`, a katalog zasobów wskazuje na `dist/client`; że istnieje `dist/client/fonts`; że `dist/client/assets` zawiera co najmniej jeden plik `.js` i jeden `.css`; a na koniec skanuje każdy plik `.js` klienta przez `new Bun.Transpiler({ loader: "js" })` i przerywa przy jakimkolwiek imporcie `cloudflare:workers` lub modułu `node:` oraz przy każdym pliku, który zawiera Drizzle ORM (wywołanie `Symbol.for`, które rejestruje jego symbol `drizzle:entityKind`).
 
 ### 5. prepare-deploy-secrets.ts
 

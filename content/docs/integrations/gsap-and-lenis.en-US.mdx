@@ -1,34 +1,101 @@
 ---
 title: "GSAP and Lenis"
-description: "Storefront motion: plugin registration, the smooth-scroll singleton, and router coordination."
+description: "Storefront motion: loading GSAP and Lenis on demand, the useGsap hook, the smooth-scroll singleton, and router coordination."
 ---
 
-The storefront is animated; the admin console is not. Two small adapters make that possible without letting animation libraries leak everywhere: `src/integrations/gsap/` registers GSAP's plugins and global defaults exactly once, and `src/integrations/lenis/` holds the single Lenis instance plus the programmatic-scroll helpers. Everything else — the actual timelines — lives in `src/hooks/` and `src/presentation/`.
+The storefront is animated; the admin console is not. Lenis is never part of a page's initial JavaScript, and GSAP comes with the route code of only the three pages whose first screen depends on it: the home page, `/categories` and the product page. Two small adapters keep it that way without letting animation libraries leak everywhere: `src/integrations/gsap/` configures GSAP exactly once and loads it when something first needs it, unless the page brought it, and `src/integrations/lenis/` holds the single Lenis instance plus the programmatic-scroll helpers. `src/hooks/use-gsap.ts` is the hook components animate with. Everything else — the actual timelines — lives in `src/hooks/` and `src/presentation/`.
 
 ## GSAP configuration
 
-`gsap.config.ts` is 17 lines and is the only place plugins are registered:
+`gsap.config.ts` is 9 lines and is the only place a plugin is registered:
 
 ```ts
 if (typeof document !== "undefined") {
-  gsap.registerPlugin(useGSAP, ScrollToPlugin, ScrollTrigger)
+  gsap.registerPlugin(ScrollTrigger)
   gsap.defaults({ duration: 0.8, ease: "power3.out" })
 }
 
-export { gsap } from "gsap"
-
-export { useGSAP } from "@gsap/react"
-
-export { ScrollTrigger } from "gsap/ScrollTrigger"
-
-export { ScrollToPlugin } from "gsap/ScrollToPlugin"
+export const gsapToolkit = { ScrollTrigger, gsap }
 ```
 
-The `typeof document !== "undefined"` guard matters: this module is imported by components that server-render, and `ScrollTrigger` touches the DOM at registration time. The re-exports are the point of the file — **import `gsap`, `useGSAP`, `ScrollTrigger` and `ScrollToPlugin` from here, never from `gsap` directly**, because only this path guarantees registration has happened and the defaults are applied.
+Only two modules import this file statically: `use-landing-animations.ts` and `use-product-animations.ts`, the animation hooks of the pages that need GSAP before they hydrate (see [The useGsap hook](#the-usegsap-hook)). Everything else reaches it through `gsap.loader.ts`. The server renders those pages too and evaluates the file there, so registration and the defaults run only where `document` exists, since `ScrollTrigger` touches the DOM when it registers; on the server the file only exports the toolkit. `gsapToolkit` is that toolkit, the one object every setup and handler receives, whether a page brought it with its own code or the loader imported it — **never import `gsap`, `gsap/ScrollTrigger` or `gsap.config.ts` anywhere else**. A static import puts GSAP into the code of every page that reaches the importing module, and only the toolkit guarantees that registration has happened and the defaults are applied.
 
 Those defaults mean a tween with no `duration` or `ease` gets 0.8 s and `power3.out`. That is the storefront's motion signature; overriding it per tween is normal, but if a whole family of animations needs different timing, change it here rather than repeating the values.
 
-Only three plugins are registered. `ScrollSmoother`, `SplitText`, `Flip` and the rest of the Club GreenSock plugins are not dependencies of this project.
+Only `ScrollTrigger` is registered. Nothing tweens `scrollTo`: programmatic scrolling goes through Lenis or `window.scrollTo` (see below). `ScrollSmoother`, `SplitText`, `Flip` and the rest of the Club GreenSock plugins are not dependencies of this project.
+
+## Loading GSAP on demand
+
+`gsap.loader.ts` is the module the rest of the code imports:
+
+```ts
+export type GsapToolkit = typeof gsapToolkit
+
+const keepLoadedGsap = (toolkit: GsapToolkit): GsapToolkit => {
+  gsapStore.toolkit = toolkit
+  for (const listener of gsapStore.listeners) {
+    listener()
+  }
+
+  return toolkit
+}
+
+export const loadGsap = (): Promise<GsapToolkit> => {
+  gsapStore.pending ??= import("~/src/integrations/gsap/gsap.config").then(
+    (config) => keepLoadedGsap(config.gsapToolkit),
+    (error: unknown) => {
+      gsapStore.pending = undefined
+      throw error
+    },
+  )
+
+  return gsapStore.pending
+}
+
+export const provideGsap = (toolkit: GsapToolkit): void => {
+  if (typeof document !== "undefined") {
+    gsapStore.pending = Promise.resolve(keepLoadedGsap(toolkit))
+  }
+}
+
+export const getLoadedGsap = (): GsapToolkit | undefined => gsapStore.toolkit
+```
+
+`loadGsap()` imports `gsap.config.ts` once; every later call returns the same promise. If the download fails, for example when the connection drops or Safari aborts the import because the visitor is leaving the page, it forgets that promise and passes the error on, so the next call downloads GSAP again instead of repeating the failure for the rest of the visit. When the import resolves it keeps `gsapToolkit` and calls every listener registered with `subscribeToGsap(listener)`, which returns a function that removes the listener. `provideGsap(toolkit)` does the same for a toolkit a page imported with its own code, and makes later `loadGsap()` calls return it without importing anything; on the server it keeps nothing, so nothing there ever reads a loaded toolkit. `getLoadedGsap()` returns the toolkit once it is there and `undefined` before. `GsapToolkit` is the type of `gsapToolkit`, `{ ScrollTrigger, gsap }`, imported with `import type`, so the loader itself carries no GSAP code. The build puts GSAP in a chunk of its own. The route code of the home page, `/categories` and the product page imports it, and no other page imports it statically or lists it in its `modulepreload` links.
+
+## The useGsap hook
+
+`src/hooks/use-gsap.ts` exports two hooks. `useGsapToolkit(load)` reads the loader through `useSyncExternalStore`, with `getLoadedGsap` as the snapshot both in the browser and while rendering on the server or hydrating: it returns `undefined` on the server and until GSAP is there, and the toolkit afterwards, whichever component loaded it. On a page that brought GSAP with its own code, the render that hydrates the server's markup already has the toolkit, so the setups run in the commit that hydrates the page. Nothing renders from the toolkit, so that render and the server's markup still match. When `load` is `true` the hook calls `loadGsap()` in an effect, that is after the component has mounted.
+
+`useGsap(setup, { dependencies, load = true, revertOnUpdate, scope })` is what components animate with. `ValuesSection` is a typical call:
+
+```tsx
+useGsap(
+  ({ gsap }) => {
+    const section = sectionRef.current
+    if (!section) {
+      return
+    }
+    gsap.matchMedia().add("(prefers-reduced-motion: no-preference)", () => {
+      gsap.from(section, {
+        ease: "none",
+        scrollTrigger: { end: "top 60%", scrub: true, start: "top bottom", trigger: section },
+        yPercent: -15,
+      })
+    })
+  },
+  { scope: sectionRef },
+)
+```
+
+- **One context per component.** Once the toolkit is there, the hook creates a `gsap.context` scoped to `scope`, so selector strings in the setup only match inside that element. Unmounting reverts the context, and with it every tween, timeline, `ScrollTrigger` and `gsap.matchMedia()` created in it.
+- **The setup runs inside the context**, as `setup(toolkit)`. It runs again when an entry of `dependencies` changes (compared with `Object.is`); without `dependencies` it runs once. With `revertOnUpdate: true` the hook reverts the earlier run first; otherwise the new run is added next to it. A function the setup returns runs when the context reverts.
+- **`load` decides when GSAP is asked for.** With the default `true` the hook loads GSAP after mount. With `false`, or a value that becomes `true` later such as `load: menuOpen`, the setup waits until the value turns `true` or something else loads GSAP.
+- **It returns `{ contextSafe, toolkit }`.** `contextSafe(handler)` wraps an event handler written as `(toolkit, ...args) => void`. Called before GSAP has loaded, the wrapper starts loading it and does nothing else; afterwards it runs the handler inside the component's context with the toolkit and the call's arguments, so whatever the handler creates is reverted with the rest. `toolkit` serves code outside the context, such as the categories section's focus handler, which reads `toolkit?.ScrollTrigger.getById(...)`.
+
+Setups and handlers receive the toolkit instead of importing GSAP, and pass it on: helpers such as `setupScrollReveals(toolkit, root)` in `use-landing-animations.ts` take it as a parameter.
+
+Some animations decide what the page shows: the reveals that hide content below the fold until it scrolls in, and the pinned categories section, whose keyboard focus handling needs its `ScrollTrigger`. They have to be in place as soon as a visitor can use the page. `useLandingAnimations` and `useProductAnimations` therefore import `gsapToolkit` and call `provideGsap(gsapToolkit)` when their module loads, so GSAP arrives with the route code of the home page, `/categories` and the product page. Those pages hydrate, or render after a client-side navigation, with GSAP already there, and their setups run in that first commit, as they did when GSAP was part of the bundle, while the cart and every other page never wait for it. Do not make hydration wait for a separate GSAP download instead, for example by suspending on `loadGsap()`. A Suspense boundary that is still waiting while the router or a query updates the tree around it is rendered again on the client, and until GSAP arrives the page shows nothing where its content was.
 
 ## The Lenis singleton
 
@@ -55,7 +122,7 @@ export const syncLenisToWindowScroll = (): void => {
 
 `syncLenisToWindowScroll` exists because Lenis keeps its own scroll position. After the router replaces the page, the native `window.scrollY` and Lenis's internal value disagree, and the next wheel event jumps. Forcing Lenis to the real position and re-measuring fixes it.
 
-Every consumer handles `undefined`, because the instance only exists while `SmoothScroll` is mounted — which is to say, never on an admin page and never during SSR.
+Every consumer handles `undefined`, because the instance only exists while `SmoothScroll` runs Lenis — which is to say never on an admin page, never during SSR, never on a touch screen or for a visitor who prefers reduced motion, and not before Lenis has loaded after hydration.
 
 ## Programmatic scrolling
 
@@ -88,21 +155,45 @@ if (scrollToSectionById(id, CONSTANTS.HEADER_OFFSET_PX) !== undefined) {
 }
 ```
 
-Both paths respect `prefers-reduced-motion: reduce`, either by zeroing the Lenis duration or by using `behavior: "instant"`.
+Both paths respect `prefers-reduced-motion: reduce`, either by zeroing the Lenis duration or by using `behavior: "instant"`. Since `SmoothScroll` starts no Lenis for a visitor who prefers reduced motion, or on a touch screen, those visitors always take the `window.scrollTo` path.
 
 ## Where the instance is created
 
-`src/presentation/components/custom/smooth-scroll.tsx` is the only place `new Lenis(...)` appears:
+`src/presentation/components/custom/smooth-scroll.tsx` is the only place a Lenis instance is created, and `SmoothScroll` first decides whether to create one at all:
 
 ```tsx
-const lenis = new Lenis({
+const smoothScrollAllowed = useSyncExternalStore(subscribeToSmoothScrollMedia, prefersSmoothScroll, noSmoothScrollOnServer)
+useLenisRouterScrollSync()
+useEffect(() => {
+  if (!smoothScrollAllowed) {
+    return
+  }
+  const session: { active: boolean; stop: (() => void) | undefined } = { active: true, stop: undefined }
+  void Promise.all([import("lenis"), loadGsap()]).then(([{ default: LenisScroller }, toolkit]) => {
+    if (session.active) {
+      session.stop = startSmoothScroll(LenisScroller, toolkit)
+    }
+  })
+
+  return () => {
+    session.active = false
+    session.stop?.()
+  }
+}, [smoothScrollAllowed])
+```
+
+`SMOOTH_SCROLL_MEDIA_QUERY` is `"(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)"`: a mouse or trackpad, and a visitor who has not asked for less motion. `useSyncExternalStore` reads it with `matchMedia` and re-reads it on the query's `change` event; the server snapshot is `false`. Only while the query matches does the effect import `lenis` and call `loadGsap()`, together, and start Lenis once both have arrived. Touch screens and visitors who prefer reduced motion keep native scrolling and never download Lenis. When the query stops matching, for example because the visitor turns on reduced motion, the cleanup destroys Lenis and hands scrolling back to the browser; when it starts matching, Lenis starts. `session.active` covers a page that unmounts, or a query that stops matching, before the imports have resolved: nothing is started.
+
+`startSmoothScroll(LenisScroller, toolkit)` then builds the instance with GSAP's `gsap` and `ScrollTrigger` from the toolkit:
+
+```tsx
+const lenis = new LenisScroller({
   autoRaf: false,
   lerp: 0.09,
   touchMultiplier: 2,
   virtualScroll: () => !isPageScrollLocked(),
   wheelMultiplier: 1,
 })
-lenisRef.current = lenis
 setLenisInstance(lenis)
 lenis.on("scroll", () => {
   ScrollTrigger.update()
@@ -123,7 +214,7 @@ Five decisions are load-bearing:
 - **`stopInertiaOnPress(lenis)`** listens for `pointerdown` on `window` in the capture phase. When a press lands while a wheel or trackpad scroll is still gliding towards its target (`lenis.isScrolling === "smooth"` and `lenis.targetScroll !== lenis.scroll`), it pins Lenis where it is with `lenis.scrollTo(lenis.scroll, { force: true, immediate: true })`, the call the router sync uses. Lenis keeps easing towards its target for about half a second after the last wheel event, and a press does not stop it (Lenis itself resets only on a middle-button press). The control under the pointer would move away between press and release, the browser would send `click` to the elements' common ancestor, and the shopper would have to press again, as with the address form's **Cancel** right after a scroll. The capture phase also sees presses whose handlers stop propagation. The target check leaves a programmatic `scrollTo` running, such as the section scroll above: Lenis keeps a target ahead of the page only for wheel and touch input, and during a scripted scroll it moves `targetScroll` along with the page. The returned function removes the listener.
 - **`virtualScroll: () => !isPageScrollLocked()`.** Lenis turns a wheel into `window.scrollTo`, and an `overflow: hidden` lock on the page does not stop that call. `isPageScrollLocked` reports an inline `overflow-y: hidden` on `<html>` or `<body>`. Base UI writes that lock while a select, menu or dialog is open, and the fullscreen menu and the search overlay write it through `gsap.set`. While the lock holds, Lenis leaves every wheel to the browser. The page stays where it is wherever the pointer rests, including the field that opened a select and the sticky header, and a scrollable panel in the overlay scrolls natively.
 
-`lerp: 0.09` is the smoothing factor — lower is slower and softer. Cleanup removes the ticker callback and the press listener, destroys Lenis, which drops its scroll listener, and calls `setLenisInstance(undefined)`.
+`lerp: 0.09` is the smoothing factor — lower is slower and softer. The function `startSmoothScroll` returns, which the effect's cleanup calls, removes the ticker callback and the press listener, destroys Lenis, which drops its scroll listener, and calls `setLenisInstance(undefined)`.
 
 ### Which pages get it
 
@@ -141,7 +232,15 @@ Five decisions are load-bearing:
 }
 ```
 
-`isAdminPathname(internalPathname)` is the test. Admin pages use native scrolling, which is the right call for data grids and long forms.
+`isAdminPathname(internalPathname)` is the test. Admin pages use native scrolling, which is the right call for data grids and long forms, and never mount `SmoothScroll`, so the admin loads neither Lenis nor GSAP. Every other page is wrapped, so on a desktop browser Lenis and GSAP load right after the first page has hydrated, whichever page it is.
+
+No page has Lenis in its initial JavaScript, and only the home page, `/categories` and the product page have GSAP, in their route code. Apart from `SmoothScroll`, GSAP is loaded by:
+
+- the route code of the home page and `/categories` (`useLandingAnimations`) and of the product page (`useProductAnimations`), before the page hydrates; the values, video and desktop categories sections on the home page, and the product page's related products, use that same toolkit;
+- the full-screen menu and the search overlay, when they first open;
+- the first hover over a product card's image.
+
+On a phone, the cart, the product list, the legal and about pages, the account, checkout, docs and auth pages therefore never load GSAP unless the menu or the search opens.
 
 ## Coordinating with the router
 
@@ -156,17 +255,21 @@ lenis.stop()
 
 Without this, Lenis keeps interpolating towards a target that belongs to the outgoing page.
 
-On **`onRendered`** it restarts Lenis, syncs it to the real scroll position, and then in a `requestAnimationFrame` — after the browser has laid the new page out — kills detached triggers and refreshes:
+On **`onRendered`** it restarts Lenis, syncs it to the real scroll position, and then in a `requestAnimationFrame` — after the browser has laid the new page out — takes the toolkit from `loadGsap()`, kills detached triggers and refreshes:
 
 ```ts
 requestAnimationFrame(() => {
-  cleanupDetachedScrollTriggers()
-  syncLenisToWindowScroll()
-  ScrollTrigger.refresh()
+  void loadGsap().then((toolkit) => {
+    cleanupDetachedScrollTriggers(toolkit)
+    syncLenisToWindowScroll()
+    toolkit.ScrollTrigger.refresh()
+  })
 })
 ```
 
-`cleanupDetachedScrollTriggers` walks `ScrollTrigger.getAll()` and kills any trigger whose element is no longer in `document`. This is the fix for the classic client-side-routing leak: a `ScrollTrigger` created by a page that has unmounted keeps its element alive and keeps being measured on refresh. Both handlers also emit `catalogDebugLog("lenis.beforeLoad", …)` / `("lenis.rendered", …)` from `src/lib/catalog-debug-log.ts`, which is useful when scroll position misbehaves after a navigation.
+`SmoothScroll` loaded GSAP together with Lenis, so the promise has already resolved, and the hook never imports GSAP itself. Both handlers return early when there is no Lenis instance: on a touch screen, for a visitor who prefers reduced motion, or before Lenis has loaded, a navigation neither stops Lenis nor refreshes `ScrollTrigger`, and the `useGsap` contexts of the outgoing page revert its triggers when it unmounts.
+
+`cleanupDetachedScrollTriggers(toolkit)` walks `ScrollTrigger.getAll()` and kills any trigger whose element is no longer in `document`. This is the fix for the classic client-side-routing leak: a `ScrollTrigger` created by a page that has unmounted keeps its element alive and keeps being measured on refresh. Both handlers also emit `catalogDebugLog("lenis.beforeLoad", …)` / `("lenis.rendered", …)` from `src/lib/catalog-debug-log.ts`, which is useful when scroll position misbehaves after a navigation.
 
 ## Who animates what
 
@@ -179,21 +282,43 @@ requestAnimationFrame(() => {
 | `.../landing-page/sections/desktop-categories-section.tsx`, `values-section.tsx`, `video-experience-section.tsx`                                                        | Section-level timelines                                                                                                                                                                                    |
 | `.../landing-page/navigation/components/navigation/navigation-provider.tsx`, `.../landing-page/navigation/hooks/use-navigation-logic.ts`, `use-search-overlay-logic.ts` | Menu, anchor scrolling and the search overlay                                                                                                                                                              |
 
-Note the pattern in `use-product-card-image-hover.ts`: reduced motion is handled with `gsap.matchMedia()` registering both a `(prefers-reduced-motion: no-preference)` and a `(prefers-reduced-motion: reduce)` branch, so the preference is respected _and_ re-evaluated if the user changes it mid-session. Prefer this over reading `matchMedia` once.
+The navigation loads GSAP only for what moves. The header's scrolled state comes from a passive `scroll` listener on `window`, which sets it while `window.scrollY` is above `SCROLLED_OFFSET_PX` (20, in `navigation-constants.ts`), and the Escape key that closes the menu is a plain effect. The menu's timeline, its scroll lock on `<html>` and `<body>`, and the effect that plays and reverses it run in `useGsap` with `load: menuOpen`, so GSAP loads when the menu first opens unless something has loaded it already, and the menu plays once the timeline exists. A route change that closes a menu that never got to animate only unmounts it. `use-search-overlay-logic.ts` builds its timeline with `load: searchOpen`, and the dialog opens — `showModal`, the timeline, the focus, the stopped Lenis and the `<html>` lock — once that timeline exists.
 
-Always use `useGSAP` rather than `useEffect` for a timeline. It scopes the animations to the component and reverts them on unmount, which is what keeps `cleanupDetachedScrollTriggers` from having much to do.
+`use-product-card-image-hover.ts` passes `load: false`. The first hover over a card's image asks for GSAP through `contextSafe` and animates nothing; once GSAP has loaded, every card's setup runs and later hovers zoom. On a desktop, smooth scrolling has normally loaded GSAP before the pointer reaches a card.
+
+Note the pattern in the same file: reduced motion is handled with `gsap.matchMedia()` registering both a `(prefers-reduced-motion: no-preference)` and a `(prefers-reduced-motion: reduce)` branch, so the preference is respected _and_ re-evaluated if the user changes it mid-session. Prefer this over reading `matchMedia` once.
+
+Always create a timeline in a `useGsap` setup or a `contextSafe` handler rather than in `useEffect`. The context scopes the animations to the component and reverts them on unmount, which is what keeps `cleanupDetachedScrollTriggers` from having much to do. Leave `load` at `true` for motion that plays as the page appears, and pass the state that shows the element, as in `load: menuOpen`, or `false` for motion that only follows an interaction.
 
 ## Pitfalls
 
-- A `ScrollTrigger` created outside `useGSAP` will survive its component. Either use `useGSAP`, or kill it yourself.
+- A `ScrollTrigger` created outside a `useGsap` context will survive its component. Either create it in a setup or a `contextSafe` handler, or kill it yourself.
+- Do not import `gsap`, `gsap/ScrollTrigger` or `gsap.config.ts` statically outside `use-landing-animations.ts` and `use-product-animations.ts`, and import `lenis` only as a type (`import type Lenis from "lenis"`, as `lenis.instance.ts` does). One static import puts the library into the code of every page that reaches the importing module. Take GSAP from `useGsap`, `useGsapToolkit` or `loadGsap()`. A new page whose first screen depends on GSAP brings it the way those two hooks do, with `provideGsap(gsapToolkit)`.
+- The `toolkit` that `useGsap` and `useGsapToolkit` return is `undefined` on the server and, on a page that loads GSAP on demand, until it has loaded. Code that reads it outside a setup has to handle that, as `toolkit?.ScrollTrigger.getById(...)` in `desktop-categories-section.tsx` does.
 - After content changes the layout height (opening an accordion, loading more products), call `ScrollTrigger.refresh(true)`, which waits until scrolling stops before it measures. A plain `ScrollTrigger.refresh()` measures at once and sets the window scroll while it does, which forces a synchronous layout and cuts a native touch or keyboard scroll short. Lenis re-measures itself through `autoResize`. Content that loads into a box of fixed size, such as an image in an `AspectRatio`, changes no layout and needs no refresh.
-- On an admin page `getLenisInstance()` returns `undefined`. Code that must work in both shells has to handle that — `scrollToSectionElement` is the model.
+- `getLenisInstance()` returns `undefined` on an admin page, on a touch screen, for a visitor who prefers reduced motion, and until Lenis has loaded. Code that must work in all of these has to handle that — `scrollToSectionElement` is the model, and the categories section's focus handler jumps with `window.scrollTo({ behavior: "instant", top })` when there is no Lenis to call.
 - Do not add a second `requestAnimationFrame` loop for Lenis. There is one, and it belongs to `gsap.ticker`.
 - Lenis takes every wheel with no `data-lenis-prevent` on its path and moves the page with `scrollTo`, unless the page is locked. `isPageScrollLocked` sees only an inline `overflow-y: hidden` on `<html>` or `<body>`, the lock Base UI and `gsap.set` write; a lock made with a class does not count, and Lenis keeps moving the page beneath it. A scrollable overlay that leaves the page unlocked still needs `data-lenis-prevent`. The shared `SelectContent` puts it on its portal, so its list scrolls under the wheel even after a touch opened it and Base UI skipped the lock. The search overlay puts it on its results.
 
 ## Tests
 
-`src/integrations/gsap/__test__/gsap.config.component.test.ts` checks that the plugins are registered and the defaults applied; `src/integrations/lenis/__test__/lenis.instance.component.test.ts` and `lenis.scroll.component.test.ts` cover the singleton's lifecycle and the reduced-motion and fallback branches. All three are `*.component.test.ts`, so they run in the jsdom project where `document` exists. `src/presentation/components/custom/__test__/smooth-scroll.component.test.tsx` covers the instance options, the `ScrollTrigger` bridge (no scroller proxy, `ScrollTrigger.update()` on every Lenis scroll, no refresh listener and no forced refresh on mount), the ticker, the press that stops a glide and the teardown. `smooth-scroll.scroll-trigger.component.test.tsx` runs the real `ScrollTrigger` with the real Lenis: a refresh in the middle of a wheel glide leaves Lenis's target where it was, and the page still reaches it. `smooth-scroll.lenis.component.test.tsx` next to it runs the press against the real Lenis: a press stops a wheel glide where the page is, and a section scroll still reaches its section. A Lenis upgrade that changes how it tracks `targetScroll` fails there. The same file locks `<body>` or `<html>` and expects Lenis to leave the wheel to the browser, then to take it again once the lock is lifted. `src/presentation/components/shadcn/__test__/select.component.test.tsx` renders a select inside `SmoothScroll` with the real Lenis and Base UI. A wheel over the open list stays with the list even when the select leaves the page unlocked. A wheel on the field that opened the list, or anywhere else on the page, is left to the browser, whose lock keeps the page still. With the list closed, Lenis takes the wheel. Only a real browser does hit testing, so `e2e/specs/account.spec.ts` presses the address form's **Cancel** right after a wheel scroll and expects the form to close. The same spec opens the time zone list on `/account/profile`. It expects a wheel over the list to scroll the list, and a wheel beside it, on the field that opened it or on the header to leave the page where it is and the list on the same side of the field. It also opens the list from the keyboard, and in Chromium it checks that a touch swipe past the end of the list leaves the page still. `e2e/specs/landing.spec.ts` serves every image 350 ms late at 1440 × 900. It sends a long run of wheel steps through the pinned categories while their images arrive and expects the page to travel the whole distance. In Chromium it does the same with a burst of PageDown presses; WebKit drops a PageDown pressed while the previous one is still scrolling, so it runs there only for the wheel. Also in Chromium, on a touch screen, it flings through the categories and expects every fling to glide as far as a fling above them. It tabs from one **Discover** link to the next, from the last control in New Arrivals into the section before it pins, and from a click on a panel's picture on to the next panel, and each time expects the focused panel at the left edge with the section's `scrollLeft` still 0. In WebKit on macOS it presses Alt+Tab, because Tab skips links there; WebKit on Linux, as in CI, reaches links with plain Tab.
+`src/integrations/gsap/__test__/gsap.config.component.test.ts` checks that `ScrollTrigger` is registered, that the toolkit's `ScrollTrigger` is the build that matches the core, and that the defaults apply; `gsap.config.test.ts` loads the file on the server and expects GSAP's own defaults and no triggers. `gsap.loader.component.test.ts` next to it checks that nothing is handed out, or evaluated, before something asks for GSAP, that two calls load it once, tell every subscriber and keep it for later readers, and that an unsubscribed listener hears nothing; `gsap.loader.failure.component.test.ts` checks that a failed download is passed on, leaves nothing for readers and is tried again on the next call; `gsap.loader.provide.component.test.ts` hands a page's own toolkit to readers and subscribers without an import, and `gsap.loader.provide.test.ts` keeps nothing on the server. `src/hooks/__test__/use-gsap.component.test.tsx` covers `useGsapToolkit` (nothing on the server, a load after mount only when asked for, a toolkit another component loaded) and `useGsap`: nothing runs before the load, the setup runs in a context scoped to the component, again only when a dependency changes, after a revert with `revertOnUpdate`, and everything reverts on unmount; a `contextSafe` handler called early asks for GSAP and does nothing, and later runs in the context with the toolkit and its arguments. The same file hydrates server markup with GSAP already there and expects the setup to have run by the time that commit's layout effects do, and `use-gsap.ssr.test.tsx` renders a component with `useGsap` on the server without asking for GSAP or running its setup. `src/integrations/lenis/__test__/lenis.instance.component.test.ts` and `lenis.scroll.component.test.ts` cover the singleton's lifecycle and the reduced-motion and fallback branches. Apart from `gsap.config.test.ts` and `gsap.loader.provide.test.ts`, which run as on the server, they are component tests, so they run in the jsdom project where `document` exists.
+
+`src/platform/testing/mocks/gsap.ts` holds the shared stand-ins. `createGsapContextStub()` returns a context whose `add` runs its callback and keeps a returned cleanup, and whose `revert` runs those cleanups in reverse order. `loadedGsapModule(toolkit)` is a replacement for `gsap.loader.ts` with the toolkit already loaded and a `provideGsap` that does nothing. Nine component tests — the animated hooks and sections, the navigation and smooth scrolling — mock the loader with it and a toolkit of fakes, most of them with `createGsapContextStub` as `gsap.context`:
+
+```ts
+vi.mock("~/src/integrations/gsap/gsap.loader", async () => {
+  const { loadedGsapModule } = await import("~/src/platform/testing/mocks/gsap")
+
+  return loadedGsapModule({ ScrollTrigger: scrollTrigger, gsap: { ticker } })
+})
+```
+
+That excerpt is from `src/presentation/components/custom/__test__/smooth-scroll.component.test.tsx`. `setup.ts` answers every `matchMedia` query with `matches: false`, so this file controls the smooth-scroll query and its `change` listeners itself. It covers the instance options, the `ScrollTrigger` bridge (no scroller proxy, `ScrollTrigger.update()` on every Lenis scroll, no refresh listener and no forced refresh on mount), the ticker, the press that stops a glide and the teardown. It also checks the devices that keep native scrolling: the server render, no Lenis while the query does not match, a start once it matches, Lenis destroyed when it stops matching, and nothing started when the page unmounts before the imports resolve.
+
+The navigation tests in `.../landing-page/navigation/hooks/__test__/` drive the header with `scroll` events on `window` (scrolled at 21 px, not at 20). `use-navigation-logic.lazy-gsap.component.test.tsx` keeps `loadGsap()` pending: a closed menu loads nothing, opening it asks for GSAP, a route change closes a menu that never animated, and a hover over a menu image asks for GSAP.
+
+`smooth-scroll.scroll-trigger.component.test.tsx`, `smooth-scroll.lenis.component.test.tsx` and `src/presentation/components/shadcn/__test__/select.component.test.tsx` make the desktop query match and wait for Lenis to start. `smooth-scroll.scroll-trigger.component.test.tsx` runs the real `ScrollTrigger` with the real Lenis: a refresh in the middle of a wheel glide leaves Lenis's target where it was, and the page still reaches it. `smooth-scroll.lenis.component.test.tsx` next to it runs the press against the real Lenis: a press stops a wheel glide where the page is, and a section scroll still reaches its section. A Lenis upgrade that changes how it tracks `targetScroll` fails there. The same file locks `<body>` or `<html>` and expects Lenis to leave the wheel to the browser, then to take it again once the lock is lifted. `select.component.test.tsx` renders a select inside `SmoothScroll` with the real Lenis and Base UI. A wheel over the open list stays with the list even when the select leaves the page unlocked. A wheel on the field that opened the list, or anywhere else on the page, is left to the browser, whose lock keeps the page still. With the list closed, Lenis takes the wheel. Only a real browser does hit testing, so `e2e/specs/account.spec.ts` presses the address form's **Cancel** right after a wheel scroll and expects the form to close. The same spec opens the time zone list on `/account/profile`. It expects a wheel over the list to scroll the list, and a wheel beside it, on the field that opened it or on the header to leave the page where it is and the list on the same side of the field. It also opens the list from the keyboard, and in Chromium it checks that a touch swipe past the end of the list leaves the page still. `e2e/specs/landing.spec.ts` serves every image 350 ms late at 1440 × 900. It sends a long run of wheel steps through the pinned categories while their images arrive and expects the page to travel the whole distance. In Chromium it does the same with a burst of PageDown presses; WebKit drops a PageDown pressed while the previous one is still scrolling, so it runs there only for the wheel. Also in Chromium, on a touch screen, it flings through the categories and expects every fling to glide as far as a fling above them. It tabs from one **Discover** link to the next, from the last control in New Arrivals into the section before it pins, and from a click on a panel's picture on to the next panel, and each time expects the focused panel at the left edge with the section's `scrollLeft` still 0. In WebKit on macOS it presses Alt+Tab, because Tab skips links there; WebKit on Linux, as in CI, reaches links with plain Tab.
 
 ## Related pages
 

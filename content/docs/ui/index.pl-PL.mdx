@@ -20,7 +20,7 @@ Cała warstwa wizualna mieszka w `src/presentation`. Żadna inna część repozy
 
 Aplikacja renderuje dwie wizualnie różne powłoki z tych samych definicji tokenów.
 
-- **Wygląd sklepu**: szeryfowa typografia nagłówków, szerokie odstępy, płynne przewijanie Lenis, jasny i ciemny zestaw tokenów. `src/routes/_storefront.tsx` jest layoutem stron publicznych i opakowuje je w `Navigation` oraz `Footer`; `account.tsx`, `auth.tsx`, `checkout.tsx` i `docs.tsx` są osobnymi layoutami najwyższego poziomu, które korzystają z tych samych tokenów: `account.tsx` i `docs.tsx` używają tych samych `Navigation` i `Footer`, `auth.tsx` tylko `Navigation`, a `checkout.tsx` renderuje własny `CheckoutHeader`.
+- **Wygląd sklepu**: szeryfowa typografia nagłówków, szerokie odstępy, płynne przewijanie Lenis przy myszy i gładziku, jasny i ciemny zestaw tokenów. `src/routes/_storefront.tsx` jest layoutem stron publicznych i opakowuje je w `Navigation` oraz `Footer`; `account.tsx`, `auth.tsx`, `checkout.tsx` i `docs.tsx` są osobnymi layoutami najwyższego poziomu, które korzystają z tych samych tokenów: `account.tsx` i `docs.tsx` używają tych samych `Navigation` i `Footer`, `auth.tsx` tylko `Navigation`, a `checkout.tsx` renderuje własny `CheckoutHeader`.
 - **Wygląd panelu** (`/admin/**`): gęsta konsola. `src/routes/admin.tsx` wymusza jasne tokeny wewnątrz `[data-admin-main]`, maluje chrom strony ciemnym kolorem panelu bocznego i pomija płynne przewijanie.
 
 Trasa główna (`src/routes/__root.tsx`) rozstrzyga to przez `isAdminPathname(...)` i ustawia atrybut `data-admin-shell` na `html`. Skrypty, które robią to jeszcze przed pierwszym renderem, opisuje [Motyw](/docs/ui/theme).

@@ -137,9 +137,10 @@ bun scripts/verify-bindings.ts preview \
 - the entrypoint and `dist/client/fonts` both exist;
 - `assets.directory` resolves to `dist/client`;
 - `dist/client/assets` contains at least one `.js` and one `.css` file;
-- no client `.js` asset imports `cloudflare:workers` or any `node:` builtin.
+- no client `.js` asset imports `cloudflare:workers` or any `node:` builtin;
+- no client `.js` asset contains Drizzle ORM, recognised by the `Symbol.for` call that registers its `drizzle:entityKind` symbol.
 
-That last one is the interesting check. It scans each client bundle with `Bun.Transpiler` and fails on a server-only import that leaked into the browser graph — the class of mistake that otherwise shows up as a blank page in production.
+The last two are the interesting checks. The first scans each client bundle with `Bun.Transpiler` and fails on a server-only import that leaked into the browser graph — the class of mistake that otherwise shows up as a blank page in production. The second fails when a module the browser loads pulls in Drizzle, for example a Zod schema built from a table, which would add the ORM to every page that uses it.
 
 ## Automatic deployments
 

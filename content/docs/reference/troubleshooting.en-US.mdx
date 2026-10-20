@@ -158,6 +158,8 @@ which runs `cf-typegen` (`wrangler types --env development`) and then `content`.
 
 **`Server-only import in client asset: <file>.js`.** From `scripts/verify-build.ts`. A client bundle ended up importing `cloudflare:workers` or a `node:*` module, which means a server-only module was reached from a component. Trace the import chain from the named asset; the usual cause is importing from a `*.server.ts` file or from `drizzle.database.ts` in a component instead of going through a use case.
 
+**`Drizzle ORM in client asset: <file>.js`.** Also from `verify-build.ts`. The named chunk contains the `Symbol.for` call that registers Drizzle's `drizzle:entityKind` symbol, so a module the browser loads imports a table from a `*.schema.ts` file or runs a Drizzle call when it loads. Trace the import chain from the named asset. A `*.zod.ts` file writes its schemas by hand and takes its length limits from the module's constants file, and `drizzle.utils.ts` calls nothing from Drizzle at load time, because the constants files import `UUID_STRING_LENGTH` from it; see [Add a module](/docs/guides/add-a-module).
+
 **`Worker build does not target preview`** or **`Worker deployment points outside the current server build`.** Also from `verify-build.ts`. The build output in `dist/` does not match the environment being deployed, usually because `CLOUDFLARE_ENV` leaked in from the shell or a stale `dist/` was reused. `build:preview` and `build:production` both start with `rm -rf dist`; run the matching script rather than `wrangler deploy` by hand.
 
 **`Missing client JavaScript` / `Missing client CSS`.** `dist/client/assets` has no `.js` or `.css` file. The client build failed earlier in the pipeline — scroll back through the build output.

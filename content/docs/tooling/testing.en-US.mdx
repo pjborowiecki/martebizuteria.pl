@@ -57,32 +57,33 @@ Because `test.env` loads `.env.test`, no test needs real credentials. Of the scr
 
 `src/platform/testing/` holds the shared infrastructure. Everything else is colocated with the code it exercises.
 
-| File                             | What it provides                                                                                                                                            |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `setup.ts`                       | jest-dom matchers, the component timeouts, per-file timer cleanup, DOM stubs, the `createServerFn` proxy and the `getRequest` mock                          |
-| `vitest-env.d.ts`                | `vite-plus/test/globals` reference and the jest-dom matcher types on Vitest's `Matchers` interface                                                          |
-| `mocks/d1.ts`                    | `createTestD1Database(sqlite, onQuery?, onRoundTrip?)` — a `D1Database` backed by `node:sqlite`                                                             |
-| `mocks/migrations.ts`            | `applyMigrationHistory`, which runs every migration file in name order, and `applyMigration`, which runs one migration named in its `MIGRATION` map         |
-| `mocks/intersection-observer.ts` | `StubIntersectionObserver` — no-op `observe`, `unobserve`, `disconnect`, `takeRecords`                                                                      |
-| `mocks/resize-observer.ts`       | `StubResizeObserver` — reports a fixed 1024 × 768 content rect on `observe`                                                                                 |
-| `mocks/broadcast-channel.ts`     | `StubBroadcastChannel` — records every `postMessage` in its static `posted` mock                                                                            |
-| `mocks/display-preferences.ts`   | A stand-in for `i18n.display-preferences` whose `resolveRequestDisplayPreferences` resolves to `pl-PL` and `Europe/Warsaw`                                  |
-| `mocks/seller-details.ts`        | `TEST_SELLER_DETAILS`, `SELLER_DETAILS_QUERIES` and `createSellerDetailsQueryClient` — the seller's details for components and e-mails that name the seller |
-| `mocks/providers.ts`             | `installProviderMocks` and the in-memory Resend, Stripe and InPost ShipX emulators of the test Worker                                                       |
-| `mocks/inpost-points.ts`         | `emulateInpostPoints` — the test Worker's answers to InPost point lookups                                                                                   |
-| `lib/render.tsx`                 | `renderWithProviders`, `TestProviders`, `createTestRouter`; the `IntlProvider` in `TestProviders` throws every use-intl error                               |
-| `lib/messages.ts`                | `TEST_LOCALE` (`en-US`) and `TEST_MESSAGES`, built from the real `messages/en-US/*.json` files                                                              |
-| `lib/server-function.ts`         | `withTestRpc` — drives server functions through their real middleware and validation pipeline                                                               |
-| `lib/auth-browser.ts`            | `openAuthBrowser(ip)`, a cookie-keeping `auth.handler` client, and `createPasswordCustomer`                                                                 |
-| `lib/cut-text.ts`                | `markAsCut(element)` — gives an element a `scrollWidth` one pixel wider than its `clientWidth`, so a component treats its text as cut off                   |
-| `lib/pdf.ts`                     | `readPdf(bytes)` — reads a PDF back with pdf.js (`pdfjs-dist`): its lines of text, metadata, page count and size; `FORM_FONT_FILES` and `readPublicAsset`   |
-| `worker.ts`                      | The `main` of the `test` Wrangler environment (see [The test Worker](#the-test-worker))                                                                     |
+| File                             | What it provides                                                                                                                                                                           |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `setup.ts`                       | jest-dom matchers, the component timeouts, per-file timer cleanup, DOM stubs, the `createServerFn` proxy and the `getRequest` mock                                                         |
+| `vitest-env.d.ts`                | `vite-plus/test/globals` reference and the jest-dom matcher types on Vitest's `Matchers` interface                                                                                         |
+| `mocks/d1.ts`                    | `createTestD1Database(sqlite, onQuery?, onRoundTrip?)` — a `D1Database` backed by `node:sqlite`                                                                                            |
+| `mocks/migrations.ts`            | `applyMigrationHistory`, which runs every migration file in name order, and `applyMigration`, which runs one migration named in its `MIGRATION` map                                        |
+| `mocks/intersection-observer.ts` | `StubIntersectionObserver` — no-op `observe`, `unobserve`, `disconnect`, `takeRecords`                                                                                                     |
+| `mocks/resize-observer.ts`       | `StubResizeObserver` — reports a fixed 1024 × 768 content rect on `observe`                                                                                                                |
+| `mocks/broadcast-channel.ts`     | `StubBroadcastChannel` — records every `postMessage` in its static `posted` mock                                                                                                           |
+| `mocks/display-preferences.ts`   | A stand-in for `i18n.display-preferences` whose `resolveRequestDisplayPreferences` resolves to `pl-PL` and `Europe/Warsaw`                                                                 |
+| `mocks/gsap.ts`                  | `createGsapContextStub()`, a GSAP context that runs what it is given and reverts the returned cleanups, and `loadedGsapModule(toolkit)`, a `gsap.loader` stand-in with GSAP already loaded |
+| `mocks/seller-details.ts`        | `TEST_SELLER_DETAILS`, `SELLER_DETAILS_QUERIES` and `createSellerDetailsQueryClient` — the seller's details for components and e-mails that name the seller                                |
+| `mocks/providers.ts`             | `installProviderMocks` and the in-memory Resend, Stripe and InPost ShipX emulators of the test Worker                                                                                      |
+| `mocks/inpost-points.ts`         | `emulateInpostPoints` — the test Worker's answers to InPost point lookups                                                                                                                  |
+| `lib/render.tsx`                 | `renderWithProviders`, `TestProviders`, `createTestRouter`; the `IntlProvider` in `TestProviders` throws every use-intl error                                                              |
+| `lib/messages.ts`                | `TEST_LOCALE` (`en-US`) and `TEST_MESSAGES`, built from the real `messages/en-US/*.json` files                                                                                             |
+| `lib/server-function.ts`         | `withTestRpc` — drives server functions through their real middleware and validation pipeline                                                                                              |
+| `lib/auth-browser.ts`            | `openAuthBrowser(ip)`, a cookie-keeping `auth.handler` client, and `createPasswordCustomer`                                                                                                |
+| `lib/cut-text.ts`                | `markAsCut(element)` — gives an element a `scrollWidth` one pixel wider than its `clientWidth`, so a component treats its text as cut off                                                  |
+| `lib/pdf.ts`                     | `readPdf(bytes)` — reads a PDF back with pdf.js (`pdfjs-dist`): its lines of text, metadata, page count and size; `FORM_FONT_FILES` and `readPublicAsset`                                  |
+| `worker.ts`                      | The `main` of the `test` Wrangler environment (see [The test Worker](#the-test-worker))                                                                                                    |
 
 `mocks/__test__/d1.integration.test.ts` tests the D1 stand-in itself.
 
 ### setup.ts
 
-The `component` project's setup file extends `expect` with the jest-dom matchers, sets Testing Library's `asyncUtilTimeout` to 5 seconds and the test timeout to 15 seconds, and records every `setTimeout` and `setInterval` a test file starts, so that `afterAll` clears the ones still pending and restores the native functions. It stubs `IntersectionObserver`, `ResizeObserver` and `matchMedia` (which jsdom does not implement and which the GSAP and Lenis-driven components ask for), gives `HTMLDialogElement` a `showModal` that sets `open` and a `close` that removes it and dispatches a `close` event, makes `document.elementFromPoint` return `null`, and then patches TanStack Start:
+The `component` project's setup file extends `expect` with the jest-dom matchers, sets Testing Library's `asyncUtilTimeout` to 5 seconds and the test timeout to 15 seconds, and records every `setTimeout` and `setInterval` a test file starts, so that `afterAll` clears the ones still pending and restores the native functions. After every test it awaits `vi.dynamicImportSettled()`, so a module a component imported on demand, such as GSAP through `loadGsap()`, has finished loading before the file's environment is torn down. It stubs `IntersectionObserver`, `ResizeObserver` and `matchMedia` (which jsdom does not implement and which the GSAP and Lenis-driven components ask for; every query answers `matches: false`, so `SmoothScroll` keeps native scrolling unless a test stubs the desktop query), gives `HTMLDialogElement` a `showModal` that sets `open` and a `close` that removes it and dispatches a `close` event, makes `document.elementFromPoint` return `null`, and then patches TanStack Start:
 
 ```ts
 vi.mock(import("@tanstack/react-start"), async (importOriginal) => {

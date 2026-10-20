@@ -1,34 +1,101 @@
 ---
 title: "GSAP i Lenis"
-description: "Animacje sklepu: rejestracja wtyczek, singleton gładkiego przewijania i współpraca z routerem."
+description: "Animacje sklepu: wczytywanie GSAP i Lenis na żądanie, hook useGsap, singleton gładkiego przewijania i współpraca z routerem."
 ---
 
-Sklep jest animowany; panel administracyjny nie. Umożliwiają to dwa niewielkie adaptery, nie pozwalając bibliotekom animacji rozlać się po całym kodzie: `src/integrations/gsap/` rejestruje wtyczki GSAP i globalne wartości domyślne dokładnie raz, a `src/integrations/lenis/` przechowuje jedyną instancję Lenis wraz z pomocnikami przewijania programowego. Wszystko pozostałe — same animacje — mieszka w `src/hooks/` i `src/presentation/`.
+Sklep jest animowany; panel administracyjny nie. Lenis nigdy nie wchodzi do początkowego JavaScriptu strony, a GSAP przychodzi z kodem trasy tylko trzech stron, których pierwszy ekran od niego zależy: strony głównej, `/categories` i strony produktu. Pilnują tego dwa niewielkie adaptery, nie pozwalając bibliotekom animacji rozlać się po całym kodzie: `src/integrations/gsap/` konfiguruje GSAP dokładnie raz i wczytuje go dopiero wtedy, gdy coś go potrzebuje, chyba że strona go przyniosła, a `src/integrations/lenis/` przechowuje jedyną instancję Lenis wraz z pomocnikami przewijania programowego. Komponenty animują przez hook z `src/hooks/use-gsap.ts`. Wszystko pozostałe — same animacje — mieszka w `src/hooks/` i `src/presentation/`.
 
 ## Konfiguracja GSAP
 
-Plik `gsap.config.ts` ma 17 linii i jest jedynym miejscem rejestracji wtyczek:
+Plik `gsap.config.ts` ma 9 linii i jest jedynym miejscem rejestracji wtyczek:
 
 ```ts
 if (typeof document !== "undefined") {
-  gsap.registerPlugin(useGSAP, ScrollToPlugin, ScrollTrigger)
+  gsap.registerPlugin(ScrollTrigger)
   gsap.defaults({ duration: 0.8, ease: "power3.out" })
 }
 
-export { gsap } from "gsap"
-
-export { useGSAP } from "@gsap/react"
-
-export { ScrollTrigger } from "gsap/ScrollTrigger"
-
-export { ScrollToPlugin } from "gsap/ScrollToPlugin"
+export const gsapToolkit = { ScrollTrigger, gsap }
 ```
 
-Warunek `typeof document !== "undefined"` ma znaczenie: moduł ten importują komponenty renderowane na serwerze, a `ScrollTrigger` sięga do DOM już w momencie rejestracji. Ponowne eksporty są sensem tego pliku — **importuj `gsap`, `useGSAP`, `ScrollTrigger` i `ScrollToPlugin` stąd, nigdy wprost z `gsap`**, ponieważ tylko ta ścieżka gwarantuje, że rejestracja się odbyła i wartości domyślne zostały zastosowane.
+Statycznie importują ten plik tylko dwa moduły: `use-landing-animations.ts` i `use-product-animations.ts`, hooki animacji stron, które potrzebują GSAP przed hydratacją (zobacz [Hook useGsap](#hook-usegsap)). Wszystko inne dociera do niego przez `gsap.loader.ts`. Te strony renderuje też serwer i tam również wykonuje ten plik, więc rejestracja i wartości domyślne działają tylko tam, gdzie istnieje `document`, bo `ScrollTrigger` sięga do DOM już w momencie rejestracji; na serwerze plik tylko eksportuje zestaw. `gsapToolkit` to właśnie ten zestaw, jeden obiekt, który dostaje każda funkcja konfigurująca i każdy handler, bez względu na to, czy strona przyniosła go z własnym kodem, czy zaimportował go loader — **nigdy nie importuj `gsap`, `gsap/ScrollTrigger` ani `gsap.config.ts` nigdzie indziej**. Import statyczny wstawia GSAP do kodu każdej strony, która dociera do importującego modułu, a tylko zestaw gwarantuje, że rejestracja się odbyła i wartości domyślne zostały zastosowane.
 
 Te wartości domyślne oznaczają, że animacja bez `duration` i `ease` otrzymuje 0,8 s i `power3.out`. To sygnatura ruchu tego sklepu; nadpisywanie jej w pojedynczej animacji jest normalne, ale jeśli cała rodzina animacji potrzebuje innego czasu, zmień to tutaj, a nie powtarzaj wartości.
 
-Zarejestrowane są tylko trzy wtyczki. `ScrollSmoother`, `SplitText`, `Flip` i pozostałe wtyczki Club GreenSock nie są zależnościami tego projektu.
+Zarejestrowany jest tylko `ScrollTrigger`. Nic nie animuje `scrollTo`: przewijanie programowe idzie przez Lenis albo `window.scrollTo` (zobacz niżej). `ScrollSmoother`, `SplitText`, `Flip` i pozostałe wtyczki Club GreenSock nie są zależnościami tego projektu.
+
+## Wczytywanie GSAP na żądanie
+
+Reszta kodu importuje moduł `gsap.loader.ts`:
+
+```ts
+export type GsapToolkit = typeof gsapToolkit
+
+const keepLoadedGsap = (toolkit: GsapToolkit): GsapToolkit => {
+  gsapStore.toolkit = toolkit
+  for (const listener of gsapStore.listeners) {
+    listener()
+  }
+
+  return toolkit
+}
+
+export const loadGsap = (): Promise<GsapToolkit> => {
+  gsapStore.pending ??= import("~/src/integrations/gsap/gsap.config").then(
+    (config) => keepLoadedGsap(config.gsapToolkit),
+    (error: unknown) => {
+      gsapStore.pending = undefined
+      throw error
+    },
+  )
+
+  return gsapStore.pending
+}
+
+export const provideGsap = (toolkit: GsapToolkit): void => {
+  if (typeof document !== "undefined") {
+    gsapStore.pending = Promise.resolve(keepLoadedGsap(toolkit))
+  }
+}
+
+export const getLoadedGsap = (): GsapToolkit | undefined => gsapStore.toolkit
+```
+
+`loadGsap()` importuje `gsap.config.ts` raz; każde kolejne wywołanie zwraca tę samą obietnicę. Jeśli pobieranie się nie powiedzie, na przykład gdy zerwie się połączenie albo Safari przerwie import, bo odwiedzający opuszcza stronę, loader zapomina tę obietnicę i przekazuje błąd dalej, więc następne wywołanie pobiera GSAP od nowa, zamiast powtarzać błąd do końca wizyty. Gdy import się zakończy, zapamiętuje `gsapToolkit` i wywołuje każdego słuchacza zarejestrowanego przez `subscribeToGsap(listener)`, które zwraca funkcję wypisującą słuchacza. `provideGsap(toolkit)` robi to samo z zestawem, który strona zaimportowała z własnym kodem, a późniejsze wywołania `loadGsap()` zwracają go bez żadnego importu; na serwerze niczego nie zapamiętuje, więc nic tam nigdy nie czyta wczytanego zestawu. `getLoadedGsap()` zwraca zestaw, gdy już jest, a wcześniej `undefined`. `GsapToolkit` to typ `gsapToolkit`, czyli `{ ScrollTrigger, gsap }`, importowany przez `import type`, więc sam loader nie zawiera kodu GSAP. Build umieszcza GSAP w osobnym fragmencie. Importuje go kod trasy strony głównej, `/categories` i strony produktu, a żadna inna strona nie importuje go statycznie ani nie wymienia w swoich odnośnikach `modulepreload`.
+
+## Hook useGsap
+
+`src/hooks/use-gsap.ts` eksportuje dwa hooki. `useGsapToolkit(load)` czyta loader przez `useSyncExternalStore`, z `getLoadedGsap` jako odczytem zarówno w przeglądarce, jak i podczas renderowania na serwerze i hydratacji: na serwerze i dopóki GSAP nie jest dostępny zwraca `undefined`, a potem zestaw, bez względu na to, który komponent go wczytał. Na stronie, która przyniosła GSAP z własnym kodem, render hydratujący znaczniki z serwera ma już zestaw, więc funkcje konfigurujące działają w commicie, który hydratuje stronę. Nic nie renderuje się na podstawie zestawu, więc ten render i znaczniki z serwera nadal się zgadzają. Gdy `load` ma wartość `true`, hook wywołuje `loadGsap()` w efekcie, czyli po zamontowaniu komponentu.
+
+Komponenty animują przez `useGsap(setup, { dependencies, load = true, revertOnUpdate, scope })`. Typowe wywołanie ma `ValuesSection`:
+
+```tsx
+useGsap(
+  ({ gsap }) => {
+    const section = sectionRef.current
+    if (!section) {
+      return
+    }
+    gsap.matchMedia().add("(prefers-reduced-motion: no-preference)", () => {
+      gsap.from(section, {
+        ease: "none",
+        scrollTrigger: { end: "top 60%", scrub: true, start: "top bottom", trigger: section },
+        yPercent: -15,
+      })
+    })
+  },
+  { scope: sectionRef },
+)
+```
+
+- **Jeden kontekst na komponent.** Gdy zestaw jest dostępny, hook tworzy `gsap.context` ograniczony do `scope`, więc selektory w funkcji konfigurującej dopasowują tylko elementy wewnątrz tego elementu. Odmontowanie cofa kontekst, a z nim każdą animację, oś czasu, `ScrollTrigger` i `gsap.matchMedia()` utworzone w środku.
+- **Funkcja konfigurująca działa w kontekście**, jako `setup(toolkit)`. Uruchamia się ponownie, gdy zmieni się któryś element `dependencies` (porównywany przez `Object.is`); bez `dependencies` uruchamia się raz. Przy `revertOnUpdate: true` hook najpierw cofa poprzednie uruchomienie; w przeciwnym razie nowe dochodzi obok niego. Funkcja zwrócona przez `setup` wykonuje się przy cofaniu kontekstu.
+- **`load` decyduje, kiedy hook prosi o GSAP.** Przy domyślnym `true` wczytuje go po zamontowaniu. Przy `false` albo przy wartości, która dopiero później staje się `true`, jak `load: menuOpen`, funkcja konfigurująca czeka, aż wartość zmieni się na `true` albo coś innego wczyta GSAP.
+- **Zwraca `{ contextSafe, toolkit }`.** `contextSafe(handler)` opakowuje handler zdarzenia zapisany jako `(toolkit, ...args) => void`. Wywołane przed wczytaniem GSAP opakowanie zaczyna go wczytywać i nic więcej nie robi; później wykonuje handler w kontekście komponentu, z zestawem i argumentami wywołania, więc wszystko, co handler utworzy, zostaje cofnięte razem z resztą. `toolkit` służy kodowi poza kontekstem, na przykład obsłudze fokusu w sekcji kategorii, która czyta `toolkit?.ScrollTrigger.getById(...)`.
+
+Funkcje konfigurujące i handlery dostają zestaw, zamiast importować GSAP, i przekazują go dalej: pomocnicze funkcje, takie jak `setupScrollReveals(toolkit, root)` w `use-landing-animations.ts`, przyjmują go jako parametr.
+
+Niektóre animacje decydują o tym, co strona pokazuje: odsłanianie treści poniżej pierwszego ekranu, ukrytej, dopóki nie wjedzie w widok, i przypięta sekcja kategorii, której obsługa fokusu z klawiatury potrzebuje jej `ScrollTrigger`. Muszą działać, gdy tylko odwiedzający może korzystać ze strony. Dlatego `useLandingAnimations` i `useProductAnimations` importują `gsapToolkit` i wywołują `provideGsap(gsapToolkit)` przy wczytaniu swojego modułu, więc GSAP przychodzi z kodem trasy strony głównej, `/categories` i strony produktu. Te strony przechodzą hydratację, albo renderują się po nawigacji po stronie klienta, z gotowym GSAP, a ich funkcje konfigurujące działają w tym pierwszym commicie, tak jak wtedy, gdy GSAP był częścią paczki, podczas gdy koszyk i każda inna strona nigdy na niego nie czekają. Nie każ zamiast tego hydratacji czekać na osobne pobranie GSAP, na przykład przez wstrzymanie na `loadGsap()`. Granica Suspense, która wciąż czeka, gdy router albo zapytanie zaktualizuje drzewo wokół niej, renderuje się od nowa po stronie klienta, a dopóki GSAP nie dotrze, strona w miejscu swojej treści nie pokazuje nic.
 
 ## Singleton Lenis
 
@@ -55,7 +122,7 @@ export const syncLenisToWindowScroll = (): void => {
 
 `syncLenisToWindowScroll` istnieje, ponieważ Lenis prowadzi własną pozycję przewinięcia. Po tym, jak router podmieni stronę, natywne `window.scrollY` i wewnętrzna wartość Lenis rozchodzą się, a kolejne zdarzenie kółka myszy powoduje skok. Wymuszenie rzeczywistej pozycji i ponowny pomiar to naprawia.
 
-Każdy konsument obsługuje `undefined`, ponieważ instancja istnieje tylko wtedy, gdy zamontowany jest `SmoothScroll` — czyli nigdy na stronie panelu i nigdy podczas SSR.
+Każdy konsument obsługuje `undefined`, ponieważ instancja istnieje tylko wtedy, gdy `SmoothScroll` uruchomił Lenis — czyli nigdy na stronie panelu, nigdy podczas SSR, nigdy na ekranie dotykowym ani przy preferencji ograniczonego ruchu i nie wcześniej, niż Lenis wczyta się po hydratacji.
 
 ## Przewijanie programowe
 
@@ -88,21 +155,45 @@ if (scrollToSectionById(id, CONSTANTS.HEADER_OFFSET_PX) !== undefined) {
 }
 ```
 
-Obie ścieżki respektują `prefers-reduced-motion: reduce`, albo zerując czas trwania w Lenis, albo używając `behavior: "instant"`.
+Obie ścieżki respektują `prefers-reduced-motion: reduce`, albo zerując czas trwania w Lenis, albo używając `behavior: "instant"`. Przy preferencji ograniczonego ruchu i na ekranie dotykowym `SmoothScroll` nie uruchamia Lenis, więc przewijanie zawsze idzie wtedy ścieżką `window.scrollTo`.
 
 ## Gdzie tworzona jest instancja
 
-Plik `src/presentation/components/custom/smooth-scroll.tsx` jest jedynym miejscem, w którym występuje `new Lenis(...)`:
+Plik `src/presentation/components/custom/smooth-scroll.tsx` jest jedynym miejscem, w którym powstaje instancja Lenis, a `SmoothScroll` najpierw rozstrzyga, czy w ogóle ją tworzyć:
 
 ```tsx
-const lenis = new Lenis({
+const smoothScrollAllowed = useSyncExternalStore(subscribeToSmoothScrollMedia, prefersSmoothScroll, noSmoothScrollOnServer)
+useLenisRouterScrollSync()
+useEffect(() => {
+  if (!smoothScrollAllowed) {
+    return
+  }
+  const session: { active: boolean; stop: (() => void) | undefined } = { active: true, stop: undefined }
+  void Promise.all([import("lenis"), loadGsap()]).then(([{ default: LenisScroller }, toolkit]) => {
+    if (session.active) {
+      session.stop = startSmoothScroll(LenisScroller, toolkit)
+    }
+  })
+
+  return () => {
+    session.active = false
+    session.stop?.()
+  }
+}, [smoothScrollAllowed])
+```
+
+`SMOOTH_SCROLL_MEDIA_QUERY` to `"(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)"`: mysz albo gładzik i brak prośby o ograniczenie ruchu. `useSyncExternalStore` odczytuje to zapytanie przez `matchMedia` i odczytuje je ponownie przy jego zdarzeniu `change`; migawka serwerowa to `false`. Tylko dopóki zapytanie pasuje, efekt importuje `lenis` i wywołuje `loadGsap()`, oba naraz, i uruchamia Lenis, gdy dotrą oba moduły. Ekrany dotykowe i przeglądarki z preferencją ograniczonego ruchu zostają przy natywnym przewijaniu i nigdy nie pobierają Lenis. Gdy zapytanie przestaje pasować, na przykład po włączeniu ograniczenia ruchu w systemie, czyszczenie niszczy Lenis i oddaje przewijanie przeglądarce; gdy zaczyna pasować, Lenis startuje. `session.active` obsługuje stronę odmontowaną, albo zapytanie, które przestało pasować, zanim importy się zakończyły: nic nie zostaje uruchomione.
+
+Następnie `startSmoothScroll(LenisScroller, toolkit)` tworzy instancję z `gsap` i `ScrollTrigger` wziętymi z zestawu:
+
+```tsx
+const lenis = new LenisScroller({
   autoRaf: false,
   lerp: 0.09,
   touchMultiplier: 2,
   virtualScroll: () => !isPageScrollLocked(),
   wheelMultiplier: 1,
 })
-lenisRef.current = lenis
 setLenisInstance(lenis)
 lenis.on("scroll", () => {
   ScrollTrigger.update()
@@ -123,7 +214,7 @@ Pięć decyzji ma tu ciężar projektowy:
 - **`stopInertiaOnPress(lenis)`** nasłuchuje `pointerdown` na `window` w fazie przechwytywania. Gdy naciśnięcie trafi w chwili, w której przewijanie kółkiem albo gładzikiem jeszcze wyhamowuje w stronę swojego celu (`lenis.isScrolling === "smooth"` i `lenis.targetScroll !== lenis.scroll`), zatrzymuje Lenis w miejscu wywołaniem `lenis.scrollTo(lenis.scroll, { force: true, immediate: true })`, tym samym, którego używa synchronizacja z routerem. Po ostatnim zdarzeniu kółka Lenis jeszcze przez około pół sekundy płynnie dojeżdża do celu, a naciśnięcie przycisku tego nie przerywa (sam Lenis resetuje się tylko po naciśnięciu środkowego przycisku). Kontrolka pod kursorem odjechałaby między naciśnięciem a puszczeniem, przeglądarka wysłałaby `click` do wspólnego przodka obu elementów i trzeba by nacisnąć jeszcze raz, jak przy **Anuluj** w formularzu adresu zaraz po przewinięciu. Faza przechwytywania widzi też naciśnięcia, których obsługa zatrzymuje propagację. Sprawdzenie celu pozwala dokończyć programowe `scrollTo`, na przykład opisane wyżej przewijanie do sekcji: Lenis trzyma cel przed bieżącą pozycją tylko przy przewijaniu kółkiem i dotykiem, a w trakcie przewijania ze skryptu przesuwa `targetScroll` razem ze stroną. Zwrócona funkcja usuwa nasłuchiwanie.
 - **`virtualScroll: () => !isPageScrollLocked()`.** Lenis zamienia ruch kółka na `window.scrollTo`, a blokada strony przez `overflow: hidden` tego wywołania nie zatrzymuje. `isPageScrollLocked` wykrywa wpisane w styl `overflow-y: hidden` na `<html>` albo `<body>`. Taką blokadę zakłada Base UI, gdy otwarty jest select, menu albo okno dialogowe, a menu pełnoekranowe i nakładka wyszukiwania zakładają ją przez `gsap.set`. Dopóki blokada trwa, Lenis zostawia każdy ruch kółka przeglądarce. Strona zostaje na miejscu bez względu na to, gdzie jest kursor, także nad polem, które otworzyło select, i nad przyklejonym nagłówkiem, a przewijany panel w nakładce przewija się natywnie.
 
-`lerp: 0.09` to współczynnik wygładzania — mniejszy jest wolniejszy i łagodniejszy. Czyszczenie usuwa wywołanie z tickera i nasłuchiwanie naciśnięć, niszczy Lenis, co zdejmuje też jego nasłuchiwanie przewijania, i wywołuje `setLenisInstance(undefined)`.
+`lerp: 0.09` to współczynnik wygładzania — mniejszy jest wolniejszy i łagodniejszy. Funkcja zwracana przez `startSmoothScroll`, którą wywołuje czyszczenie efektu, usuwa wywołanie z tickera i nasłuchiwanie naciśnięć, niszczy Lenis, co zdejmuje też jego nasłuchiwanie przewijania, i wywołuje `setLenisInstance(undefined)`.
 
 ### Które strony to otrzymują
 
@@ -141,7 +232,15 @@ Decyduje `src/routes/__root.tsx`:
 }
 ```
 
-Testem jest `isAdminPathname(internalPathname)`. Strony panelu używają natywnego przewijania, co jest właściwym wyborem dla tabel danych i długich formularzy.
+Testem jest `isAdminPathname(internalPathname)`. Strony panelu używają natywnego przewijania, co jest właściwym wyborem dla tabel danych i długich formularzy, i nigdy nie montują `SmoothScroll`, więc panel nie wczytuje ani Lenis, ani GSAP. Każda inna strona jest opakowana, więc w przeglądarce na komputerze Lenis i GSAP wczytują się zaraz po hydratacji pierwszej strony, bez względu na to, która to strona.
+
+Żadna strona nie ma Lenis w początkowym JavaScripcie, a GSAP mają tylko strona główna, `/categories` i strona produktu, w kodzie swojej trasy. Poza `SmoothScroll` GSAP wczytują:
+
+- kod trasy strony głównej i `/categories` (`useLandingAnimations`) oraz strony produktu (`useProductAnimations`), przed hydratacją strony; sekcje wartości, wideo i kategorii na komputerze na stronie głównej oraz produkty powiązane na stronie produktu używają tego samego zestawu;
+- menu pełnoekranowe i nakładka wyszukiwania, gdy otworzą się po raz pierwszy;
+- pierwsze najechanie kursorem na zdjęcie karty produktu.
+
+Na telefonie koszyk, lista produktów, strony prawne i strona „O M'Arte”, konto, kasa, dokumentacja i strony logowania nie wczytują więc GSAP nigdy, chyba że otworzy się menu albo wyszukiwanie.
 
 ## Współpraca z routerem
 
@@ -156,17 +255,21 @@ lenis.stop()
 
 Bez tego Lenis dalej interpolowałby w stronę celu należącego do odchodzącej strony.
 
-Przy **`onRendered`** ponownie uruchamia Lenis, synchronizuje go z rzeczywistą pozycją przewinięcia, a następnie w `requestAnimationFrame` — po tym, jak przeglądarka rozłoży nową stronę — zabija odłączone triggery i odświeża:
+Przy **`onRendered`** ponownie uruchamia Lenis, synchronizuje go z rzeczywistą pozycją przewinięcia, a następnie w `requestAnimationFrame` — po tym, jak przeglądarka rozłoży nową stronę — bierze zestaw z `loadGsap()`, zabija odłączone triggery i odświeża:
 
 ```ts
 requestAnimationFrame(() => {
-  cleanupDetachedScrollTriggers()
-  syncLenisToWindowScroll()
-  ScrollTrigger.refresh()
+  void loadGsap().then((toolkit) => {
+    cleanupDetachedScrollTriggers(toolkit)
+    syncLenisToWindowScroll()
+    toolkit.ScrollTrigger.refresh()
+  })
 })
 ```
 
-`cleanupDetachedScrollTriggers` przechodzi `ScrollTrigger.getAll()` i zabija każdy trigger, którego element nie znajduje się już w `document`. Jest to naprawa klasycznego wycieku przy routingu po stronie klienta: `ScrollTrigger` utworzony przez odmontowaną stronę utrzymuje swój element w pamięci i wciąż jest mierzony przy odświeżaniu. Oba handlery emitują też `catalogDebugLog("lenis.beforeLoad", …)` i `("lenis.rendered", …)` z `src/lib/catalog-debug-log.ts`, co bywa przydatne, gdy pozycja przewinięcia zachowuje się dziwnie po nawigacji.
+`SmoothScroll` wczytał GSAP razem z Lenis, więc ta obietnica jest już rozstrzygnięta, a hook nigdy sam nie importuje GSAP. Oba handlery kończą od razu, gdy nie ma instancji Lenis: na ekranie dotykowym, przy preferencji ograniczonego ruchu albo zanim Lenis się wczyta, nawigacja ani nie zatrzymuje Lenis, ani nie odświeża `ScrollTrigger`, a triggery odchodzącej strony cofają jej konteksty `useGsap` przy odmontowaniu.
+
+`cleanupDetachedScrollTriggers(toolkit)` przechodzi `ScrollTrigger.getAll()` i zabija każdy trigger, którego element nie znajduje się już w `document`. Jest to naprawa klasycznego wycieku przy routingu po stronie klienta: `ScrollTrigger` utworzony przez odmontowaną stronę utrzymuje swój element w pamięci i wciąż jest mierzony przy odświeżaniu. Oba handlery emitują też `catalogDebugLog("lenis.beforeLoad", …)` i `("lenis.rendered", …)` z `src/lib/catalog-debug-log.ts`, co bywa przydatne, gdy pozycja przewinięcia zachowuje się dziwnie po nawigacji.
 
 ## Kto co animuje
 
@@ -179,21 +282,43 @@ requestAnimationFrame(() => {
 | `.../landing-page/sections/desktop-categories-section.tsx`, `values-section.tsx`, `video-experience-section.tsx`                                                        | Animacje na poziomie sekcji                                                                                                                                                                                                          |
 | `.../landing-page/navigation/components/navigation/navigation-provider.tsx`, `.../landing-page/navigation/hooks/use-navigation-logic.ts`, `use-search-overlay-logic.ts` | Menu, przewijanie do sekcji i nakładka wyszukiwania                                                                                                                                                                                  |
 
-Zwróć uwagę na wzorzec w `use-product-card-image-hover.ts`: ograniczony ruch obsługiwany jest przez `gsap.matchMedia()` rejestrujące zarówno gałąź `(prefers-reduced-motion: no-preference)`, jak i `(prefers-reduced-motion: reduce)`, więc preferencja jest respektowana _oraz_ ponownie oceniana, jeśli użytkownik zmieni ją w trakcie sesji. Wybieraj to rozwiązanie zamiast jednorazowego odczytu `matchMedia`.
+Nawigacja wczytuje GSAP tylko dla tego, co się rusza. Stan przewiniętego nagłówka pochodzi z pasywnego nasłuchiwania `scroll` na `window`, które włącza go, dopóki `window.scrollY` przekracza `SCROLLED_OFFSET_PX` (20, w `navigation-constants.ts`), a klawisz Escape zamykający menu obsługuje zwykły efekt. Oś czasu menu, jego blokada przewijania na `<html>` i `<body>` oraz efekt, który ją odtwarza i cofa, działają w `useGsap` z `load: menuOpen`, więc GSAP wczytuje się przy pierwszym otwarciu menu, o ile nic go wcześniej nie wczytało, a menu rusza, gdy oś czasu już istnieje. Zmiana trasy, która zamyka menu, zanim zdążyło się animować, tylko je odmontowuje. `use-search-overlay-logic.ts` buduje swoją oś czasu z `load: searchOpen`, a okno otwiera się — `showModal`, oś czasu, fokus, zatrzymany Lenis i blokada `<html>` — gdy ta oś czasu już istnieje.
 
-Do animacji zawsze używaj `useGSAP`, a nie `useEffect`. Ogranicza on animacje do komponentu i cofa je przy odmontowaniu, co sprawia, że `cleanupDetachedScrollTriggers` ma niewiele do roboty.
+`use-product-card-image-hover.ts` przekazuje `load: false`. Pierwsze najechanie na zdjęcie karty prosi o GSAP przez `contextSafe` i niczego nie animuje; gdy GSAP się wczyta, uruchamia się konfiguracja każdej karty i kolejne najechania powiększają zdjęcie. Na komputerze gładkie przewijanie zwykle wczytało GSAP, zanim kursor dotrze do karty.
+
+Zwróć uwagę na wzorzec w tym samym pliku: ograniczony ruch obsługiwany jest przez `gsap.matchMedia()` rejestrujące zarówno gałąź `(prefers-reduced-motion: no-preference)`, jak i `(prefers-reduced-motion: reduce)`, więc preferencja jest respektowana _oraz_ ponownie oceniana, jeśli zmieni się w trakcie sesji. Wybieraj to rozwiązanie zamiast jednorazowego odczytu `matchMedia`.
+
+Oś czasu twórz zawsze w funkcji konfigurującej `useGsap` albo w handlerze `contextSafe`, a nie w `useEffect`. Kontekst ogranicza animacje do komponentu i cofa je przy odmontowaniu, co sprawia, że `cleanupDetachedScrollTriggers` ma niewiele do roboty. Dla ruchu, który gra, gdy strona się pojawia, zostaw `load` równe `true`, a dla ruchu, który następuje dopiero po interakcji, przekaż stan pokazujący element, jak `load: menuOpen`, albo `false`.
 
 ## Pułapki
 
-- `ScrollTrigger` utworzony poza `useGSAP` przeżyje swój komponent. Albo użyj `useGSAP`, albo zabij go samodzielnie.
+- `ScrollTrigger` utworzony poza kontekstem `useGsap` przeżyje swój komponent. Albo utwórz go w funkcji konfigurującej lub handlerze `contextSafe`, albo zabij go samodzielnie.
+- Nie importuj statycznie `gsap`, `gsap/ScrollTrigger` ani `gsap.config.ts` poza `use-landing-animations.ts` i `use-product-animations.ts`, a `lenis` importuj tylko jako typ (`import type Lenis from "lenis"`, jak w `lenis.instance.ts`). Jeden import statyczny wstawia bibliotekę do kodu każdej strony, która dociera do importującego modułu. GSAP bierz z `useGsap`, `useGsapToolkit` albo `loadGsap()`. Nowa strona, której pierwszy ekran zależy od GSAP, przynosi go tak jak te dwa hooki, przez `provideGsap(gsapToolkit)`.
+- `toolkit` zwracany przez `useGsap` i `useGsapToolkit` ma wartość `undefined` na serwerze, a na stronie wczytującej GSAP na żądanie także do chwili jego wczytania. Kod, który czyta go poza funkcją konfigurującą, musi to obsłużyć, jak `toolkit?.ScrollTrigger.getById(...)` w `desktop-categories-section.tsx`.
 - Gdy treść zmienia wysokość układu (otwarcie akordeonu, doładowanie produktów), wywołaj `ScrollTrigger.refresh(true)`, które przed pomiarem czeka, aż przewijanie się zatrzyma. Zwykłe `ScrollTrigger.refresh()` mierzy od razu i ustawia przy tym przewinięcie okna, co wymusza synchroniczne przeliczenie układu strony i przerywa natywne przewijanie dotykiem albo klawiaturą. Lenis sam mierzy stronę na nowo przez `autoResize`. Treść ładowana do ramki o stałym rozmiarze, na przykład zdjęcie w `AspectRatio`, nie zmienia układu i nie wymaga odświeżenia.
-- Na stronie panelu `getLenisInstance()` zwraca `undefined`. Kod, który musi działać w obu powłokach, musi to obsłużyć — wzorcem jest `scrollToSectionElement`.
+- `getLenisInstance()` zwraca `undefined` na stronie panelu, na ekranie dotykowym, przy preferencji ograniczonego ruchu i dopóki Lenis się nie wczyta. Kod, który musi działać we wszystkich tych przypadkach, musi to obsłużyć — wzorcem jest `scrollToSectionElement`, a handler fokusu sekcji kategorii przeskakuje przez `window.scrollTo({ behavior: "instant", top })`, gdy nie ma Lenis, którego mógłby wywołać.
 - Nie dodawaj drugiej pętli `requestAnimationFrame` dla Lenis. Jest jedna i należy do `gsap.ticker`.
 - Lenis przejmuje każdy ruch kółka, na którego ścieżce nie ma `data-lenis-prevent`, i przesuwa stronę przez `scrollTo`, chyba że strona jest zablokowana. `isPageScrollLocked` widzi tylko wpisane w styl `overflow-y: hidden` na `<html>` albo `<body>`, czyli blokadę zakładaną przez Base UI i `gsap.set`. Blokada założona klasą się nie liczy i Lenis dalej przesuwa stronę pod spodem. Przewijana nakładka, która nie blokuje strony, nadal potrzebuje `data-lenis-prevent`. Wspólny `SelectContent` ma ten atrybut na swoim portalu, więc jego lista przewija się kółkiem także wtedy, gdy otwarto ją dotykiem i Base UI nie założył blokady. Nakładka wyszukiwania ma go na liście wyników.
 
 ## Testy
 
-Plik `src/integrations/gsap/__test__/gsap.config.component.test.ts` sprawdza, że wtyczki są zarejestrowane, a wartości domyślne zastosowane; pliki `src/integrations/lenis/__test__/lenis.instance.component.test.ts` i `lenis.scroll.component.test.ts` pokrywają cykl życia singletona oraz gałęzie ograniczonego ruchu i rozwiązania zapasowego. Wszystkie trzy to `*.component.test.ts`, więc działają w projekcie jsdom, gdzie istnieje `document`. Plik `src/presentation/components/custom/__test__/smooth-scroll.component.test.tsx` pokrywa opcje instancji, most do `ScrollTrigger` (brak proxy przewijania, `ScrollTrigger.update()` przy każdym przewinięciu Lenis, brak nasłuchiwania odświeżeń i brak wymuszonego odświeżenia przy montowaniu), ticker, naciśnięcie zatrzymujące wyhamowywanie oraz sprzątanie. `smooth-scroll.scroll-trigger.component.test.tsx` uruchamia prawdziwy `ScrollTrigger` z prawdziwym Lenis: odświeżenie w trakcie wyhamowywania po ruchu kółka zostawia cel Lenis tam, gdzie był, a strona i tak do niego dociera. Leżący obok `smooth-scroll.lenis.component.test.tsx` sprawdza naciśnięcie na prawdziwym Lenis: naciśnięcie zatrzymuje wyhamowywanie po przewinięciu kółkiem tam, gdzie jest strona, a przewijanie do sekcji nadal do niej dociera. Aktualizacja Lenis, która zmieni sposób śledzenia `targetScroll`, nie przejdzie tego testu. Ten sam plik blokuje `<body>` albo `<html>` i oczekuje, że Lenis zostawi ruch kółka przeglądarce, a po zdjęciu blokady znowu go przejmie. `src/presentation/components/shadcn/__test__/select.component.test.tsx` renderuje select wewnątrz `SmoothScroll` z prawdziwym Lenis i Base UI. Ruch kółka nad otwartą listą zostaje przy liście także wtedy, gdy select nie blokuje strony. Ruch kółka nad polem, które otworzyło listę, albo w dowolnym innym miejscu strony zostaje przeglądarce, a blokada nie pozwala stronie się przesunąć. Gdy lista jest zamknięta, Lenis przejmuje kółko. Trafienia kursora sprawdza tylko prawdziwa przeglądarka, dlatego `e2e/specs/account.spec.ts` naciska **Cancel** w formularzu adresu zaraz po przewinięciu kółkiem i oczekuje, że formularz się zamknie. Ten sam plik otwiera listę stref czasowych na `/account/profile`. Oczekuje, że kółko nad listą przewinie listę, a kółko obok niej, nad polem, które ją otworzyło, albo nad nagłówkiem nie przesunie strony ani nie przerzuci listy na drugą stronę pola. Otwiera też listę z klawiatury, a w Chromium sprawdza, że przesunięcie palcem poza koniec listy nie rusza strony. `e2e/specs/landing.spec.ts` podaje każde zdjęcie z opóźnieniem 350 ms przy oknie 1440 × 900. Wysyła długą serię ruchów kółka przez przypięte kategorie, gdy ich zdjęcia jeszcze docierają, i oczekuje, że strona przejedzie cały dystans. W Chromium robi to samo z serią naciśnięć PageDown; WebKit pomija PageDown naciśnięty, zanim strona skończy przewijać się po poprzednim, więc tam test dotyczy tylko kółka. Również w Chromium, na ekranie dotykowym, przerzuca stronę palcem przez kategorie i oczekuje, że każde przerzucenie dojedzie tak daleko jak nad nimi. Przechodzi klawiszem Tab od jednego odnośnika **Discover** do następnego, od ostatniej kontrolki w sekcji nowości do sekcji kategorii, zanim ta się przypnie, oraz po kliknięciu zdjęcia panelu do kolejnego panelu, i za każdym razem oczekuje, że panel z fokusem stanie przy lewej krawędzi, a `scrollLeft` sekcji pozostanie równe 0. W WebKit na macOS naciska Alt+Tab, bo sam Tab pomija tam odnośniki; WebKit na Linuksie, jak w CI, dochodzi do nich zwykłym klawiszem Tab.
+Plik `src/integrations/gsap/__test__/gsap.config.component.test.ts` sprawdza, że `ScrollTrigger` jest zarejestrowany, że `ScrollTrigger` z zestawu to wersja zgodna z rdzeniem i że wartości domyślne działają; `gsap.config.test.ts` wczytuje plik jak na serwerze i oczekuje domyślnych wartości samego GSAP i braku wyzwalaczy. Leżący obok `gsap.loader.component.test.ts` sprawdza, że zanim cokolwiek poprosi o GSAP, nic nie jest wydawane ani wykonywane, że dwa wywołania wczytują go raz, powiadamiają każdego słuchacza i zostawiają moduł dla późniejszych odczytów oraz że wypisany słuchacz nic nie dostaje; `gsap.loader.failure.component.test.ts` sprawdza, że nieudane pobieranie zostaje przekazane dalej, nie zostawia niczego do odczytu i jest ponawiane przy następnym wywołaniu; `gsap.loader.provide.component.test.ts` przekazuje własny zestaw strony czytelnikom i słuchaczom bez importu, a `gsap.loader.provide.test.ts` niczego nie zapamiętuje na serwerze. `src/hooks/__test__/use-gsap.component.test.tsx` pokrywa `useGsapToolkit` (nic na serwerze, wczytanie po zamontowaniu tylko na żądanie, zestaw wczytany przez inny komponent) oraz `useGsap`: przed wczytaniem nic się nie uruchamia, funkcja konfigurująca działa w kontekście ograniczonym do komponentu, ponownie tylko po zmianie zależności, po cofnięciu przy `revertOnUpdate`, a przy odmontowaniu wszystko zostaje cofnięte; handler `contextSafe` wywołany za wcześnie prosi o GSAP i nic nie robi, a później działa w kontekście z zestawem i swoimi argumentami. Ten sam plik hydratuje znaczniki z serwera przy już dostępnym GSAP i oczekuje, że funkcja konfigurująca zadziała, zanim uruchomią się efekty układu tego commita, a `use-gsap.ssr.test.tsx` renderuje na serwerze komponent z `useGsap`, nie prosząc o GSAP i nie uruchamiając funkcji konfigurującej. Pliki `src/integrations/lenis/__test__/lenis.instance.component.test.ts` i `lenis.scroll.component.test.ts` pokrywają cykl życia singletona oraz gałęzie ograniczonego ruchu i rozwiązania zapasowego. Poza `gsap.config.test.ts` i `gsap.loader.provide.test.ts`, które działają jak na serwerze, to testy komponentowe, więc działają w projekcie jsdom, gdzie istnieje `document`.
+
+`src/platform/testing/mocks/gsap.ts` zawiera wspólne atrapy. `createGsapContextStub()` zwraca kontekst, którego `add` wykonuje przekazaną funkcję i zapamiętuje zwróconą funkcję sprzątającą, a `revert` wykonuje te funkcje w odwrotnej kolejności. `loadedGsapModule(toolkit)` zastępuje `gsap.loader.ts` modułem z już wczytanym zestawem i z `provideGsap`, który nic nie robi. Dziewięć testów komponentowych — animowanych hooków i sekcji, nawigacji i gładkiego przewijania — mockuje nim loader z zestawem atrap, większość z `createGsapContextStub` jako `gsap.context`:
+
+```ts
+vi.mock("~/src/integrations/gsap/gsap.loader", async () => {
+  const { loadedGsapModule } = await import("~/src/platform/testing/mocks/gsap")
+
+  return loadedGsapModule({ ScrollTrigger: scrollTrigger, gsap: { ticker } })
+})
+```
+
+Ten fragment pochodzi z `src/presentation/components/custom/__test__/smooth-scroll.component.test.tsx`. `setup.ts` odpowiada na każde zapytanie `matchMedia` wartością `matches: false`, więc ten plik sam steruje zapytaniem gładkiego przewijania i jego słuchaczami `change`. Pokrywa opcje instancji, most do `ScrollTrigger` (brak proxy przewijania, `ScrollTrigger.update()` przy każdym przewinięciu Lenis, brak nasłuchiwania odświeżeń i brak wymuszonego odświeżenia przy montowaniu), ticker, naciśnięcie zatrzymujące wyhamowywanie oraz sprzątanie. Sprawdza też urządzenia, które zostają przy natywnym przewijaniu: renderowanie na serwerze, brak Lenis, dopóki zapytanie nie pasuje, start, gdy zacznie pasować, zniszczenie Lenis, gdy przestanie, i brak startu, gdy strona zostanie odmontowana, zanim importy się zakończą.
+
+Testy nawigacji w `.../landing-page/navigation/hooks/__test__/` sterują nagłówkiem zdarzeniami `scroll` na `window` (przewinięty przy 21 px, nie przy 20). `use-navigation-logic.lazy-gsap.component.test.tsx` trzyma `loadGsap()` w zawieszeniu: zamknięte menu niczego nie wczytuje, otwarcie menu prosi o GSAP, zmiana trasy zamyka menu, które nie zdążyło się animować, a najechanie na zdjęcie w menu prosi o GSAP.
+
+`smooth-scroll.scroll-trigger.component.test.tsx`, `smooth-scroll.lenis.component.test.tsx` i `src/presentation/components/shadcn/__test__/select.component.test.tsx` sprawiają, że pasuje zapytanie komputera, i czekają na start Lenis. `smooth-scroll.scroll-trigger.component.test.tsx` uruchamia prawdziwy `ScrollTrigger` z prawdziwym Lenis: odświeżenie w trakcie wyhamowywania po ruchu kółka zostawia cel Lenis tam, gdzie był, a strona i tak do niego dociera. Leżący obok `smooth-scroll.lenis.component.test.tsx` sprawdza naciśnięcie na prawdziwym Lenis: naciśnięcie zatrzymuje wyhamowywanie po przewinięciu kółkiem tam, gdzie jest strona, a przewijanie do sekcji nadal do niej dociera. Aktualizacja Lenis, która zmieni sposób śledzenia `targetScroll`, nie przejdzie tego testu. Ten sam plik blokuje `<body>` albo `<html>` i oczekuje, że Lenis zostawi ruch kółka przeglądarce, a po zdjęciu blokady znowu go przejmie. `select.component.test.tsx` renderuje select wewnątrz `SmoothScroll` z prawdziwym Lenis i Base UI. Ruch kółka nad otwartą listą zostaje przy liście także wtedy, gdy select nie blokuje strony. Ruch kółka nad polem, które otworzyło listę, albo w dowolnym innym miejscu strony zostaje przeglądarce, a blokada nie pozwala stronie się przesunąć. Gdy lista jest zamknięta, Lenis przejmuje kółko. Trafienia kursora sprawdza tylko prawdziwa przeglądarka, dlatego `e2e/specs/account.spec.ts` naciska **Cancel** w formularzu adresu zaraz po przewinięciu kółkiem i oczekuje, że formularz się zamknie. Ten sam plik otwiera listę stref czasowych na `/account/profile`. Oczekuje, że kółko nad listą przewinie listę, a kółko obok niej, nad polem, które ją otworzyło, albo nad nagłówkiem nie przesunie strony ani nie przerzuci listy na drugą stronę pola. Otwiera też listę z klawiatury, a w Chromium sprawdza, że przesunięcie palcem poza koniec listy nie rusza strony. `e2e/specs/landing.spec.ts` podaje każde zdjęcie z opóźnieniem 350 ms przy oknie 1440 × 900. Wysyła długą serię ruchów kółka przez przypięte kategorie, gdy ich zdjęcia jeszcze docierają, i oczekuje, że strona przejedzie cały dystans. W Chromium robi to samo z serią naciśnięć PageDown; WebKit pomija PageDown naciśnięty, zanim strona skończy przewijać się po poprzednim, więc tam test dotyczy tylko kółka. Również w Chromium, na ekranie dotykowym, przerzuca stronę palcem przez kategorie i oczekuje, że każde przerzucenie dojedzie tak daleko jak nad nimi. Przechodzi klawiszem Tab od jednego odnośnika **Discover** do następnego, od ostatniej kontrolki w sekcji nowości do sekcji kategorii, zanim ta się przypnie, oraz po kliknięciu zdjęcia panelu do kolejnego panelu, i za każdym razem oczekuje, że panel z fokusem stanie przy lewej krawędzi, a `scrollLeft` sekcji pozostanie równe 0. W WebKit na macOS naciska Alt+Tab, bo sam Tab pomija tam odnośniki; WebKit na Linuksie, jak w CI, dochodzi do nich zwykłym klawiszem Tab.
 
 ## Powiązane strony
 

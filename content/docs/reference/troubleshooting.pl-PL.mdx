@@ -158,6 +158,8 @@ co uruchamia `cf-typegen` (`wrangler types --env development`), a potem `content
 
 **`Server-only import in client asset: <plik>.js`.** Ze `scripts/verify-build.ts`. Bundle klienta zaimportował `cloudflare:workers` albo moduł `node:*`, co znaczy, że z komponentu udało się dojść do modułu wyłącznie serwerowego. Przejdź łańcuch importów od wskazanego zasobu; zwykłą przyczyną jest import z pliku `*.server.ts` albo z `drizzle.database.ts` w komponencie, zamiast przejścia przez przypadek użycia.
 
+**`Drizzle ORM in client asset: <plik>.js`.** Również ze `scripts/verify-build.ts`. Wskazany fragment zawiera wywołanie `Symbol.for`, które rejestruje symbol Drizzle `drizzle:entityKind`, więc moduł wczytywany przez przeglądarkę importuje tabelę z pliku `*.schema.ts` albo przy wczytaniu wywołuje coś z Drizzle. Przejdź łańcuch importów od wskazanego zasobu. Plik `*.zod.ts` pisze schematy ręcznie i bierze limity długości z pliku stałych modułu, a `drizzle.utils.ts` przy wczytaniu niczego z Drizzle nie wywołuje, bo pliki stałych importują z niego `UUID_STRING_LENGTH`; zobacz [Dodawanie modułu](/docs/guides/add-a-module).
+
 **`Worker build does not target preview`** albo **`Worker deployment points outside the current server build`.** Również ze `verify-build.ts`. Wynik budowania w `dist/` nie odpowiada wdrażanemu środowisku — zwykle bo `CLOUDFLARE_ENV` przeciekło z powłoki albo użyto nieaktualnego `dist/`. `build:preview` i `build:production` zaczynają się od `rm -rf dist`; uruchamiaj właściwy skrypt, a nie `wrangler deploy` ręcznie.
 
 **`Missing client JavaScript` / `Missing client CSS`.** W `dist/client/assets` nie ma pliku `.js` ani `.css`. Budowanie klienta padło wcześniej w potoku — przewiń wyjście budowania w górę.
