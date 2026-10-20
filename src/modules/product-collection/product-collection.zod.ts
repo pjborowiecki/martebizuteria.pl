@@ -1,4 +1,3 @@
-import { createSchemaFactory } from "drizzle-zod"
 import zod from "zod/v4"
 
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
@@ -11,15 +10,6 @@ import {
   COLLECTION_MIN_LENGTH,
   COLLECTION_STATUSES,
 } from "~/src/modules/product-collection/product-collection.constants"
-import { productCollection } from "~/src/modules/product-collection/product-collection.schema"
-
-const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
-  zodInstance: zod,
-})
-
-const collectionInsertSchema = createInsertSchema(productCollection)
-
-const collectionSelectSchema = createSelectSchema(productCollection)
 
 const collectionLocaleMapSchema = (maxLength: number, tooLongMessage?: string) =>
   zod.object(Object.fromEntries(I18N.SUPPORTED_LOCALES.map((locale) => [locale, zod.string().trim().max(maxLength, tooLongMessage)])))
@@ -73,23 +63,17 @@ const collectionFormValuesSchema = zod.object({
 })
 
 export const productCollectionZodSchemas = {
-  adminListItem: collectionSelectSchema.extend({
-    productCount: zod.number(),
-  }),
   createInput: collectionCreateInputSchema,
   deleteInput: zod.array(zod.uuid()).min(COLLECTION_MIN_LENGTH),
   formValues: collectionFormValuesSchema,
   handleInput: handleField,
-  insert: collectionInsertSchema,
   reorderInput: zod.array(zod.uuid()).min(COLLECTION_MIN_LENGTH),
-  select: collectionSelectSchema,
   stats: zod.object({
     active: zod.number(),
     avgProducts: zod.number(),
     draft: zod.number(),
     total: zod.number(),
   }),
-  update: createUpdateSchema(productCollection),
   updateInput: collectionCreateInputSchema.extend({
     id: zod.uuid(),
   }),

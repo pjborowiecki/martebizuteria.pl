@@ -1,19 +1,6 @@
-import { createSchemaFactory } from "drizzle-zod"
 import zod from "zod/v4"
 
-import { address } from "~/src/modules/address/address.schema"
-
 export const COUNTRY_CODE_LENGTH = 2
-
-const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
-  zodInstance: zod,
-})
-
-export const addressZodSchemas = {
-  insert: createInsertSchema(address),
-  select: createSelectSchema(address),
-  update: createUpdateSchema(address),
-}
 
 export const addressFieldsSchema = zod.object({
   address1: zod.string().min(1),

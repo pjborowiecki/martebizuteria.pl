@@ -39,11 +39,17 @@ if (!clientAssets.some((name) => name.endsWith(".css"))) {
   throw new Error("Missing client CSS")
 }
 
+const drizzleEntityKindSymbol = /Symbol\.for\(["'`]drizzle:entityKind["'`]\)/u
+
 const scanner = new Bun.Transpiler({ loader: "js" })
 for (const file of clientAssets.filter((name) => name.endsWith(".js"))) {
-  const { imports } = scanner.scan(await readFile(join("dist/client/assets", file), "utf8"))
+  const source = await readFile(join("dist/client/assets", file), "utf8")
+  const { imports } = scanner.scan(source)
   if (imports.some(({ path }) => path === "cloudflare:workers" || path.startsWith("node:"))) {
     throw new Error(`Server-only import in client asset: ${file}`)
   }
+  if (drizzleEntityKindSymbol.test(source)) {
+    throw new Error(`Drizzle ORM in client asset: ${file}`)
+  }
 }
-process.stdout.write(`Verified ${environment} Worker deployment, fonts, CSS, and client JavaScript.\n`)
+process.stdout.write(`Verified ${environment} Worker deployment, fonts, CSS, and client JavaScript without Drizzle ORM.\n`)

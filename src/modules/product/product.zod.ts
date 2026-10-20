@@ -1,4 +1,3 @@
-import { createSchemaFactory } from "drizzle-zod"
 import zod from "zod/v4"
 
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
@@ -30,14 +29,7 @@ import {
   PRODUCT_STATUSES,
   PRODUCT_VARIANT_KIND,
 } from "~/src/modules/product/product.constants"
-import { product } from "~/src/modules/product/product.schema"
 import { collectProductFormSkuEntries, formPathToZodPath } from "~/src/modules/product/product.utils"
-
-const { createSelectSchema } = createSchemaFactory({
-  zodInstance: zod,
-})
-
-const productSelectSchema = createSelectSchema(product)
 
 const productIdSchema = zod.string().trim().min(PRODUCT_MIN_LENGTH)
 
@@ -435,7 +427,7 @@ const adminProductsFiltersSchema = zod.object({
 })
 
 export const productZodSchemas = {
-  adminListItem: productSelectSchema.extend({
+  adminListItem: zod.object({
     attributeTitles: zod.string().optional(),
     categoryTitle: zod.string().optional(),
     categoryTitles: zod.string().optional(),
@@ -460,7 +452,6 @@ export const productZodSchemas = {
   deleteInput: zod.array(productIdSchema).min(PRODUCT_MIN_LENGTH),
   form: productFormSchemaDefinition,
   handleInput: handleField,
-  insert: productSelectSchema,
   productByHandleInput: zod.object({
     handle: handleField,
     locale: zod.string().optional(),
@@ -471,7 +462,6 @@ export const productZodSchemas = {
     locale: zod.string(),
   }),
   reorderInput: zod.array(productIdSchema).min(PRODUCT_MIN_LENGTH),
-  select: productSelectSchema,
   stats: zod.object({
     active: zod.number(),
     archived: zod.number(),

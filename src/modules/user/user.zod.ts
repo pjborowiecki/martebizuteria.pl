@@ -1,4 +1,3 @@
-import { createSchemaFactory } from "drizzle-zod"
 import zod from "zod/v4"
 
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
@@ -19,17 +18,6 @@ import {
   TEAM_CANDIDATE_SEARCH_MAX_LENGTH,
   TEAM_CANDIDATE_SEARCH_MIN_LENGTH,
 } from "~/src/modules/user/user.constants"
-import { user } from "~/src/modules/user/user.schema"
-
-const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
-  zodInstance: zod,
-})
-
-const userSelectSchema = createSelectSchema(user)
-
-const userInsertSchema = createInsertSchema(user)
-
-const userUpdateSchema = createUpdateSchema(user)
 
 const adminCustomerCategoryBreakdownSchema = zod.object({
   amount: zod.number(),
@@ -133,7 +121,7 @@ const adminUserMetadataSchema = zod.object({
   tags: zod.array(zod.string()).optional(),
 })
 
-const adminCustomerDetailSchema = userSelectSchema.extend({
+const adminCustomerDetailSchema = zod.object({
   address: zod.string().optional(),
   addressForm: adminCustomerAddressFormSchema.optional(),
   averageOrderValue: zod.number(),
@@ -163,7 +151,7 @@ const adminCustomerDetailInputSchema = zod.object({
   locale: zod.string().optional(),
 })
 
-const adminCustomerListItemSchema = userSelectSchema.extend({
+const adminCustomerListItemSchema = zod.object({
   averageOrderValue: zod.number(),
   city: zod.string().optional(),
   countryCode: zod.string().optional(),
@@ -293,10 +281,7 @@ export const userZodSchemas = {
   }),
   deleteCustomerInput: deleteCustomerInputSchema,
   displayPreferenceInput: displayPreferenceInputSchema,
-  insert: userInsertSchema,
-  select: userSelectSchema,
   teamAccessInput: teamAccessInputSchema,
   teamCandidateSearchInput: teamCandidateSearchInputSchema,
-  update: userUpdateSchema,
   updateAdminCustomerInput: updateAdminCustomerInputSchema,
 }

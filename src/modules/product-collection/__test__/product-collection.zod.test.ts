@@ -164,32 +164,3 @@ describe("collection stats", () => {
     expect(productCollectionZodSchemas.stats.safeParse({ active: 2, avgProducts: 4.5, draft: 1 }).success).toBe(false)
   })
 })
-
-describe("collection admin list item", () => {
-  const row = {
-    createdAt: new Date("2026-01-01T00:00:00.000Z"),
-    descriptions,
-    handle: "nova",
-    id: uuid,
-    image: null,
-    metadata: null,
-    productCount: 7,
-    rank: 0,
-    shortDescriptions,
-    status: COLLECTION_STATUS.ACTIVE,
-    titles,
-    updatedAt: new Date("2026-01-02T00:00:00.000Z"),
-  }
-
-  it("carries the product count through", () => {
-    expect(productCollectionZodSchemas.adminListItem.parse(row).productCount).toBe(7)
-  })
-
-  it("rejects a non-numeric product count", () => {
-    expect(productCollectionZodSchemas.adminListItem.safeParse({ ...row, productCount: "7" }).success).toBe(false)
-  })
-
-  it("rejects a status outside the column enum", () => {
-    expect(productCollectionZodSchemas.select.safeParse({ ...row, status: "archived" }).success).toBe(false)
-  })
-})

@@ -141,29 +141,3 @@ describe("orderZodSchemas.adminOrdersExportInput", () => {
     expect(orderZodSchemas.adminOrdersExportInput.parse({ page: 2, pageSize: 50, tab: "all" })).toStrictEqual({ tab: "all" })
   })
 })
-
-describe("orderZodSchemas table schemas", () => {
-  it("requires the email on an insert", () => {
-    expect(orderZodSchemas.insert.safeParse({ total: 1000 }).success).toBe(false)
-  })
-
-  it("accepts an insert carrying only the required email and order number", () => {
-    expect(orderZodSchemas.insert.safeParse({ email: "ada@example.test", orderNumber: "MRT-2026-00001" }).success).toBe(true)
-  })
-
-  it("refuses an insert with no order number, because support and invoices need one", () => {
-    expect(orderZodSchemas.insert.safeParse({ email: "ada@example.test" }).success).toBe(false)
-  })
-
-  it("rejects a status outside the schema enum on an update", () => {
-    expect(orderZodSchemas.update.safeParse({ status: "archived" }).success).toBe(false)
-  })
-
-  it("accepts a partial update", () => {
-    expect(orderZodSchemas.update.safeParse({ status: "refunded" }).success).toBe(true)
-  })
-
-  it("requires the generated columns on a select row", () => {
-    expect(orderZodSchemas.select.safeParse({ email: "ada@example.test" }).success).toBe(false)
-  })
-})

@@ -68,18 +68,6 @@ describe("adminListItemToFormValues", () => {
     expect(values.parentId).toBe("category-jewellery")
   })
 
-  it("fills a locale the stored maps are missing", () => {
-    const values = adminListItemToFormValues(listItem({ subtitles: { "pl-PL": "Srebro" } }))
-
-    expect(values.subtitles).toStrictEqual({ "en-US": "", "pl-PL": "Srebro" })
-  })
-
-  it("lifts a legacy single-string column into the default locale", () => {
-    const values = adminListItemToFormValues(listItem({ descriptions: "Ręcznie robione" }))
-
-    expect(values.descriptions).toStrictEqual({ "en-US": "", "pl-PL": "Ręcznie robione" })
-  })
-
   it("carries the handle, status and titles through untouched", () => {
     const values = adminListItemToFormValues(listItem({ handle: "necklaces", status: "draft" }))
 

@@ -15,7 +15,9 @@ interface AllowedValue {
 }
 
 export interface ProductAttribute {
-  adminListItem: z.infer<(typeof productAttributeZodSchemas)["adminListItem"]>
+  adminListItem: ProductAttribute["select"] & {
+    productCount: number
+  }
   allowedValue: AllowedValue
   formValues: z.infer<(typeof productAttributeZodSchemas)["createInput"]>
   insert: typeof productAttribute.$inferInsert
