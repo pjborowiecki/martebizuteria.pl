@@ -137,7 +137,7 @@ validateSearch: storefrontProductsSearchSchema,
 
 Widgety, okna dialogowe, formularze i kolumny tabel mieszkają w `src/presentation/components/custom/` i same czytają swoje tłumaczenia oraz swoje zapytania. Prostsze trasy używają `head: pageHead` z `src/lib/seo.ts`, które zamienia `{ title, description }` z loadera w `<title>`, `description` i dwa odpowiadające im znaczniki Open Graph, a do tego we własne `og:image` i `twitter:image` strony, gdy loader zwraca `image`, oraz skrypt JSON-LD, gdy zwraca `structuredData`.
 
-Plik `src/routes/__root.tsx` odpowiada za powłokę dokumentu: `beforeLoad` ustala język i w jednym `Promise.all` wstępnie ładuje każdą przestrzeń nazw wymaganą przez dopasowane trasy oraz `displayPreferencesQuery` użytkownika, `shellComponent` renderuje `<html lang>` wraz ze skryptami inicjującymi motyw, panel boczny i preferencje tabel, a `head` składa odnośniki kanoniczne i `hreflang` z `localeLinks`. Strony sklepu owinięte są w `SmoothScroll`; strony panelu administracyjnego nie.
+Plik `src/routes/__root.tsx` odpowiada za powłokę dokumentu: `beforeLoad` ustala język i w jednym `Promise.all` wstępnie ładuje każdą przestrzeń nazw wymaganą przez dopasowane trasy oraz `displayPreferencesQuery` użytkownika, `shellComponent` renderuje `<html lang>` wraz ze skryptem konfigurującym Zod i skryptami inicjującymi motyw, panel boczny i preferencje tabel, a `head` składa odnośniki kanoniczne i `hreflang` z `localeLinks`. Strony sklepu owinięte są w `SmoothScroll`; strony panelu administracyjnego nie.
 
 ## Funkcje serwerowe
 

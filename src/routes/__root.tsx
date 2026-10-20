@@ -12,6 +12,7 @@ import { displayPreferencesQuery } from "~/src/integrations/use-intl/i18n.displa
 import { getRouteNamespaces, preloadNamespaces } from "~/src/integrations/use-intl/i18n.messages"
 import { localeLinks, localizePathname } from "~/src/integrations/use-intl/i18n.paths"
 import { getCurrentLocale, getCurrentPathname } from "~/src/integrations/use-intl/i18n.utils"
+import { ZOD_JITLESS_INIT_SCRIPT } from "~/src/integrations/zod/zod.config"
 
 import { SIDEBAR_INIT_SCRIPT, adminSidebarCollapsedCriticalStyle } from "~/src/presentation/theme/sidebar-preference"
 import { THEME_INIT_SCRIPT, adminShellCriticalStyle } from "~/src/presentation/theme/theme-init"
@@ -68,6 +69,7 @@ const RootDocument = ({ children }: Readonly<{ children: ReactNode }>) => {
         : {})}
     >
       <head>
+        <script nonce={nonce} dangerouslySetInnerHTML={ZOD_JITLESS_INIT_SCRIPT_HTML} />
         <script nonce={nonce} dangerouslySetInnerHTML={THEME_INIT_SCRIPT_HTML} />
         <script nonce={nonce} dangerouslySetInnerHTML={SIDEBAR_INIT_SCRIPT_HTML} />
         <script nonce={nonce} dangerouslySetInnerHTML={DATAGRID_PREFS_INIT_SCRIPT_HTML} />
@@ -82,6 +84,10 @@ const RootDocument = ({ children }: Readonly<{ children: ReactNode }>) => {
       </body>
     </html>
   )
+}
+
+const ZOD_JITLESS_INIT_SCRIPT_HTML = {
+  __html: ZOD_JITLESS_INIT_SCRIPT,
 }
 
 const THEME_INIT_SCRIPT_HTML = {
