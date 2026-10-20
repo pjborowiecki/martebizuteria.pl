@@ -1,5 +1,6 @@
 import { type ColumnSizingState, type ColumnVisibilityState } from "@tanstack/react-table"
 
+import { STORAGE_PREFIX } from "~/src/presentation/components/custom/datagrid/datagrid-init"
 import {
   clearDataGridColumnSizingCssVars,
   syncDataGridColumnSizingCssVars,
@@ -10,8 +11,6 @@ import {
   omitNonResizableColumnSizing,
   sameOrder,
 } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
-
-export const STORAGE_PREFIX = "marte:datagrid:v1:"
 
 const LEGACY_RECORD_ID_COLUMN_KEY = "id"
 

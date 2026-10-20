@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { STORAGE_PREFIX } from "~/src/presentation/components/custom/datagrid/datagrid-init"
 import {
-  STORAGE_PREFIX,
   clearDataGridPreferences,
   dataGridPreferencesStorageKey,
   defaultPreferencesSnapshot,

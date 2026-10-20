@@ -1,7 +1,7 @@
+import { STORAGE_PREFIX } from "~/src/presentation/components/custom/datagrid/datagrid-init"
 import { syncDataGridColumnSizingCssVars } from "~/src/presentation/components/custom/datagrid/lib/data-grid-column-width"
 import {
   type DataGridPreferencesSnapshot,
-  STORAGE_PREFIX,
   defaultPreferencesSnapshot,
   readDataGridPreferences,
   sameDataGridPreferencesSnapshot,

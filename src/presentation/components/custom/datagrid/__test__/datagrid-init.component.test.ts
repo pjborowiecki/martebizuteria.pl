@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test"
 
-import { DATAGRID_PREFS_INIT_SCRIPT } from "~/src/presentation/components/custom/datagrid/datagrid-init"
+import { DATAGRID_PREFS_INIT_SCRIPT, STORAGE_PREFIX } from "~/src/presentation/components/custom/datagrid/datagrid-init"
 import { dataGridColumnWidthCssVar } from "~/src/presentation/components/custom/datagrid/lib/data-grid-column-width"
-import { STORAGE_PREFIX, dataGridPreferencesStorageKey } from "~/src/presentation/components/custom/datagrid/lib/data-grid-preferences"
+import { dataGridPreferencesStorageKey } from "~/src/presentation/components/custom/datagrid/lib/data-grid-preferences"
 
 const runInitScript = (): void => {
   const script = document.createElement("script")
