@@ -139,6 +139,7 @@
     "sameAsShipping": "Same as shipping address",
     "saveShippingAddress": "Save this shipping address for future use",
     "saveBillingAddress": "Save this billing address for future use",
+    "addressAlreadySaved": "This address is already saved",
     "companyInvoice": "I want an invoice for a company",
     "companyInvoiceHint": "We will issue the invoice to this company at the billing address. If the company's address is not the delivery address, untick “Same as shipping address” above and enter it.",
     "companyName": "Company Name",

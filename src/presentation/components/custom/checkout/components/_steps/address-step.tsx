@@ -1,7 +1,6 @@
-import { type JSX, type MouseEvent, useCallback, useMemo } from "react"
+import { type JSX, type MouseEvent, useCallback, useEffect, useId, useMemo, useState } from "react"
 
 import { useQuery } from "@tanstack/react-query"
-import { cn } from "cn"
 import { ArrowRight, MapPin } from "lucide-react"
 import { useWatch } from "react-hook-form"
 import { useTranslations } from "use-intl/react"
@@ -92,7 +91,7 @@ export const AddressStep = (): JSX.Element => {
 
       <div className="flex flex-col gap-4 pt-1 sm:flex-row sm:items-center sm:gap-8">
         <div className="w-fit">
-          <CheckoutCheckboxField control={control} name="saveShippingAddress" label={t("saveShippingAddress")} />
+          <SaveAddressField addresses={deliverableAddresses} prefix="shipping" />
         </div>
         <div className="w-fit">
           <CheckoutCheckboxField control={control} name="sameAsShipping" label={t("sameAsShipping")} />
@@ -143,7 +142,7 @@ export const AddressStep = (): JSX.Element => {
             />
           </FieldGroup>
           <div className="pt-1">
-            <CheckoutCheckboxField control={control} name="saveBillingAddress" label={t("saveBillingAddress")} />
+            <SaveAddressField addresses={addresses ?? NO_SAVED_ADDRESSES} prefix="billing" />
           </div>
         </div>
       )}
@@ -208,26 +207,113 @@ const SavedAddresses = ({
   prefix: AddressPrefix
 }>): JSX.Element => {
   const t = useTranslations("pages.checkout.checkoutForm")
-  const hasAddresses = addresses.length > 0
+  const listId = useId()
+  const [listOpen, setListOpen] = useState(false)
+  const toggleList = useCallback(() => {
+    setListOpen((open) => !open)
+  }, [])
+
+  const selectAddress = useCallback<SelectAddress>(
+    (addr, chosenFor) => {
+      onSelect(addr, chosenFor)
+      setListOpen(false)
+    },
+    [onSelect],
+  )
+
+  if (addresses.length === 0) {
+    return (
+      <div className="flex w-full items-center justify-between">
+        <h3 className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">{heading}</h3>
+        <span className="text-[10px] tracking-widest text-muted-foreground italic">{t("noSavedAddresses")}</span>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex w-full items-center justify-between">
         <h3 className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">{heading}</h3>
-        <span className={cn("text-[10px] tracking-widest text-muted-foreground", hasAddresses ? "uppercase underline" : "italic")}>
-          {hasAddresses ? t("savedAddresses") : t("noSavedAddresses")}
-        </span>
+        <button
+          type="button"
+          aria-controls={listId}
+          aria-expanded={listOpen}
+          onClick={toggleList}
+          className="min-h-6 cursor-pointer text-[10px] tracking-widest text-muted-foreground uppercase underline transition-colors hover:text-foreground pointer-coarse:min-h-10"
+        >
+          {t("savedAddresses")}
+        </button>
       </div>
-      {hasAddresses && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {addresses.map((addr) => (
-            <AddressCard key={`${prefix}-${addr.id}`} addr={addr} onSelect={onSelect} prefix={prefix} />
-          ))}
-        </div>
-      )}
+      <div id={listId} hidden={!listOpen} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {addresses.map((addr) => (
+          <AddressCard key={`${prefix}-${addr.id}`} addr={addr} onSelect={selectAddress} prefix={prefix} />
+        ))}
+      </div>
     </div>
   )
 }
+
+const addressKey = (parts: readonly (string | null | undefined)[]): string =>
+  parts.map((part) => part?.trim().toLocaleLowerCase()).join("\n")
+
+const SaveAddressField = ({
+  addresses,
+  prefix,
+}: Readonly<{
+  addresses: readonly Address["select"][]
+  prefix: AddressPrefix
+}>): JSX.Element => {
+  const t = useTranslations("pages.checkout.checkoutForm")
+  const { control, setValue } = useCheckoutForm()
+  const fields = ADDRESS_FIELDS[prefix]
+  const typedAddress = useWatch({
+    control,
+    name: [fields.firstName, fields.lastName, fields.address1, fields.postalCode, fields.city, fields.countryCode],
+  })
+
+  const alreadySaved = useMemo(() => {
+    const typedKey = addressKey(typedAddress)
+
+    return addresses.some(
+      (addr) => addressKey([addr.firstName, addr.lastName, addr.address1, addr.postalCode, addr.city, addr.countryCode]) === typedKey,
+    )
+  }, [addresses, typedAddress])
+
+  useEffect(() => {
+    if (alreadySaved) {
+      setValue(fields.save, false)
+    }
+  }, [alreadySaved, fields.save, setValue])
+
+  if (alreadySaved) {
+    return <CheckoutCheckboxField control={control} disabled name={fields.save} label={t("addressAlreadySaved")} />
+  }
+
+  return <CheckoutCheckboxField control={control} name={fields.save} label={t(fields.saveLabel)} />
+}
+
+const ADDRESS_FIELDS = {
+  billing: {
+    address1: "billingAddress1",
+    city: "billingCity",
+    countryCode: "billingCountryCode",
+    firstName: "billingFirstName",
+    lastName: "billingLastName",
+    postalCode: "billingPostalCode",
+    save: "saveBillingAddress",
+    saveLabel: "saveBillingAddress",
+  },
+  shipping: {
+    address1: "address1",
+    city: "city",
+    countryCode: "countryCode",
+    firstName: "firstName",
+    lastName: "lastName",
+    postalCode: "postalCode",
+    save: "saveShippingAddress",
+    saveLabel: "saveShippingAddress",
+  },
+} as const
 
 interface AddressCardProps {
   readonly addr: Address["select"]

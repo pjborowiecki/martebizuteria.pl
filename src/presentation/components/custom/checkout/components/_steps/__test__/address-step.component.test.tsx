@@ -83,6 +83,16 @@ afterEach(() => {
   cleanup()
 })
 
+const openSavedAddresses = async (list: "billing" | "shipping" = "shipping"): Promise<void> => {
+  const toggles = await screen.findAllByRole("button", { name: "Saved Addresses" })
+  const toggle = list === "billing" ? toggles.at(-1) : toggles[0]
+  if (toggle === undefined) {
+    throw new Error(`the ${list} saved addresses button did not render`)
+  }
+
+  await userEvent.click(toggle)
+}
+
 describe("AddressStep shipping fields", () => {
   it("asks for every part of the shipping address", () => {
     renderWithProviders(<AddressStepHarness />)
@@ -149,7 +159,8 @@ describe("AddressStep saved addresses", () => {
 
     renderWithProviders(<AddressStepHarness />)
 
-    expect(await screen.findByText("Saved Addresses")).toBeInTheDocument()
+    await openSavedAddresses()
+
     expect(screen.getByRole("button", { name: /Anna Kowalska/u })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /Jan Nowak/u })).toBeInTheDocument()
   })
@@ -167,8 +178,9 @@ describe("AddressStep saved addresses", () => {
     sessionState.signedIn = true
     addressState.rows = [savedAddress()]
     renderWithProviders(<AddressStepHarness />)
+    await openSavedAddresses()
 
-    await userEvent.click(await screen.findByRole("button", { name: /Anna Kowalska/u }))
+    await userEvent.click(screen.getByRole("button", { name: /Anna Kowalska/u }))
 
     expect(screen.getByLabelText(/First Name/u)).toHaveValue("Anna")
     expect(screen.getByLabelText(/Last Name/u)).toHaveValue("Kowalska")
@@ -185,8 +197,9 @@ describe("AddressStep saved addresses", () => {
     ]
 
     renderWithProviders(<AddressStepHarness />)
+    await openSavedAddresses()
 
-    expect(await screen.findByRole("button", { name: /Anna Kowalska/u })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Anna Kowalska/u })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: /Jan Nowak/u })).not.toBeInTheDocument()
   })
 
@@ -194,8 +207,9 @@ describe("AddressStep saved addresses", () => {
     sessionState.signedIn = true
     addressState.rows = [savedAddress({ city: "Berlin", countryCode: "DE", firstName: "Jan", id: "address-2", lastName: "Nowak" })]
     renderWithProviders(<AddressStepHarness sameAsShipping={false} />)
+    await openSavedAddresses("billing")
 
-    await userEvent.click(await screen.findByRole("button", { name: /Jan Nowak/u }))
+    await userEvent.click(screen.getByRole("button", { name: /Jan Nowak/u }))
 
     expect(observed.form?.getValues("billingCountryCode")).toBe("DE")
     expect(observed.form?.getValues("countryCode")).toBe("")
@@ -205,12 +219,88 @@ describe("AddressStep saved addresses", () => {
     sessionState.signedIn = true
     addressState.rows = [savedAddress({ firstName: null, lastName: null, postalCode: null })]
     renderWithProviders(<AddressStepHarness />)
+    await openSavedAddresses()
 
-    await userEvent.click(await screen.findByRole("button", { name: /ul\. Mokotowska/u }))
+    await userEvent.click(screen.getByRole("button", { name: /ul\. Mokotowska/u }))
 
     expect(observed.form?.getValues("firstName")).toBe("")
     expect(observed.form?.getValues("lastName")).toBe("")
     expect(observed.form?.getValues("postalCode")).toBe("")
+  })
+})
+
+describe("AddressStep saved addresses list", () => {
+  beforeEach(() => {
+    sessionState.signedIn = true
+    addressState.rows = [savedAddress()]
+  })
+
+  it("keeps the saved addresses folded away until the shopper asks for them", async () => {
+    renderWithProviders(<AddressStepHarness />)
+    const toggle = await screen.findByRole("button", { name: "Saved Addresses" })
+
+    expect(toggle).toHaveAttribute("aria-expanded", "false")
+    expect(screen.queryByRole("button", { name: /Anna Kowalska/u })).not.toBeInTheDocument()
+
+    await userEvent.click(toggle)
+
+    expect(toggle).toHaveAttribute("aria-expanded", "true")
+    expect(screen.getByRole("button", { name: /Anna Kowalska/u })).toBeInTheDocument()
+  })
+
+  it("folds the list away again once the shopper picks an address", async () => {
+    renderWithProviders(<AddressStepHarness />)
+    await openSavedAddresses()
+
+    await userEvent.click(screen.getByRole("button", { name: /Anna Kowalska/u }))
+
+    expect(screen.getByRole("button", { name: "Saved Addresses" })).toHaveAttribute("aria-expanded", "false")
+    expect(screen.queryByRole("button", { name: /Anna Kowalska/u })).not.toBeInTheDocument()
+  })
+})
+
+describe("AddressStep saving an address", () => {
+  beforeEach(() => {
+    sessionState.signedIn = true
+    addressState.rows = [savedAddress()]
+  })
+
+  it("does not offer to save a shipping address the shopper already has", async () => {
+    renderWithProviders(<AddressStepHarness />)
+    await openSavedAddresses()
+
+    await userEvent.click(screen.getByRole("button", { name: /Anna Kowalska/u }))
+
+    const alreadySaved = await screen.findByRole("checkbox", { name: "This address is already saved" })
+
+    expect(alreadySaved).toHaveAttribute("aria-disabled", "true")
+    expect(alreadySaved).toHaveAttribute("aria-checked", "false")
+    expect(screen.queryByRole("checkbox", { name: "Save this shipping address for future use" })).not.toBeInTheDocument()
+  })
+
+  it("offers to save the address again once the shopper changes it", async () => {
+    renderWithProviders(<AddressStepHarness />)
+    await openSavedAddresses()
+    await userEvent.click(screen.getByRole("button", { name: /Anna Kowalska/u }))
+
+    await userEvent.type(screen.getByLabelText(/City/u), " Praga")
+
+    expect(await screen.findByRole("checkbox", { name: "Save this shipping address for future use" })).not.toHaveAttribute(
+      "aria-disabled",
+      "true",
+    )
+  })
+
+  it("clears a ticked save when the shopper picks an address that is already saved", async () => {
+    renderWithProviders(<AddressStepHarness />)
+    await userEvent.click(screen.getByRole("checkbox", { name: "Save this shipping address for future use" }))
+    await openSavedAddresses()
+
+    await userEvent.click(screen.getByRole("button", { name: /Anna Kowalska/u }))
+
+    await waitFor(() => {
+      expect(observed.form?.getValues("saveShippingAddress")).toBe(false)
+    })
   })
 })
 
@@ -245,12 +335,9 @@ describe("AddressStep billing address", () => {
     addressState.rows = [savedAddress()]
     renderWithProviders(<AddressStepHarness sameAsShipping={false} />)
 
-    const [, billingCard] = await screen.findAllByRole("button", { name: /Anna Kowalska/u })
-    if (billingCard === undefined) {
-      throw new Error("the billing address card did not render")
-    }
+    await openSavedAddresses("billing")
 
-    await userEvent.click(billingCard)
+    await userEvent.click(screen.getByRole("button", { name: /Anna Kowalska/u }))
 
     expect(observed.form?.getValues("billingFirstName")).toBe("Anna")
     expect(observed.form?.getValues("billingCity")).toBe("Warszawa")
