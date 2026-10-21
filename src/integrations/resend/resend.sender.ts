@@ -170,7 +170,7 @@ const checkSender = async ({ apiKey, environment, from, managementApiKey }: Read
 
   if (environment !== "production" && `.${sender.domain}`.endsWith(`.${APP_DOMAIN}`)) {
     throw new Error(
-      `${sender.address} is the shop's own address. ${environment} sends its e-mails from RESEND_EMAIL_FROM and sends the notices about its test orders to it, so they would reach the shop. Use a developer's address on another domain.`,
+      `${sender.address} is the shop's own address. ${environment} sends its e-mails from RESEND_EMAIL_FROM, so its test e-mails would go out under the shop's address. Use a developer's address on another domain.`,
     )
   }
 

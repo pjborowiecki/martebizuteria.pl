@@ -49,9 +49,8 @@ NOTES.md
 .codex/
 .cursor/
 
-# Vite dev cache and rendered page dumps
+# Vite dev cache
 .vite/
-page.html
 
 # Fumadocs MDX (generated from content; regenerate via dev/build)
 .source

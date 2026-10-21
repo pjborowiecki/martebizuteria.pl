@@ -47,13 +47,9 @@ Both run `wrangler deploy` through `env -u CLOUDFLARE_ENV vp exec`. See [CI/CD](
 | `check`            | `vp check` — format, lint and type check       |
 | `check:fix`        | `vp check --fix`                               |
 | `check:pre-commit` | `vp staged` — used by `.vite-hooks/pre-commit` |
-| `check:staged`     | `vp staged --no-fmt`                           |
 | `lint`             | `vp lint`                                      |
-| `lint:staged`      | `vp staged --no-fmt`                           |
 | `format`           | `vp fmt`                                       |
 | `format:check`     | `vp fmt --check`                               |
-
-> `check:staged` and `lint:staged` both pass `--no-fmt`, which `vp staged` does not accept. They fail immediately with `error: unexpected argument '--no-fmt' found`. Use `check:pre-commit`.
 
 ## Tests
 

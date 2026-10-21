@@ -115,9 +115,9 @@ describe("verifyEmailSender settings", () => {
     expect(emailsSend).not.toHaveBeenCalled()
   })
 
-  it("refuses the shop's own address outside production, so test orders never mail the shop, without calling Resend", async () => {
+  it("refuses the shop's own address outside production, so test e-mails never go out as the shop, without calling Resend", async () => {
     await expect(check({ environment: "preview", from: "kontakt@martebizuteria.pl" })).rejects.toThrow(
-      "kontakt@martebizuteria.pl is the shop's own address. preview sends its e-mails from RESEND_EMAIL_FROM and sends the notices about its test orders to it, so they would reach the shop. Use a developer's address on another domain.",
+      "kontakt@martebizuteria.pl is the shop's own address. preview sends its e-mails from RESEND_EMAIL_FROM, so its test e-mails would go out under the shop's address. Use a developer's address on another domain.",
     )
     await expect(check({ environment: "development", from: "sklep@Mail.MarteBizuteria.pl" })).rejects.toThrow(
       "development sends its e-mails from RESEND_EMAIL_FROM",

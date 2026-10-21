@@ -142,7 +142,7 @@ Czyli `vp staged`, a `vite.config.ts` definiuje, co to znaczy:
 staged: { "*": ["vp check --fix"] },
 ```
 
-Każdy commit formatuje więc, lintuje i sprawdza typy plików w przechowalni, naprawiając to, co da się naprawić. `bun run check:staged` i `bun run lint:staged` robią to samo z flagą `--no-fmt`, gdy chcesz kontroli bez przeformatowania.
+Każdy commit formatuje więc, lintuje i sprawdza typy plików w przechowalni, naprawiając to, co da się naprawić.
 
 `.vite-hooks/prepare-commit-msg` uruchamia `scripts/commit-msg.ts`, który wymusza konwencjonalny temat commita i dokleja do niego emoji. Dozwolone typy to `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style` i `test`; cokolwiek innego kończy się kodem błędu i wypisaniem listy. Tematy commitów merge, revert, fixup i squash przechodzą bez zmian.
 

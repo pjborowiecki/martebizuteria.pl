@@ -47,13 +47,9 @@ Oba uruchamiają `wrangler deploy` przez `env -u CLOUDFLARE_ENV vp exec`. Co spr
 | `check`            | `vp check` — formatowanie, lint, kontrola typów      |
 | `check:fix`        | `vp check --fix`                                     |
 | `check:pre-commit` | `vp staged` — używany przez `.vite-hooks/pre-commit` |
-| `check:staged`     | `vp staged --no-fmt`                                 |
 | `lint`             | `vp lint`                                            |
-| `lint:staged`      | `vp staged --no-fmt`                                 |
 | `format`           | `vp fmt`                                             |
 | `format:check`     | `vp fmt --check`                                     |
-
-> `check:staged` i `lint:staged` przekazują `--no-fmt`, którego `vp staged` nie przyjmuje. Kończą się natychmiast błędem `error: unexpected argument '--no-fmt' found`. Używaj `check:pre-commit`.
 
 ## Testy
 

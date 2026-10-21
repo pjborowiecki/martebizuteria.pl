@@ -1,6 +1,6 @@
 ---
 title: "Image delivery"
-description: "Which R2 bucket each environment uses, how the storefront resizes catalogue images with Cloudflare Image Transformations on the bucket's custom domain, and the one-time setup: the preview bucket, copying the images, the custom domain, the zone setting and VITE_R2_URL."
+description: "Which R2 bucket each environment uses, why catalogue images are served as originals from each bucket's r2.dev address, and the one-time setup: the preview bucket, copying the images and VITE_R2_URL, with resizing through Cloudflare Image Transformations on a custom domain as the alternative."
 ---
 
 Catalogue, collection, category and marketing images live in R2 and reach the browser through the public base URL in `VITE_R2_URL`. When that URL is a custom domain on the shop's Cloudflare zone, the storefront asks Cloudflare Image Transformations for each image at the size it is shown. When it is still an `r2.dev` address, the images are served as uploaded, at full size, because `r2.dev` cannot transform images. Either way they keep working.
