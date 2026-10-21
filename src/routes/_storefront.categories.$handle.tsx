@@ -93,12 +93,15 @@ export const Route = createFileRoute("/_storefront/categories/$handle")({
       ...(loaderData?.structuredData === undefined ? [] : [{ "script:ld+json": loaderData.structuredData }]),
     ],
   }),
-  loader: async ({ context, deps, params }) => {
+  beforeLoad: ({ search }) => ({
+    catalogSearch: normalizeStorefrontProductsSearch(search),
+  }),
+  loader: async ({ context, params }) => {
     const startedAt = performance.now()
     const { locale } = context
     catalogDebugLog("category.loader.start", {
       handle: params.handle,
-      search: deps,
+      search: context.catalogSearch,
     })
 
     const [category] = await Promise.all([
@@ -107,7 +110,7 @@ export const Route = createFileRoute("/_storefront/categories/$handle")({
         scope: {
           categoryHandle: params.handle,
         },
-        search: deps,
+        search: context.catalogSearch,
       }),
     ])
 
@@ -146,7 +149,6 @@ export const Route = createFileRoute("/_storefront/categories/$handle")({
       title,
     }
   },
-  loaderDeps: ({ search }: { search: StorefrontScopedCategoryCatalogSearch }) => normalizeStorefrontProductsSearch(search),
   staticData: {
     namespaces: ["pages.category", "pages.products"],
   },

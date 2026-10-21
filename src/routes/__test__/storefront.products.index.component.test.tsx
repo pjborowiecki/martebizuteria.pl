@@ -39,12 +39,16 @@ interface ProductsPageMeta {
 }
 
 interface RouteDefinition {
+  readonly beforeLoad?: (ctx: Readonly<{ search: StorefrontProductsSearch }>) => { readonly catalogSearch: StorefrontProductsSearch }
   readonly component?: () => JSX.Element
   readonly head?: (ctx: Readonly<{ loaderData?: Readonly<ProductsPageMeta> | undefined }>) => PageMetaTags
   readonly loader?: (
-    ctx: Readonly<{ context: { imagePrefetchService: unknown; locale: SupportedLocale; queryClient: QueryClient }; deps: unknown }>,
+    ctx: Readonly<{
+      context: { catalogSearch: StorefrontProductsSearch; imagePrefetchService: unknown; locale: SupportedLocale; queryClient: QueryClient }
+      deps: Pick<StorefrontProductsSearch, "q">
+    }>,
   ) => Promise<ProductsPageMeta>
-  readonly loaderDeps?: (ctx: Readonly<{ search: StorefrontProductsSearch }>) => StorefrontProductsSearch
+  readonly loaderDeps?: (ctx: Readonly<{ search: StorefrontProductsSearch }>) => Pick<StorefrontProductsSearch, "q">
   readonly staticData?: unknown
 }
 
@@ -201,12 +205,15 @@ describe("storefront products route data", () => {
     expect(route.staticData).toStrictEqual({ namespaces: ["pages.products"] })
   })
 
-  it("keeps only the recognised search keys in the loader dependencies", () => {
-    expect(route.loaderDeps?.({ search: { category: "rings", q: "silver", sort: "newest" } })).toStrictEqual({
-      category: "rings",
-      q: "silver",
-      sort: "newest",
+  it("hands the loader only the recognised search keys, through its context", () => {
+    expect(route.beforeLoad?.({ search: { category: "rings", q: "silver", sort: "newest" } })).toStrictEqual({
+      catalogSearch: { category: "rings", q: "silver", sort: "newest" },
     })
+  })
+
+  it("reloads the page for a new search term but not for a filter, which the grid applies in place", () => {
+    expect(route.loaderDeps?.({ search: { category: "rings", q: "silver", sort: "newest" } })).toStrictEqual({ q: "silver" })
+    expect(route.loaderDeps?.({ search: { minPrice: 100 } })).toStrictEqual({ q: undefined })
   })
 
   it("heads a search with the query instead of the catalogue title", () => {
@@ -222,7 +229,10 @@ describe("storefront products route data", () => {
     const imagePrefetchService = { prefetch: vi.fn() }
 
     await expect(
-      route.loader?.({ context: { imagePrefetchService, locale: "en-US", queryClient }, deps: { q: "pierścionek" } }),
+      route.loader?.({
+        context: { catalogSearch: { q: "pierścionek" }, imagePrefetchService, locale: "en-US", queryClient },
+        deps: { q: "pierścionek" },
+      }),
     ).resolves.toMatchObject({ title: "Search: pierścionek" })
   })
 
@@ -231,7 +241,7 @@ describe("storefront products route data", () => {
     const imagePrefetchService = { prefetch: vi.fn() }
 
     await expect(
-      route.loader?.({ context: { imagePrefetchService, locale: "en-US", queryClient }, deps: { category: "rings" } }),
+      route.loader?.({ context: { catalogSearch: { category: "rings" }, imagePrefetchService, locale: "en-US", queryClient }, deps: {} }),
     ).resolves.toStrictEqual({
       description: "Browse our complete collection of exquisite jewelry.",
       structuredData: buildBreadcrumbStructuredData({ leaf: "All Products", locale: "en-US", sections: [] }),
@@ -243,7 +253,10 @@ describe("storefront products route data", () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const imagePrefetchService = { prefetch: vi.fn() }
 
-    await route.loader?.({ context: { imagePrefetchService, locale: "en-US", queryClient }, deps: { category: "rings" } })
+    await route.loader?.({
+      context: { catalogSearch: { category: "rings" }, imagePrefetchService, locale: "en-US", queryClient },
+      deps: {},
+    })
 
     expect(prefetch.page).toHaveBeenCalledExactlyOnceWith(queryClient, imagePrefetchService, { search: { category: "rings" } })
   })

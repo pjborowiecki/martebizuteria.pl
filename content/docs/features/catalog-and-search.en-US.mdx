@@ -53,6 +53,8 @@ Alongside the schema the module exports the helpers the pages use:
 
 Each route passes a `handleSearchChange` callback that navigates with `replace: true`, so filtering does not fill the history stack.
 
+A filter or sort change never reloads the page. The routes keep the filters out of `loaderDeps`, so the router neither re-runs the loader nor shows its pending screen; the grid keeps the current products on screen, dimmed and marked `aria-busy`, until the new ones arrive, and the price fields write to the URL only once the shopper pauses, presses Enter or leaves the field. [URL state](/docs/guides/url-state#applying-a-filter-in-place) shows how.
+
 ## Listing query
 
 `getStorefrontProductsPage` (`src/modules/product/use-cases/get-storefront-products-page.ts`) is a public `GET` server function with `withRequest`. It is exposed as an **infinite** query through `getStorefrontProductsPageQuery(search, scope)`.

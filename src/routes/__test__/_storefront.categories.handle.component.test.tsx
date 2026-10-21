@@ -26,6 +26,7 @@ interface CategoryMeta {
 }
 
 interface CategoryRouteDefinition {
+  readonly beforeLoad?: (context: { readonly search: StorefrontProductsSearch }) => { readonly catalogSearch: StorefrontProductsSearch }
   readonly component?: () => JSX.Element
   readonly head?: (context: { readonly loaderData?: CategoryMeta | undefined }) => {
     readonly meta: readonly {
@@ -36,11 +37,15 @@ interface CategoryRouteDefinition {
     }[]
   }
   readonly loader?: (context: {
-    readonly context: { readonly imagePrefetchService: unknown; readonly locale: "en-US" | "pl-PL"; readonly queryClient: QueryClient }
-    readonly deps: StorefrontProductsSearch
+    readonly context: {
+      readonly catalogSearch: StorefrontProductsSearch
+      readonly imagePrefetchService: unknown
+      readonly locale: "en-US" | "pl-PL"
+      readonly queryClient: QueryClient
+    }
     readonly params: { readonly handle: string }
   }) => Promise<CategoryMeta>
-  readonly loaderDeps?: (context: { readonly search: StorefrontProductsSearch }) => StorefrontProductsSearch
+  readonly loaderDeps?: unknown
   readonly staticData?: { readonly namespaces: readonly string[] }
 }
 
@@ -159,7 +164,7 @@ const renderCategory = () => {
 
 const runLoader = (
   handle: string,
-  deps: StorefrontProductsSearch = {},
+  catalogSearch: StorefrontProductsSearch = {},
   { locale = "en-US", queryClient = new QueryClient() }: { readonly locale?: "en-US" | "pl-PL"; readonly queryClient?: QueryClient } = {},
 ) => {
   const { loader } = route
@@ -168,8 +173,7 @@ const runLoader = (
   }
 
   return loader({
-    context: { imagePrefetchService: { prefetch: vi.fn() }, locale, queryClient },
-    deps,
+    context: { catalogSearch, imagePrefetchService: { prefetch: vi.fn() }, locale, queryClient },
     params: { handle },
   })
 }
@@ -362,12 +366,14 @@ describe("storefront category route metadata", () => {
     })
   })
 
-  it("keeps only the search keys the catalogue understands out of the url", () => {
-    expect(route.loaderDeps?.({ search: { maxPrice: 400, q: "srebro", sort: "newest" } })).toStrictEqual({
-      maxPrice: 400,
-      q: "srebro",
-      sort: "newest",
+  it("hands the loader the search keys the catalogue understands out of the url, through its context", () => {
+    expect(route.beforeLoad?.({ search: { maxPrice: 400, q: "srebro", sort: "newest" } })).toStrictEqual({
+      catalogSearch: { maxPrice: 400, q: "srebro", sort: "newest" },
     })
+  })
+
+  it("keeps the filters out of the loader dependencies, so changing one never reloads the category page", () => {
+    expect(route.loaderDeps).toBeUndefined()
   })
 
   it("loads the category and shared product namespaces", () => {

@@ -1,8 +1,8 @@
-import { cleanup, screen } from "@testing-library/react"
+import { cleanup, screen, waitFor } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { renderWithProviders } from "~/src/platform/testing/lib/render"
+import { TestProviders, renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { type StorefrontProductsSearch } from "~/src/modules/storefront-search/storefront-search.zod"
 
@@ -12,10 +12,18 @@ const EMPTY_SEARCH: StorefrontProductsSearch = {}
 
 const renderFilter = (search = EMPTY_SEARCH) => {
   const onSearchChange = vi.fn<(patch: Partial<StorefrontProductsSearch>) => void>()
-
-  renderWithProviders(<ProductsCatalogPriceFilter onSearchChange={onSearchChange} search={search} />)
+  const { queryClient, rerender, router } = renderWithProviders(
+    <ProductsCatalogPriceFilter onSearchChange={onSearchChange} search={search} />,
+  )
 
   return {
+    applySearch: (next: StorefrontProductsSearch) => {
+      rerender(
+        <TestProviders queryClient={queryClient} router={router}>
+          <ProductsCatalogPriceFilter onSearchChange={onSearchChange} search={next} />
+        </TestProviders>,
+      )
+    },
     from: screen.getByRole("spinbutton", { name: "From" }),
     onSearchChange,
     to: screen.getByRole("spinbutton", { name: "To" }),
@@ -68,55 +76,6 @@ describe("ProductsCatalogPriceFilter", () => {
     expect(to).toHaveClass("h-9", "pointer-coarse:h-10")
   })
 
-  it("keeps a multi digit bound the shopper types on top of the applied one", async () => {
-    const { from, onSearchChange } = renderFilter({ minPrice: 25 })
-
-    await userEvent.type(from, "0")
-
-    expect(onSearchChange).toHaveBeenLastCalledWith({ minPrice: 250 })
-  })
-
-  it("reports the lower bound the shopper typed", async () => {
-    const { from, onSearchChange } = renderFilter()
-
-    await userEvent.type(from, "2")
-
-    expect(onSearchChange).toHaveBeenLastCalledWith({ minPrice: 2 })
-  })
-
-  it("reports the upper bound the shopper typed", async () => {
-    const { onSearchChange, to } = renderFilter()
-
-    await userEvent.type(to, "9")
-
-    expect(onSearchChange).toHaveBeenLastCalledWith({ maxPrice: 9 })
-  })
-
-  it("clears the lower bound when the field is emptied", async () => {
-    const { from, onSearchChange } = renderFilter({ minPrice: 100 })
-
-    await userEvent.clear(from)
-
-    expect(onSearchChange).toHaveBeenLastCalledWith({ minPrice: undefined })
-  })
-
-  it("clears the upper bound when the field is emptied", async () => {
-    const { onSearchChange, to } = renderFilter({ maxPrice: 900 })
-
-    await userEvent.clear(to)
-
-    expect(onSearchChange).toHaveBeenLastCalledWith({ maxPrice: undefined })
-  })
-
-  it("never reports the two bounds in one patch", async () => {
-    const { from, onSearchChange } = renderFilter()
-
-    await userEvent.type(from, "5")
-
-    expect(onSearchChange).toHaveBeenCalledWith({ minPrice: 5 })
-    expect(Object.keys(onSearchChange.mock.calls[0]?.[0] ?? {})).toStrictEqual(["minPrice"])
-  })
-
   it("keeps the numeric keypad on a phone", () => {
     const { from, to } = renderFilter()
 
@@ -129,5 +88,136 @@ describe("ProductsCatalogPriceFilter", () => {
 
     expect(from).toHaveAttribute("min", "0")
     expect(to).toHaveAttribute("min", "0")
+  })
+})
+
+describe("ProductsCatalogPriceFilter reporting the bounds", () => {
+  afterEach(() => {
+    cleanup()
+  })
+
+  it("keeps a multi digit bound the shopper types on top of the applied one", async () => {
+    const { from, onSearchChange } = renderFilter({ minPrice: 25 })
+
+    await userEvent.type(from, "0")
+
+    await waitFor(() => {
+      expect(onSearchChange).toHaveBeenLastCalledWith({ minPrice: 250 })
+    })
+  })
+
+  it("reports the lower bound the shopper typed", async () => {
+    const { from, onSearchChange } = renderFilter()
+
+    await userEvent.type(from, "2")
+
+    await waitFor(() => {
+      expect(onSearchChange).toHaveBeenLastCalledWith({ minPrice: 2 })
+    })
+  })
+
+  it("reports the upper bound the shopper typed", async () => {
+    const { onSearchChange, to } = renderFilter()
+
+    await userEvent.type(to, "9")
+
+    await waitFor(() => {
+      expect(onSearchChange).toHaveBeenLastCalledWith({ maxPrice: 9 })
+    })
+  })
+
+  it("clears the lower bound when the field is emptied", async () => {
+    const { from, onSearchChange } = renderFilter({ minPrice: 100 })
+
+    await userEvent.clear(from)
+
+    await waitFor(() => {
+      expect(onSearchChange).toHaveBeenLastCalledWith({ minPrice: undefined })
+    })
+  })
+
+  it("clears the upper bound when the field is emptied", async () => {
+    const { onSearchChange, to } = renderFilter({ maxPrice: 900 })
+
+    await userEvent.clear(to)
+
+    await waitFor(() => {
+      expect(onSearchChange).toHaveBeenLastCalledWith({ maxPrice: undefined })
+    })
+  })
+
+  it("never reports the two bounds in one patch", async () => {
+    const { from, onSearchChange } = renderFilter()
+
+    await userEvent.type(from, "5")
+
+    await waitFor(() => {
+      expect(onSearchChange).toHaveBeenCalledWith({ minPrice: 5 })
+    })
+    expect(Object.keys(onSearchChange.mock.calls[0]?.[0] ?? {})).toStrictEqual(["minPrice"])
+  })
+})
+
+describe("ProductsCatalogPriceFilter while the shopper edits a bound", () => {
+  afterEach(() => {
+    cleanup()
+  })
+
+  it("keeps every digit the shopper types while the url has not caught up, and reports the whole amount once they pause", async () => {
+    const { from, onSearchChange } = renderFilter()
+
+    await userEvent.type(from, "150")
+
+    expect(from).toHaveValue(150)
+    expect(onSearchChange).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(onSearchChange).toHaveBeenCalledWith({ minPrice: 150 })
+    })
+    expect(onSearchChange).toHaveBeenCalledTimes(1)
+  })
+
+  it("reports the amount at once when the shopper presses Enter", async () => {
+    const { from, onSearchChange } = renderFilter()
+
+    await userEvent.type(from, "150{Enter}")
+
+    expect(onSearchChange).toHaveBeenCalledWith({ minPrice: 150 })
+  })
+
+  it("reports the amount at once when the shopper leaves the field", async () => {
+    const { onSearchChange, to } = renderFilter()
+
+    await userEvent.type(to, "900")
+    await userEvent.tab()
+
+    expect(onSearchChange).toHaveBeenCalledWith({ maxPrice: 900 })
+  })
+
+  it("reports nothing when the shopper leaves a field without changing it", async () => {
+    const { from, onSearchChange } = renderFilter({ minPrice: 100 })
+
+    await userEvent.click(from)
+    await userEvent.tab()
+
+    expect(onSearchChange).not.toHaveBeenCalled()
+  })
+
+  it("ignores a negative amount instead of applying it", async () => {
+    const { from, onSearchChange } = renderFilter({ minPrice: 100 })
+
+    await userEvent.clear(from)
+    await userEvent.type(from, "-5{Enter}")
+
+    expect(onSearchChange).toHaveBeenLastCalledWith({ minPrice: undefined })
+  })
+
+  it("shows the bound from the url again once the shopper is not editing it, so clearing the filters empties the field", async () => {
+    const { applySearch, from } = renderFilter({ minPrice: 100 })
+
+    await userEvent.click(from)
+    await userEvent.tab()
+    applySearch({})
+
+    expect(from).toHaveValue(null)
   })
 })

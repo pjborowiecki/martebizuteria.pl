@@ -140,12 +140,15 @@ export const Route = createFileRoute("/_storefront/collections/$handle")({
       ],
     }
   },
-  loader: async ({ context, deps, params }) => {
+  beforeLoad: ({ search }) => ({
+    catalogSearch: normalizeStorefrontProductsSearch(search),
+  }),
+  loader: async ({ context, params }) => {
     const startedAt = performance.now()
     const { locale } = context
     catalogDebugLog("collection.loader.start", {
       handle: params.handle,
-      search: deps,
+      search: context.catalogSearch,
     })
 
     const [collection] = await Promise.all([
@@ -154,7 +157,7 @@ export const Route = createFileRoute("/_storefront/collections/$handle")({
         scope: {
           collectionHandle: params.handle,
         },
-        search: deps,
+        search: context.catalogSearch,
       }),
     ])
 
@@ -206,7 +209,6 @@ export const Route = createFileRoute("/_storefront/collections/$handle")({
       title,
     } satisfies CollectionFoundLoaderData
   },
-  loaderDeps: ({ search }: { search: StorefrontScopedCollectionCatalogSearch }) => normalizeStorefrontProductsSearch(search),
   staticData: {
     namespaces: ["pages.collection", "pages.products"],
   },
