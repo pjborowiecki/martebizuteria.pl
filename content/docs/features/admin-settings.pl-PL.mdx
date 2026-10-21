@@ -101,7 +101,7 @@ Każdą stronę zwraca `getCustomerLoginHistoryPage` (`src/modules/audit-log/use
 
 ## Dane sklepu
 
-Zakładka Dane sklepu ma jedną kartę, **Dane sprzedawcy**, z `src/presentation/components/custom/pages/admin/settings/store/`. Zmienia się w niej firmę, która prowadzi sklep i którą kupujący widzą w stopce, na stronie „O M'Arte” i na stronach produktów, w kasie, w e-mailach o zamówieniach i na stronach prawnych. Dane to kolumny jedynego wiersza `store_setting` (`20261016160000_seller_details.sql`), więc ich zmiana nie wymaga nowego wydania. Migracja wypełniła wiersz danymi, które do tej pory były w kodzie, więc dla kupujących nic się wtedy nie zmieniło.
+Zakładka Dane sklepu ma jedną kartę, **Dane sprzedawcy**, z `src/presentation/components/custom/pages/admin/settings/store/`. Zmienia się w niej firmę, która prowadzi sklep i którą kupujący widzą w stopce, na stronie „O M'Arte” i na stronach produktów, w kasie, w e-mailach o zamówieniach i na stronach prawnych. Dane to kolumny jedynego wiersza `store_setting` (`20261016160000_seller_details.sql`), więc ich zmiana nie wymaga nowego wydania. Migracja wypełnia wiersz istniejącymi danymi sprzedawcy, więc jej zastosowanie niczego nie zmienia dla kupujących.
 
 ### Dane sprzedawcy
 
@@ -187,7 +187,7 @@ Każda zmiana na tej zakładce trafia do [dziennika zdarzeń](/docs/features/aud
 
 ## Zespół
 
-Zakładka Zespół to tabela danych kont z dostępem do panelu z `src/presentation/components/custom/pages/admin/settings/team/`. To tu istniejące konto klienta dostaje dostęp do panelu i tu ten dostęp się odbiera. Własne endpointy administracyjne Better Auth nie zmieniają już ról, więc poza edycją D1 nie ma na to innej drogi (zobacz [Model bezpieczeństwa](/docs/architecture/security-model#dostęp-administracyjny)).
+Zakładka Zespół to tabela danych kont z dostępem do panelu z `src/presentation/components/custom/pages/admin/settings/team/`. To tu istniejące konto klienta dostaje dostęp do panelu i tu ten dostęp się odbiera. Własne endpointy administracyjne Better Auth nie mogą zmieniać ról, więc poza edycją D1 nie ma na to innej drogi (zobacz [Model bezpieczeństwa](/docs/architecture/security-model#dostęp-administracyjny)).
 
 ### Dostęp do panelu
 

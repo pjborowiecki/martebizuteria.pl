@@ -54,7 +54,7 @@ A rollback does not change `main`, and the next push to `main` deploys `main` ag
 gh workflow run deploy-production.yml -f commit=<full sha>
 ```
 
-The workflow refuses a commit that has no passing `ci.yml` run for a push to `main`, so only a commit that passed every check once can reach production this way. It checks that commit out and runs its own `bun run deploy:production`: the checks, the build, the migrations, `wrangler deploy` and the live-site check. Wrangler applies only the migration files it has not recorded in `d1_migrations`, so an older commit applies nothing and runs against the newer schema, just as after a rollback. A commit from before the deploy scripts applied migrations and checked the live site deploys without those two stages.
+The workflow refuses a commit that has no passing `ci.yml` run for a push to `main`, so only a commit that passed every check once can reach production this way. It checks that commit out and runs its own `bun run deploy:production`: the checks, the build, the migrations, `wrangler deploy` and the live-site check. Wrangler applies only the migration files it has not recorded in `d1_migrations`, so an older commit applies nothing and runs against the newer schema, just as after a rollback. A commit whose deploy scripts do not apply migrations or check the live site deploys without those two stages.
 
 This manual run is the only way back to an older commit. Started by CI, the workflow deploys the commit CI tested only while it is still the tip of `main`, so re-running an older commit's CI, for example after a flaky test, deploys nothing.
 

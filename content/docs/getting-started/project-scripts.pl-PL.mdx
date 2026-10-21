@@ -99,7 +99,7 @@ Skrócone aliasy: `db:migrate` → preview, `db:studio` → development, `db:pus
 
 Skrypty wypełniające wykonują po kolei jedenaście wywołań `wrangler d1 execute … --remote` na żywej bazie — najpierw kurierzy i metody dostawy, potem kategorie, kolekcje, atrybuty, produkty, warianty, stany magazynowe, zdjęcia i trzy tabele łączące. Nie są zsynchronizowane z żywym katalogiem, a dziesięć z nich najpierw usuwa wiersze kolidujące z danymi startowymi, a potem nadpisuje każdą zmianę w wierszu startowym (zobacz [Pierwsze uruchomienie](/docs/getting-started/first-run#tryb-deweloperski-zapisuje-do-bazy-preview)). Nie uruchamiaj ich na bazie z prawdziwymi danymi.
 
-Migracje nakłada `wrangler d1 migrations apply` w kolejności nazw plików. Obecnie w `migrations/` jest 108 plików `.sql`, natomiast własny `meta/_journal.json` Drizzle wymienia 52 pozycje — dziennik nie jest już źródłem prawdy, a faktyczną kolejność wyznaczają nazwy plików.
+Migracje nakłada `wrangler d1 migrations apply` w kolejności nazw plików. Obecnie w `migrations/` jest 108 plików `.sql`, natomiast własny `meta/_journal.json` Drizzle wymienia 52 pozycje — dziennik nie jest źródłem prawdy, a faktyczną kolejność wyznaczają nazwy plików.
 
 ## Build, podglądy i wdrożenia
 

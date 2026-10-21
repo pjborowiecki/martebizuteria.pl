@@ -115,7 +115,7 @@ Jeśli jednak go zmieniasz, zachowaj spójność z aktualnym schematem:
 - Zachowaj stałe identyfikatory albo zaktualizuj każdy plik, który się do nich odwołuje, oraz `e2e/data/catalog.ts`.
 - Zachowaj oba klucze językowe w każdym `json_object`.
 - Żaden linter nie czyta SQL, a testy jednostkowe i integracyjne wczytują tylko `delivery-methods.sql`, w teście migracji opisów metod dostawy. Pliki seed sprawdzają `bun run db:reset:test` i testy E2E, które opierają się na katalogu startowym, więc po zmianie uruchom jedno i drugie.
-- Zmieniony plik seed trafia tylko do nowych baz. Baza, która ma już te wiersze, potrzebuje jeszcze migracji: commit b77f58dd przepisał opisy metod dostawy w `delivery-methods.sql` i dodał `20261010220000_delivery_method_descriptions.sql`, który aktualizuje istniejące wiersze, razem z jego testem.
+- Zmieniony plik seed trafia tylko do nowych baz. Baza, która ma już te wiersze, potrzebuje jeszcze migracji: `20261010220000_delivery_method_descriptions.sql`, razem ze swoim testem, aktualizuje istniejące wiersze do opisów metod dostawy z `delivery-methods.sql` (commit b77f58dd).
 
 ## Zamiast tego: dane testowe
 

@@ -54,7 +54,7 @@ Wycofanie nie zmienia `main`, a następny push do `main` znowu wdroży `main`. P
 gh workflow run deploy-production.yml -f commit=<pełny sha>
 ```
 
-Przepływ odmawia commita, który nie ma udanego przebiegu `ci.yml` dla pusha do `main`, więc tą drogą na produkcję trafi tylko commit, który kiedyś przeszedł wszystkie kontrole. Pobiera ten commit i uruchamia jego własne `bun run deploy:production`: kontrole, kompilację, migracje, `wrangler deploy` i kontrolę działającej strony. Wrangler nakłada tylko pliki migracji, których nie ma w `d1_migrations`, więc starszy commit niczego nie nakłada i działa na nowszym schemacie, tak samo jak po wycofaniu. Commit sprzed czasu, gdy skrypty wdrożeniowe zaczęły nakładać migracje i sprawdzać działającą stronę, wdraża się bez tych dwóch etapów.
+Przepływ odmawia commita, który nie ma udanego przebiegu `ci.yml` dla pusha do `main`, więc tą drogą na produkcję trafi tylko commit, który kiedyś przeszedł wszystkie kontrole. Pobiera ten commit i uruchamia jego własne `bun run deploy:production`: kontrole, kompilację, migracje, `wrangler deploy` i kontrolę działającej strony. Wrangler nakłada tylko pliki migracji, których nie ma w `d1_migrations`, więc starszy commit niczego nie nakłada i działa na nowszym schemacie, tak samo jak po wycofaniu. Commit, którego skrypty wdrożeniowe nie nakładają migracji ani nie sprawdzają działającej strony, wdraża się bez tych dwóch etapów.
 
 Tylko to ręczne uruchomienie wraca do starszego commita. Uruchomiony przez CI przepływ wdraża przetestowany commit tylko wtedy, gdy wciąż jest on najnowszym commitem na `main`, więc ponowne uruchomienie CI starszego commita, na przykład po niestabilnym teście, niczego nie wdraża.
 

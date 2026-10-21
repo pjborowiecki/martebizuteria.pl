@@ -87,7 +87,7 @@ While the migrations run, and for as long as a release stays rolled back, the pr
 
 ## Hand-written migrations
 
-Many of the 108 migrations in the directory were written by hand rather than generated, and their filenames say what they do instead of carrying a drizzle codename: `20260604120000_catalog_indexes_and_integrity.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql`, `20261016140000_claim_past_guest_orders.sql` and others. Every migration added since the end of September is named that way. Hand-writing is the right call for:
+Many of the 108 migrations in the directory were written by hand rather than generated, and their filenames say what they do instead of carrying a drizzle codename: `20260604120000_catalog_indexes_and_integrity.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql`, `20261016140000_claim_past_guest_orders.sql` and others. Every migration timestamped after the end of September is named that way. Hand-writing is the right call for:
 
 - **Renames.** drizzle-kit sees a rename as a drop plus an add, which loses the data. The end of `20260604232955_curved_wallow.sql` renames a table and then aligns its index names with the new name:
 
@@ -129,7 +129,7 @@ UPDATE `order` SET `shipped_email_at` = coalesce(`shipped_at`, `delivered_at`, `
 
 Habits worth copying from the recent files:
 
-- **No comments.** The filename says what a migration does, and the commit that adds it says why. Twelve older files, the last of them `20261001090000_newsletter_subscribers.sql`, still carry `--` comments; none of the 44 migrations after it does. The `--> statement-breakpoint` lines are a separator, not commentary: drizzle-kit writes them between statements, SQLite skips them as comments, and the test helpers split a file on them.
+- **No comments.** The filename says what a migration does, and the commit that adds it says why. Twelve older files, the last of them `20261001090000_newsletter_subscribers.sql`, carry `--` comments; none of the 44 migrations after it does. The `--> statement-breakpoint` lines are a separator, not commentary: drizzle-kit writes them between statements, SQLite skips them as comments, and the test helpers split a file on them.
 - **`IF EXISTS` / `IF NOT EXISTS` wherever SQLite allows it** — on `CREATE TABLE`, `CREATE INDEX`, `CREATE TRIGGER` and the `DROP` statements — so re-running a migration against a partially-migrated database does not fail. SQLite has no such guard for `ALTER TABLE … ADD`.
 - **Data migrations that change nothing when they run again.** Limit the `WHERE` to the rows that still need the change: `20261016140000_claim_past_guest_orders.sql` only touches orders whose `user_id` is still `NULL`, so a second run finds nothing to do.
 
@@ -137,7 +137,7 @@ To hand-write one, create `src/integrations/drizzle-orm/migrations/<YYYYMMDDHHMM
 
 ### The history must build an empty database
 
-Wrangler applies the files in filename order to a database that has none of them: the local test database on every `bun run db:reset:test`, or the database of a new environment. The deployed databases cannot show whether that works, because they applied each file once, in the order the files were written. Those two orders once disagreed: three hand-written catalog migrations had been applied to preview and production before the generated `20260604232955_curved_wallow.sql` and `20260606084825_fuzzy_miek.sql`, which already assumed their changes. In filename order `curved_wallow` runs before all three, so an empty database stopped there with `no such table: product_attribute`. Commit 5801445b moved the hand-written statements into the files where filename order first needs them and left the three original files empty, so their names stay recorded:
+Wrangler applies the files in filename order to a database that has none of them: the local test database on every `bun run db:reset:test`, or the database of a new environment. The deployed databases cannot show whether that works, because they applied each file once, in the order the files were written. Those two orders differ for three hand-written catalog migrations: preview and production applied them before the generated `20260604232955_curved_wallow.sql` and `20260606084825_fuzzy_miek.sql`, which assume their changes. In filename order `curved_wallow` runs before all three, so if the three held their statements, an empty database would stop there with `no such table: product_attribute`. The hand-written statements therefore sit in the files where filename order first needs them (commit 5801445b), and the three files remain, empty, so their names stay recorded:
 
 - `20260605120000_attribute_titles_and_allowed_values.sql`
 - `20260606120000_rename_attribute_to_product_attribute.sql`
@@ -187,7 +187,7 @@ bun run db:push:development
 
 A migration that updates or inserts rows gets an integration test, because nothing else checks what it does to existing data. The helpers live in `src/platform/testing/mocks/migrations.ts`:
 
-- `MIGRATION` names each migration file a test applies on its own. Add an entry for yours, as `CLAIM_PAST_GUEST_ORDERS: "20261016140000_claim_past_guest_orders"` was added with that migration.
+- `MIGRATION` names each migration file a test applies on its own. Add an entry for yours, as `CLAIM_PAST_GUEST_ORDERS: "20261016140000_claim_past_guest_orders"` accompanies that migration.
 - `applyMigration(sqlite, MIGRATION.CLAIM_PAST_GUEST_ORDERS)` reads the file through `import.meta.glob`, splits it on `--> statement-breakpoint` and executes each part on a `node:sqlite` `DatabaseSync`.
 - `applyMigrationHistory(sqlite)` executes every migration file in filename order, the order Wrangler uses, which builds the full schema.
 

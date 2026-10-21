@@ -139,7 +139,7 @@ Kliknięcie w dowolnym innym miejscu wiersza otwiera tę samą stronę zamówien
 .groupBy(orderItem.productId)
 ```
 
-Pusty `product_id` mają tylko pozycje, których wariant zniknął, zanim zapisano ich produkt: pozycje zapisane przed opisanym niżej uzupełnieniem, których wariant usunięto wcześniej, oraz pozycje, których wariant usunięto w trakcie płatności klienta. Zgrupowane razem dałyby jeden wiersz bez żadnego produktu.
+Pusty `product_id` mają tylko pozycje, których wariant zniknął, zanim zapisano ich produkt: pozycje, które opisane niżej uzupełnienie zastało bez wariantu, oraz pozycje, których wariant usunięto w trakcie płatności klienta. Zgrupowane razem dałyby jeden wiersz bez żadnego produktu.
 
 `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.accessors.ts`) zapisuje produkt i wariant każdej pozycji, odczytując je przez wariant pozycji w tym samym insercie, a migracja `20261003120000_order_item_product_backfill.sql` uzupełniła go w pozycjach zapisanych wcześniej, których wariant wciąż istniał. Miniaturę zapytanie odczytuje przez `max(...)` ze zgrupowanych pozycji.
 

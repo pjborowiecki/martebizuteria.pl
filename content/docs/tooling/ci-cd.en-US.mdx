@@ -178,7 +178,7 @@ The Stripe test-mode job reads two repository secrets outside those environments
 
 ## Migrations and CI
 
-`ci.yml` and the end-to-end workflows never touch a deployed database; the end-to-end workflow replays the full history into its own local one, which also proves the history still builds a database from scratch. The deployed databases are migrated by the deploy scripts, right before `wrangler deploy`: the shared preview database by every preview deploy, so a pull request's migration reaches it as soon as that pull request's preview deploys, and production by every production deploy. `bun run db:migrate:<environment>` still applies migrations by hand, and `bun run db:migrations:<environment>` lists what a database has applied.
+`ci.yml` and the end-to-end workflows never touch a deployed database; the end-to-end workflow replays the full history into its own local one, which also proves the history still builds a database from scratch. The deployed databases are migrated by the deploy scripts, right before `wrangler deploy`: the shared preview database by every preview deploy, so a pull request's migration reaches it as soon as that pull request's preview deploys, and production by every production deploy. `bun run db:migrate:<environment>` applies migrations by hand, and `bun run db:migrations:<environment>` lists what a database has applied.
 
 A migration that a preview deploy applied stays applied even if its pull request changes or closes, so never edit a migration once its preview has deployed; add another one. See [Database](/docs/tooling/database) and [Roll back a deploy](/docs/guides/roll-back-a-deploy).
 

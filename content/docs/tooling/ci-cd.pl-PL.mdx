@@ -178,7 +178,7 @@ Zadanie trybu testowego Stripe'a czyta dwa sekrety repozytorium spoza tych środ
 
 ## Migracje a CI
 
-`ci.yml` i przepływy end-to-end nigdy nie dotykają wdrożonej bazy; przepływ end-to-end odtwarza całą historię we własnej lokalnej bazie, co przy okazji dowodzi, że historia wciąż buduje bazę od zera. Wdrożone bazy migrują same skrypty wdrożeniowe, tuż przed `wrangler deploy`: wspólną bazę preview każde wdrożenie podglądu, więc migracja z pull requesta trafia do niej, gdy tylko wdroży się podgląd tego pull requesta, a produkcję każde wdrożenie produkcyjne. `bun run db:migrate:<środowisko>` nadal nakłada migracje ręcznie, a `bun run db:migrations:<środowisko>` pokazuje, co baza ma już nałożone.
+`ci.yml` i przepływy end-to-end nigdy nie dotykają wdrożonej bazy; przepływ end-to-end odtwarza całą historię we własnej lokalnej bazie, co przy okazji dowodzi, że historia wciąż buduje bazę od zera. Wdrożone bazy migrują same skrypty wdrożeniowe, tuż przed `wrangler deploy`: wspólną bazę preview każde wdrożenie podglądu, więc migracja z pull requesta trafia do niej, gdy tylko wdroży się podgląd tego pull requesta, a produkcję każde wdrożenie produkcyjne. `bun run db:migrate:<środowisko>` nakłada migracje ręcznie, a `bun run db:migrations:<środowisko>` pokazuje, co baza ma już nałożone.
 
 Migracja nałożona przez wdrożenie podglądu zostaje nałożona, nawet gdy jej pull request się zmieni albo zostanie zamknięty, więc nie edytuj migracji, której podgląd już się wdrożył; dodaj kolejną. Zobacz [Baza danych](/docs/tooling/database) i [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
 
