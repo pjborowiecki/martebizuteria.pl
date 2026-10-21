@@ -2,8 +2,7 @@ import { createElement } from "react"
 
 import { createTranslator } from "use-intl"
 
-import { shopSenderAddress } from "~/src/integrations/resend/resend.config"
-import { sendEmail } from "~/src/integrations/resend/resend.send"
+import { sendEmail, shopNotificationAddress } from "~/src/integrations/resend/resend.send"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
@@ -85,6 +84,7 @@ const attemptNewOrderEmail = async (
   const locale = I18N.DEFAULT_LOCALE
   const messages = await loadNamespace<typeof newOrderMessages>({ locale, namespace: NEW_ORDER_NAMESPACE })
   const adminOrderUrl = buildLocalizedUrl(origin, ROUTES.ADMIN_ORDER.replace("$orderId", orderId), locale)
+  const recipient = await shopNotificationAddress()
   const failure = await sendEmail({
     idempotencyKey,
     react: createElement(NewOrder, {
@@ -98,10 +98,10 @@ const attemptNewOrderEmail = async (
       total: orderRow.total,
     }),
     subject: createTranslator({ locale, messages })("subject", { orderNumber: orderRow.orderNumber }),
-    to: shopSenderAddress(),
+    to: recipient,
   })
 
-  return { failure, label: `${NEW_ORDER_LABEL} → ${shopSenderAddress()}` }
+  return { failure, label: `${NEW_ORDER_LABEL} → ${recipient}` }
 }
 
 export const sendNewOrderEmail = (orderId: string, returnUrl: string | undefined): Promise<boolean> =>

@@ -20,7 +20,7 @@ import {
 } from "~/src/modules/order-withdrawal/use-cases/withdraw-from-customer-order"
 import { withdrawFromGuestOrder, withdrawFromGuestOrderMutation } from "~/src/modules/order-withdrawal/use-cases/withdraw-from-guest-order"
 
-const { background, effects, sqlite, worker } = await vi.hoisted(async () => {
+const { background, effects, shopInbox, sqlite, worker } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
 
   return {
@@ -36,8 +36,9 @@ const { background, effects, sqlite, worker } = await vi.hoisted(async () => {
       sendIncidentAlert: vi.fn<(incident: unknown) => Promise<void>>(),
       withdrawalReceivedAudit: vi.fn(),
     },
+    shopInbox: "kontakt@marte.test",
     sqlite: new DatabaseSync(":memory:", { enableDoubleQuotedStringLiterals: true }),
-    worker: { env: { APP_ENV: "test", RESEND_EMAIL_FROM: "orders@marte.test" } },
+    worker: { env: { APP_ENV: "test" } },
   }
 })
 
@@ -75,7 +76,10 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
-vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail: effects.sendEmail }))
+vi.mock("~/src/integrations/resend/resend.send", () => ({
+  sendEmail: effects.sendEmail,
+  shopNotificationAddress: () => Promise.resolve(shopInbox),
+}))
 vi.mock("~/src/lib/incident-alert.server", () => ({ sendIncidentAlert: effects.sendIncidentAlert }))
 vi.mock("~/src/lib/background", () => ({
   scheduleBackgroundWork: (task: Promise<unknown>) => {
@@ -100,8 +104,6 @@ const ANNA_ORDER_ID = "0192f3a4-5b6c-7d8e-9fab-cdef01234567"
 const BOB_ORDER_ID = "0192f3a4-5b6c-7d8e-9fab-cdef01234568"
 
 const ANNA = { user: { id: "user-anna", name: "Anna Kowalska", role: "customer" } }
-
-const SHOP_INBOX = worker.env.RESEND_EMAIL_FROM
 
 const PUBLIC_EMAIL_KEY_PREFIX = "public-email:"
 
@@ -254,7 +256,7 @@ describe("withdrawing from an order in the account", () => {
     await Promise.all(background)
 
     const acknowledgement = sentTo("Anna@Example.com")
-    const notice = sentTo(SHOP_INBOX)
+    const notice = sentTo(shopInbox)
     expect(acknowledgement?.subject).toBe("We have received your withdrawal from order MRT-2026-00042 — M'Arte")
     expect(notice?.subject).toBe("Odstąpienie od umowy — zamówienie MRT-2026-00042 — M'Arte")
     expect(acknowledgement?.react.props.statement).toMatchObject({ consumerName: "Anna Kowalska", reason: "Za duży", scope: "order" })
@@ -334,7 +336,7 @@ describe("withdrawing from an order in the account", () => {
 
   it("keeps the statement and says so when the acknowledgement could not be sent", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout"] })
-    effects.sendEmail.mockImplementation(({ to }) => Promise.resolve(to === SHOP_INBOX ? undefined : "Resend is down"))
+    effects.sendEmail.mockImplementation(({ to }) => Promise.resolve(to === shopInbox ? undefined : "Resend is down"))
     vi.spyOn(console, "error").mockImplementation(() => {})
 
     await expect(customerWithdrawal()).resolves.toMatchObject({ outcome: "recorded", receipt: { acknowledged: false } })
@@ -354,7 +356,7 @@ describe("withdrawing from an order in the account", () => {
 describe("retrying the acknowledgement of a withdrawal", () => {
   it("tries a refused acknowledgement twice more under the same key and then alerts the shop", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout"] })
-    effects.sendEmail.mockImplementation(({ to }) => Promise.resolve(to === SHOP_INBOX ? undefined : "Resend is down"))
+    effects.sendEmail.mockImplementation(({ to }) => Promise.resolve(to === shopInbox ? undefined : "Resend is down"))
     vi.spyOn(console, "error").mockImplementation(() => {})
 
     await customerWithdrawal()
@@ -388,7 +390,7 @@ describe("withdrawing from an order as a guest", () => {
     )
     await Promise.all(background)
     expect(sentTo("Anna@Example.com")?.subject).toBe("Otrzymaliśmy Twoje odstąpienie od umowy dla zamówienia MRT-2026-00042 — M'Arte")
-    expect(sentTo(SHOP_INBOX)).toBeDefined()
+    expect(sentTo(shopInbox)).toBeDefined()
     expect(publicEmailLimits()).toStrictEqual([
       { counter: "test:withdrawal", limit: 3, windowSeconds: 3600 },
       { counter: "test:daily", limit: 50, windowSeconds: 86_400 },
@@ -415,7 +417,7 @@ describe("withdrawing from an order as a guest", () => {
     expect(readWithdrawals()).toStrictEqual([expect.objectContaining({ email: "anna@new.example", order_id: ANNA_ORDER_ID })])
     const recipients = sentEmails().map(({ to }) => to)
     expect(recipients).toHaveLength(2)
-    expect(recipients).toStrictEqual(expect.arrayContaining(["anna@new.example", SHOP_INBOX]))
+    expect(recipients).toStrictEqual(expect.arrayContaining(["anna@new.example", shopInbox]))
   })
 
   it("refuses an address the account used before that the order was not placed with", async () => {

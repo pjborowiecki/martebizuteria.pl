@@ -7,24 +7,25 @@ import { type Incident, type IncidentAlert } from "~/src/presentation/emails/inc
 
 type IncidentAlertElement = ReactElement<ComponentProps<typeof IncidentAlert>>
 
-const { cacheGet, cachePut, env, loadNamespace, sendEmail } = vi.hoisted(() => {
+const { cacheGet, cachePut, env, loadNamespace, sendEmail, shopNotificationAddress } = vi.hoisted(() => {
   const get = vi.fn<(key: string) => Promise<string | null>>()
   const put = vi.fn<(key: string, value: string, options: { readonly expirationTtl: number }) => Promise<void>>()
 
   return {
     cacheGet: get,
     cachePut: put,
-    env: { APP_ENV: "production", CACHE: { get, put }, RESEND_EMAIL_FROM: "alerts@marte.test" },
+    env: { APP_ENV: "production", CACHE: { get, put } },
     loadNamespace: vi.fn(),
     sendEmail:
       vi.fn<
         (options: { readonly react: IncidentAlertElement; readonly subject: string; readonly to: string }) => Promise<string | undefined>
       >(),
+    shopNotificationAddress: vi.fn<() => Promise<string>>(),
   }
 })
 
 vi.mock("cloudflare:workers", () => ({ env }))
-vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
+vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail, shopNotificationAddress }))
 vi.mock("~/src/integrations/use-intl/i18n.messages", () => ({ loadNamespace }))
 
 import { INCIDENT_ALERT_SECONDS, STRIPE_EVENT_RETRY_SECONDS, sendIncidentAlert } from "~/src/lib/incident-alert.server"
@@ -54,10 +55,11 @@ beforeEach(() => {
   cachePut.mockResolvedValue(undefined)
   loadNamespace.mockResolvedValue(polishCopy)
   sendEmail.mockResolvedValue(undefined)
+  shopNotificationAddress.mockResolvedValue("alerts@marte.test")
 })
 
 describe("sendIncidentAlert", () => {
-  it("emails the shop's sender address in the shop's language when the failure starts an incident", async () => {
+  it("emails the shop's notification address in the shop's language when the failure starts an incident", async () => {
     await sendIncidentAlert(incident)
 
     expect(loadNamespace).toHaveBeenCalledWith({ locale: "pl-PL", namespace: "emails.incident-alert" })

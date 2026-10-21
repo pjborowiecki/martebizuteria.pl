@@ -3,7 +3,7 @@ title: "Zamówienia"
 description: "Tabele order i order_item, lista w panelu z filtrami i akcjami, historia zamówień klienta oraz ekran szczegółów w panelu."
 ---
 
-Zamówienie powstaje z opłaconej sesji Stripe Checkout, nigdy z formularza: tworzy je webhook Stripe albo strona powrotu, gdy kupujący wróci na nią, zanim webhook je złoży. Drogę od opłaconej sesji do wiersza opisują [Płatności](/docs/features/payments#realizacja). Ta z dwóch dróg, która złoży zamówienie, wysyła też sklepowi e-mail o nim na `RESEND_EMAIL_FROM`, z produktami, dostawą, danymi kontaktowymi klienta i przyciskiem, który otwiera zamówienie w panelu; zobacz [E-maile transakcyjne](/docs/features/email#e-mail-sklepu-o-nowym-zamówieniu).
+Zamówienie powstaje z opłaconej sesji Stripe Checkout, nigdy z formularza: tworzy je webhook Stripe albo strona powrotu, gdy kupujący wróci na nią, zanim webhook je złoży. Drogę od opłaconej sesji do wiersza opisują [Płatności](/docs/features/payments#realizacja). Ta z dwóch dróg, która złoży zamówienie, wysyła też sklepowi wiadomość o nim na e-mail kontaktowy z Ustawienia → Dane sklepu, z produktami, dostawą, danymi kontaktowymi klienta i przyciskiem, który otwiera zamówienie w panelu; zobacz [E-maile transakcyjne](/docs/features/email#e-mail-sklepu-o-nowym-zamówieniu).
 
 ## Tabele
 

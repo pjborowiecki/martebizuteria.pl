@@ -32,23 +32,23 @@ cp .env.example .env.development
 
 ## Variables
 
-| Variable                      | Read by                                                                                                                                             | Worker secret |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| `AUTH_SECRET`                 | Better Auth signing and encryption                                                                                                                  | Yes           |
-| `AUTH_GOOGLE_CLIENT_ID`       | Google OAuth                                                                                                                                        | Yes           |
-| `AUTH_GOOGLE_CLIENT_SECRET`   | Google OAuth                                                                                                                                        | Yes           |
-| `INPOST_API_TOKEN`            | The ShipX client in `src/integrations/inpost/inpost.shipx.server.ts`; blank turns InPost shipments off                                              | Yes           |
-| `INPOST_ORGANIZATION_ID`      | The ShipX organisation for shipments and webhooks; blank turns InPost shipments off                                                                 | Yes           |
-| `RESEND_API_KEY`              | The Resend client in `src/integrations/resend/resend.config.ts`                                                                                     | Yes           |
-| `RESEND_EMAIL_FROM`           | The default sender, a bare address on a domain verified in Resend, and the recipient of the shop's notices and incident alerts in every environment | Yes           |
-| `STRIPE_SECRET_KEY`           | The Stripe server client in `src/integrations/stripe/stripe.server.ts`; `scripts/verify-stripe-keys.ts` checks its mode                             | Yes           |
-| `STRIPE_WEBHOOK_SECRET`       | Signature verification in `src/routes/api/webhooks.stripe.ts`                                                                                       | Yes           |
-| `VITE_R2_URL`                 | Public base URL of the environment's R2 bucket, read as `import.meta.env["VITE_R2_URL"]` in `src/lib/url.ts`                                        | Yes           |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | `src/integrations/stripe/stripe.client.ts`, inlined into the client bundle at build time; `scripts/verify-stripe-keys.ts` checks its mode           | No            |
-| `CLOUDFLARE_ACCOUNT_ID`       | Drizzle Kit's D1 HTTP driver in `src/integrations/drizzle-orm/drizzle.config.ts`                                                                    | No            |
-| `CLOUDFLARE_DATABASE_ID`      | Drizzle Kit's D1 HTTP driver                                                                                                                        | No            |
-| `CLOUDFLARE_ACCESS_TOKEN`     | Drizzle Kit's D1 HTTP driver                                                                                                                        | No            |
-| `RESEND_MANAGEMENT_API_KEY`   | Optional. `scripts/verify-email-sender.ts` reads the sender domain with this Full access key when `RESEND_API_KEY` may only send                    | No            |
+| Variable                      | Read by                                                                                                                                                              | Worker secret |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `AUTH_SECRET`                 | Better Auth signing and encryption                                                                                                                                   | Yes           |
+| `AUTH_GOOGLE_CLIENT_ID`       | Google OAuth                                                                                                                                                         | Yes           |
+| `AUTH_GOOGLE_CLIENT_SECRET`   | Google OAuth                                                                                                                                                         | Yes           |
+| `INPOST_API_TOKEN`            | The ShipX client in `src/integrations/inpost/inpost.shipx.server.ts`; blank turns InPost shipments off                                                               | Yes           |
+| `INPOST_ORGANIZATION_ID`      | The ShipX organisation for shipments and webhooks; blank turns InPost shipments off                                                                                  | Yes           |
+| `RESEND_API_KEY`              | The Resend client in `src/integrations/resend/resend.config.ts`                                                                                                      | Yes           |
+| `RESEND_EMAIL_FROM`           | The default sender, a bare address on a domain verified in Resend, and the recipient of the shop's notices and incident alerts when the store details cannot be read | Yes           |
+| `STRIPE_SECRET_KEY`           | The Stripe server client in `src/integrations/stripe/stripe.server.ts`; `scripts/verify-stripe-keys.ts` checks its mode                                              | Yes           |
+| `STRIPE_WEBHOOK_SECRET`       | Signature verification in `src/routes/api/webhooks.stripe.ts`                                                                                                        | Yes           |
+| `VITE_R2_URL`                 | Public base URL of the environment's R2 bucket, read as `import.meta.env["VITE_R2_URL"]` in `src/lib/url.ts`                                                         | Yes           |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | `src/integrations/stripe/stripe.client.ts`, inlined into the client bundle at build time; `scripts/verify-stripe-keys.ts` checks its mode                            | No            |
+| `CLOUDFLARE_ACCOUNT_ID`       | Drizzle Kit's D1 HTTP driver in `src/integrations/drizzle-orm/drizzle.config.ts`                                                                                     | No            |
+| `CLOUDFLARE_DATABASE_ID`      | Drizzle Kit's D1 HTTP driver                                                                                                                                         | No            |
+| `CLOUDFLARE_ACCESS_TOKEN`     | Drizzle Kit's D1 HTTP driver                                                                                                                                         | No            |
+| `RESEND_MANAGEMENT_API_KEY`   | Optional. `scripts/verify-email-sender.ts` reads the sender domain with this Full access key when `RESEND_API_KEY` may only send                                     | No            |
 
 Only variables listed under `secrets.required` in `wrangler.jsonc` are uploaded on deploy. Every environment declares the same ten names. The three `CLOUDFLARE_*` variables are Drizzle Kit credentials and stay on the machine that runs the CLI; `prepare-deploy-secrets.ts` writes only the declared set into `.wrangler/secrets.<environment>.json` with mode `0600` and fails loudly if one is blank, except `INPOST_API_TOKEN` and `INPOST_ORGANIZATION_ID`, which it uploads blank so a shop without InPost credentials can still deploy:
 

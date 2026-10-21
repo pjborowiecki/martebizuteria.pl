@@ -9,26 +9,28 @@ import { type NewOrder } from "~/src/presentation/emails/new-order"
 
 type NewOrderElement = ReactElement<ComponentProps<typeof NewOrder>>
 
-const { env, getAdminOrderDetailRow, getAdminOrderItemRows, loadNamespace, recordOrderEmailOutcome, sendEmail } = vi.hoisted(() => ({
-  env: { RESEND_EMAIL_FROM: "orders@marte.test" },
-  getAdminOrderDetailRow: vi.fn(),
-  getAdminOrderItemRows: vi.fn(),
-  loadNamespace: vi.fn(),
-  recordOrderEmailOutcome: vi.fn(),
-  sendEmail:
-    vi.fn<
-      (options: {
-        readonly idempotencyKey?: string
-        readonly react: NewOrderElement
-        readonly subject: string
-        readonly to: string
-      }) => Promise<string | undefined>
-    >(),
-}))
+const { env, getAdminOrderDetailRow, getAdminOrderItemRows, loadNamespace, recordOrderEmailOutcome, sendEmail, shopNotificationAddress } =
+  vi.hoisted(() => ({
+    env: {},
+    getAdminOrderDetailRow: vi.fn(),
+    getAdminOrderItemRows: vi.fn(),
+    loadNamespace: vi.fn(),
+    recordOrderEmailOutcome: vi.fn(),
+    sendEmail:
+      vi.fn<
+        (options: {
+          readonly idempotencyKey?: string
+          readonly react: NewOrderElement
+          readonly subject: string
+          readonly to: string
+        }) => Promise<string | undefined>
+      >(),
+    shopNotificationAddress: vi.fn<() => Promise<string>>(),
+  }))
 
 vi.mock("cloudflare:workers", () => ({ env }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { paymentIntents: { retrieve: vi.fn() } } }))
-vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
+vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail, shopNotificationAddress }))
 vi.mock("~/src/integrations/use-intl/i18n.messages", () => ({ loadNamespace }))
 vi.mock("~/src/modules/audit-log/use-cases/record-email-audit.server", () => ({
   recordOrderEmailOutcome,
@@ -120,6 +122,7 @@ beforeEach(() => {
   getAdminOrderItemRows.mockResolvedValue(itemRows)
   loadNamespace.mockResolvedValue(polishCopy)
   sendEmail.mockResolvedValue(undefined)
+  shopNotificationAddress.mockResolvedValue("orders@marte.test")
 })
 
 afterEach(() => {
@@ -127,7 +130,7 @@ afterEach(() => {
 })
 
 describe("sendNewOrderEmail", () => {
-  it("emails the shop's sender address in the shop's language with the order number in the subject", async () => {
+  it("emails the shop's notification address in the shop's language with the order number in the subject", async () => {
     await sendNewOrderEmail(ORDER_ID, RETURN_URL)
 
     expect(getAdminOrderDetailRow).toHaveBeenCalledWith(ORDER_ID)

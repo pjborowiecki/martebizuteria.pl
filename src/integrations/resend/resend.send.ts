@@ -31,16 +31,34 @@ const refusesEverySend = ({ name, statusCode }: ErrorResponse, sender: string): 
 
 export const shopSender = (): string => `${APP_NAME} <${shopSenderAddress()}>`
 
-const sellerReplyTo = async (): Promise<{ readonly replyTo?: string }> => {
+const readSellerEmail = async (): Promise<string | undefined> => {
   try {
     const { email } = await readSellerDetails()
 
-    return { replyTo: email }
+    return email
   } catch (error) {
-    console.error("[Email] Sending without Reply-To: the seller's contact e-mail could not be read", error)
+    console.error("[Email] The seller's contact e-mail could not be read", error)
 
+    return undefined
+  }
+}
+
+export const shopNotificationAddress = async (): Promise<string> => {
+  const sellerEmail = await readSellerEmail()
+  if (sellerEmail === undefined) {
+    return shopSenderAddress()
+  }
+
+  return sellerEmail
+}
+
+const sellerReplyTo = async (): Promise<{ readonly replyTo?: string }> => {
+  const sellerEmail = await readSellerEmail()
+  if (sellerEmail === undefined) {
     return {}
   }
+
+  return { replyTo: sellerEmail }
 }
 
 const deliver = async ({

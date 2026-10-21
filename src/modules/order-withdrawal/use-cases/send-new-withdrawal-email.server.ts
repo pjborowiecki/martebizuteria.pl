@@ -2,8 +2,7 @@ import { createElement } from "react"
 
 import { createTranslator } from "use-intl"
 
-import { shopSenderAddress } from "~/src/integrations/resend/resend.config"
-import { sendEmail } from "~/src/integrations/resend/resend.send"
+import { sendEmail, shopNotificationAddress } from "~/src/integrations/resend/resend.send"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
@@ -27,6 +26,7 @@ const sendShopNotice = async (
   const locale = I18N.DEFAULT_LOCALE
   const messages = await loadNamespace<typeof orderWithdrawalMessages>({ locale, namespace: ORDER_WITHDRAWAL_NAMESPACE })
   const adminOrderPath = ROUTES.ADMIN_ORDER.replace("$orderId", orderId)
+  const recipient = await shopNotificationAddress()
   const failure = await sendEmail({
     idempotencyKey,
     react: createElement(OrderWithdrawalNotice, {
@@ -37,10 +37,10 @@ const sendShopNotice = async (
       statement,
     }),
     subject: createTranslator({ locale, messages })("notice.subject", { orderNumber }),
-    to: shopSenderAddress(),
+    to: recipient,
   })
 
-  return { failure, label: `${SHOP_NOTICE_LABEL} → ${shopSenderAddress()}` }
+  return { failure, label: `${SHOP_NOTICE_LABEL} → ${recipient}` }
 }
 
 export const sendNewWithdrawalEmail = (notice: Readonly<WithdrawalShopNotice>): Promise<boolean> =>
