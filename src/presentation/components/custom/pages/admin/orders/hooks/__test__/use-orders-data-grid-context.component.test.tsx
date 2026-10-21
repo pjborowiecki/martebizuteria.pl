@@ -62,7 +62,7 @@ const ProviderHarness = ({ children, withOrdersApi }: Readonly<{ children: React
 
   const ordersValue: OrdersDataGridValue = {
     ...base,
-    activeStatFilter: "pending",
+    activeStatFilter: "to_fulfil",
     applyOrderStatFilter: () => {},
   }
 
@@ -79,7 +79,7 @@ describe("useOrdersDataGridContext", () => {
       </ProviderHarness>,
     )
 
-    expect(screen.getByTestId("stat-filter")).toHaveTextContent("pending")
+    expect(screen.getByTestId("stat-filter")).toHaveTextContent("to_fulfil")
   })
 
   it("refuses a plain data grid that carries no orders filter api", () => {

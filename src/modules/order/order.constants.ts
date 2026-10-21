@@ -66,8 +66,8 @@ const ADMIN_ORDER_PAYMENT_UI_KEYS = Object.values(ADMIN_ORDER_PAYMENT_UI_KEY)
 const ADMIN_ORDER_FULFILLMENT_UI_KEYS = Object.values(ADMIN_ORDER_FULFILLMENT_UI_KEY)
 
 export const ADMIN_ORDER_STAT_FILTER = {
-  PENDING: "pending",
   TOTAL: "total",
+  TO_FULFIL: "to_fulfil",
 } as const
 
 export type AdminOrderStatFilter = (typeof ADMIN_ORDER_STAT_FILTER)[keyof typeof ADMIN_ORDER_STAT_FILTER]

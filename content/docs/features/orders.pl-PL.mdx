@@ -49,7 +49,7 @@ await Promise.all([
 
 Filtr `createdAt` przechodzi przez `buildAdminDateTimeFilterSql`, tę samą funkcję co w dzienniku zdarzeń, więc wybrany dzień to dzień w strefie administratora: `on` trwa od tamtejszej północy do następnej, `before` kończy się o tej północy, `after` zaczyna o następnej, a `between` trwa od północy pierwszego dnia do północy po ostatnim, niezależnie od strefy, w której działa Worker.
 
-Zakładki to `ORDER_TABS = ["all", "pending", "unfulfilled", "shipped", "delivered"]`. Filtry statystyk to `ADMIN_ORDER_STAT_FILTER` — `total` i `pending`, więc kliknięcie karty statystyki zawęża tabelę.
+Zakładki to `ORDER_TABS = ["all", "pending", "unfulfilled", "shipped", "delivered"]`. Filtry statystyk to `ADMIN_ORDER_STAT_FILTER` — `total` i `to_fulfil`, więc kliknięcie karty statystyki zawęża tabelę. `to_fulfil` zostawia opłacone zamówienia, które są jeszcze na etapie Potwierdzone albo W realizacji, te same co zakładka `unfulfilled` (`orderAwaitingFulfillment`): zamówienie powstaje dopiero, gdy Stripe pobierze płatność, więc to są zamówienia czekające, aż sklep je spakuje i wyśle.
 
 ## Dwa wyprowadzane klucze interfejsu
 
@@ -90,13 +90,13 @@ Mapy stylów dla tego wszystkiego leżą w `order.constants.ts`: `ORDER_STATUS_B
 
 `getAdminOrderStats` wykonuje jeden `db.batch` z trzema agregatami:
 
-| Wartość              | Zapytanie                                                          |
-| -------------------- | ------------------------------------------------------------------ |
-| `totalOrders`        | `count()` dla statusów z `ADMIN_ORDER_COUNTABLE_STATUSES`          |
-| `pending`            | `count()` dla statusu `pending`                                    |
-| `revenueMinorUnits`  | `netSalesSum` po sprzedażach                                       |
-| `avgValueMinorUnits` | `netSalesAverage` po tych samych sprzedażach                       |
-| `currencyCode`       | `max(currency_code)` po sprzedażach, inaczej `STORE_CURRENCY_CODE` |
+| Wartość              | Zapytanie                                                                 |
+| -------------------- | ------------------------------------------------------------------------- |
+| `totalOrders`        | `count()` dla statusów z `ADMIN_ORDER_COUNTABLE_STATUSES`                 |
+| `toFulfil`           | `count()` z `orderAwaitingFulfillment`, zamówienia zakładki `unfulfilled` |
+| `revenueMinorUnits`  | `netSalesSum` po sprzedażach                                              |
+| `avgValueMinorUnits` | `netSalesAverage` po tych samych sprzedażach                              |
+| `currencyCode`       | `max(currency_code)` po sprzedażach, inaczej `STORE_CURRENCY_CODE`        |
 
 Trzy ostatnie pochodzą z jednego zapytania po zamówieniach, które przepuszcza `orderCountsAsSale`, dołączonych do ich płatności, według tej samej zasady co na pulpicie (zobacz [Pulpit admina](/docs/features/admin-dashboard#migawka)): zamówienia w realizacji i zrealizowane, każde liczone według sumy pomniejszonej o to, co zwrócono z jego płatności.
 

@@ -65,6 +65,12 @@ export const orderAggregatesQuery = ({ end, periods, start }: AdminDashboardChar
 const orderAtFulfillmentStatuses = (fulfillmentStatuses: readonly Order["select"]["fulfillmentStatus"][]): SQL =>
   and(notInArray(order.status, ["pending", "cancelled"]), inArray(order.fulfillmentStatus, [...fulfillmentStatuses]))!
 
+const orderAwaitingFulfillment = (): SQL =>
+  orderAtFulfillmentStatuses([
+    ...ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP.confirmed,
+    ...ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP.processing,
+  ])
+
 const buildAdminOrderFulfillmentUiCondition = (
   fulfillmentUiKey: (typeof ADMIN_ORDER_FULFILLMENT_UI_KEY)[keyof typeof ADMIN_ORDER_FULFILLMENT_UI_KEY],
 ): SQL => {
@@ -89,10 +95,7 @@ const buildAdminOrderTabCondition = (tab: AdminOrderTab | undefined): SQL | unde
   }
 
   if (tab === ADMIN_ORDER_TAB.UNFULFILLED) {
-    return orderAtFulfillmentStatuses([
-      ...ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP.confirmed,
-      ...ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP.processing,
-    ])
+    return orderAwaitingFulfillment()
   }
 
   if (tab === ADMIN_ORDER_TAB.SHIPPED) {
@@ -121,7 +124,7 @@ const buildAdminOrderStatFilterCondition = (statFilter: AdminOrderStatFilter | u
     return undefined
   }
 
-  return eq(order.status, "pending")
+  return orderAwaitingFulfillment()
 }
 
 const appendAdminOrdersListFilterConditions = (conditions: SQL[], filters: Order["adminListFilters"], timeZone: string): void => {
@@ -274,7 +277,7 @@ export const getAdminOrderDestinationRows = (orderIds: readonly string[]) =>
   })
 
 export const getAdminOrderStats = async (): Promise<Order["adminStats"]> => {
-  const [[totalRow], [pendingRow], [salesRow]] = await db.batch([
+  const [[totalRow], [toFulfilRow], [salesRow]] = await db.batch([
     db
       .select({
         count: count(),
@@ -286,7 +289,7 @@ export const getAdminOrderStats = async (): Promise<Order["adminStats"]> => {
         count: count(),
       })
       .from(order)
-      .where(eq(order.status, "pending")),
+      .where(orderAwaitingFulfillment()),
     db
       .select({
         averageOrderValue: netSalesAverage,
@@ -301,8 +304,8 @@ export const getAdminOrderStats = async (): Promise<Order["adminStats"]> => {
   return {
     avgValueMinorUnits: salesRow?.averageOrderValue ?? 0,
     currencyCode: salesRow?.currencyCode ?? STORE_CURRENCY_CODE,
-    pending: pendingRow?.count ?? 0,
     revenueMinorUnits: salesRow?.revenue ?? 0,
+    toFulfil: toFulfilRow?.count ?? 0,
     totalOrders: totalRow?.count ?? 0,
   }
 }

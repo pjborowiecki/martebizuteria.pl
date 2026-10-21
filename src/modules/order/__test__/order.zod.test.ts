@@ -69,7 +69,7 @@ describe("orderZodSchemas.adminOrdersPageInput", () => {
       pageSize: 25,
       payment: "paid",
       search: "ada",
-      statFilter: "pending",
+      statFilter: "to_fulfil",
       status: "processing",
       tab: "unfulfilled",
     }

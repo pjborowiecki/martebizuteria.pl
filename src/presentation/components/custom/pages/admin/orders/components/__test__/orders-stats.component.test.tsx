@@ -15,8 +15,8 @@ const STATS_KEY = ["admin", "orders", "stats"] as const
 const STATS: Order["adminStats"] = {
   avgValueMinorUnits: 45_000,
   currencyCode: "PLN",
-  pending: 3,
   revenueMinorUnits: 123_456,
+  toFulfil: 3,
   totalOrders: 42,
 }
 
@@ -64,7 +64,7 @@ const startRefreshing = async (queryClient: QueryClient): Promise<void> => {
     void queryClient.invalidateQueries({ queryKey: STATS_KEY })
   })
   await waitFor(() => {
-    expect(card(/Pending/u)).toHaveAttribute("aria-busy", "true")
+    expect(card(/To fulfil/u)).toHaveAttribute("aria-busy", "true")
   })
 }
 
@@ -80,7 +80,7 @@ describe("OrdersStats", () => {
     renderStats()
 
     expect(await screen.findByText("Total Orders")).toBeInTheDocument()
-    expect(screen.getByText("Pending")).toBeInTheDocument()
+    expect(screen.getByText("To fulfil")).toBeInTheDocument()
     expect(screen.getByText("Revenue")).toBeInTheDocument()
     expect(screen.getByText("Avg. Value")).toBeInTheDocument()
   })
@@ -101,27 +101,27 @@ describe("OrdersStats", () => {
 
     expect(screen.getAllByRole("button")).toHaveLength(2)
     expect(card(/Total Orders/u)).toBeInTheDocument()
-    expect(card(/Pending/u)).toBeInTheDocument()
+    expect(card(/To fulfil/u)).toBeInTheDocument()
   })
 
-  it("narrows the table to the pending orders from the pending card", async () => {
+  it("narrows the table to the orders to fulfil from their card", async () => {
     renderStats()
 
-    await userEvent.click(card(/Pending/u))
+    await userEvent.click(card(/To fulfil/u))
 
-    expect(contextRef.applyOrderStatFilter).toHaveBeenCalledWith(ADMIN_ORDER_STAT_FILTER.PENDING)
+    expect(contextRef.applyOrderStatFilter).toHaveBeenCalledWith(ADMIN_ORDER_STAT_FILTER.TO_FULFIL)
   })
 
-  it("drops the pending filter again when its own card is pressed a second time", async () => {
-    renderStats(ADMIN_ORDER_STAT_FILTER.PENDING)
+  it("drops the to-fulfil filter again when its own card is pressed a second time", async () => {
+    renderStats(ADMIN_ORDER_STAT_FILTER.TO_FULFIL)
 
-    await userEvent.click(card(/Pending/u))
+    await userEvent.click(card(/To fulfil/u))
 
     expect(contextRef.applyOrderStatFilter).toHaveBeenCalledWith(undefined)
   })
 
   it("clears the filter from the total card", async () => {
-    renderStats(ADMIN_ORDER_STAT_FILTER.PENDING)
+    renderStats(ADMIN_ORDER_STAT_FILTER.TO_FULFIL)
 
     await userEvent.click(card(/Total Orders/u))
 
@@ -134,10 +134,10 @@ describe("OrdersStats", () => {
     expect(await screen.findByRole("button", { name: /Total Orders/u })).toHaveAttribute("aria-pressed", "true")
   })
 
-  it("moves the active mark onto the pending card once that filter is set", async () => {
-    renderStats(ADMIN_ORDER_STAT_FILTER.PENDING)
+  it("moves the active mark onto the to-fulfil card once that filter is set", async () => {
+    renderStats(ADMIN_ORDER_STAT_FILTER.TO_FULFIL)
 
-    expect(await screen.findByRole("button", { name: /Pending/u })).toHaveAttribute("aria-pressed", "true")
+    expect(await screen.findByRole("button", { name: /To fulfil/u })).toHaveAttribute("aria-pressed", "true")
     expect(card(/Total Orders/u)).toHaveAttribute("aria-pressed", "false")
   })
 })
@@ -171,6 +171,6 @@ describe("OrdersStats while the figures are being refreshed", () => {
     await startRefreshing(queryClient)
 
     expect(card(/Total Orders/u)).toBeDisabled()
-    expect(card(/Pending/u)).toBeDisabled()
+    expect(card(/To fulfil/u)).toBeDisabled()
   })
 })

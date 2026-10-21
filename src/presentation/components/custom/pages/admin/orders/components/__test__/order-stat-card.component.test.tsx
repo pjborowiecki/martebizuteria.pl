@@ -29,8 +29,8 @@ const cardConfig = (key: OrderStatKey): OrderStatCardConfig => {
 const stats: Order["adminStats"] = {
   avgValueMinorUnits: 45_000,
   currencyCode: "PLN",
-  pending: 3,
   revenueMinorUnits: 123_456,
+  toFulfil: 3,
   totalOrders: 42,
 }
 
@@ -52,7 +52,7 @@ describe("OrderStatCard", () => {
     renderWithProviders(
       <OrderStatCard
         caption="3 awaiting payment"
-        config={cardConfig("pending")}
+        config={cardConfig("toFulfil")}
         currencyCode="PLN"
         displayValue="3"
         valuesPending={false}
@@ -73,7 +73,7 @@ describe("OrderStatCard", () => {
   it("hides the value while the stats are still loading", () => {
     renderWithProviders(
       <OrderStatCard
-        config={cardConfig("pending")}
+        config={cardConfig("toFulfil")}
         currencyCode="PLN"
         displayValue="3"
         valuesPending
@@ -87,7 +87,7 @@ describe("OrderStatCard", () => {
   })
 
   it("renders no button when there is no filter handler", () => {
-    renderWithProviders(<OrderStatCard config={cardConfig("pending")} currencyCode="PLN" displayValue="3" valuesPending={false} />)
+    renderWithProviders(<OrderStatCard config={cardConfig("toFulfil")} currencyCode="PLN" displayValue="3" valuesPending={false} />)
 
     expect(screen.queryByRole("button")).not.toBeInTheDocument()
   })
@@ -112,7 +112,7 @@ describe("OrderStatCard filtering", () => {
     const onFilter = vi.fn<(filter?: AdminOrderStatFilter) => void>()
     renderWithProviders(
       <OrderStatCard
-        activeFilter={ADMIN_ORDER_STAT_FILTER.PENDING}
+        activeFilter={ADMIN_ORDER_STAT_FILTER.TO_FULFIL}
         config={cardConfig("totalOrders")}
         currencyCode="PLN"
         displayValue="42"
@@ -125,22 +125,22 @@ describe("OrderStatCard filtering", () => {
     expect(onFilter).toHaveBeenCalledWith()
   })
 
-  it("applies the pending filter when its card is pressed", () => {
+  it("applies the to-fulfil filter when its card is pressed", () => {
     const onFilter = vi.fn<(filter?: AdminOrderStatFilter) => void>()
     renderWithProviders(
-      <OrderStatCard config={cardConfig("pending")} currencyCode="PLN" displayValue="3" valuesPending={false} onFilter={onFilter} />,
+      <OrderStatCard config={cardConfig("toFulfil")} currencyCode="PLN" displayValue="3" valuesPending={false} onFilter={onFilter} />,
     )
     fireEvent.click(screen.getByRole("button"))
 
-    expect(onFilter).toHaveBeenCalledWith(ADMIN_ORDER_STAT_FILTER.PENDING)
+    expect(onFilter).toHaveBeenCalledWith(ADMIN_ORDER_STAT_FILTER.TO_FULFIL)
   })
 
-  it("drops the pending filter when its card is pressed again", () => {
+  it("drops the to-fulfil filter when its card is pressed again", () => {
     const onFilter = vi.fn<(filter?: AdminOrderStatFilter) => void>()
     renderWithProviders(
       <OrderStatCard
-        activeFilter={ADMIN_ORDER_STAT_FILTER.PENDING}
-        config={cardConfig("pending")}
+        activeFilter={ADMIN_ORDER_STAT_FILTER.TO_FULFIL}
+        config={cardConfig("toFulfil")}
         currencyCode="PLN"
         displayValue="3"
         valuesPending={false}
@@ -155,7 +155,7 @@ describe("OrderStatCard filtering", () => {
   it("ignores a press while the stats are still loading", () => {
     const onFilter = vi.fn<(filter?: AdminOrderStatFilter) => void>()
     renderWithProviders(
-      <OrderStatCard config={cardConfig("pending")} currencyCode="PLN" displayValue="3" valuesPending onFilter={onFilter} />,
+      <OrderStatCard config={cardConfig("toFulfil")} currencyCode="PLN" displayValue="3" valuesPending onFilter={onFilter} />,
     )
     fireEvent.click(screen.getByRole("button"))
 
@@ -191,11 +191,11 @@ describe("OrderStatCard filtering", () => {
     expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "true")
   })
 
-  it("leaves the pending card unpressed while another filter is set", () => {
+  it("leaves the to-fulfil card unpressed while another filter is set", () => {
     renderWithProviders(
       <OrderStatCard
         activeFilter={ADMIN_ORDER_STAT_FILTER.TOTAL}
-        config={cardConfig("pending")}
+        config={cardConfig("toFulfil")}
         currencyCode="PLN"
         displayValue="3"
         valuesPending={false}
@@ -215,17 +215,17 @@ describe("formatOrderStatDisplayValue", () => {
     expect(formatted).toContain("PLN")
   })
 
-  it.each(["totalOrders", "pending"] as const)("formats %s as a plain count", (key) => {
+  it.each(["totalOrders", "toFulfil"] as const)("formats %s as a plain count", (key) => {
     expect(formatOrderStatDisplayValue({ currencyCode: "PLN", key, locale: "en-US", value: 1234 })).toBe("1,234")
   })
 
   it("leaves a count free of any currency", () => {
-    expect(formatOrderStatDisplayValue({ currencyCode: "PLN", key: "pending", locale: "en-US", value: 7 })).toBe("7")
+    expect(formatOrderStatDisplayValue({ currencyCode: "PLN", key: "toFulfil", locale: "en-US", value: 7 })).toBe("7")
   })
 })
 
 describe("resolveOrderStatValue", () => {
-  it.each(["avgValueMinorUnits", "pending", "revenueMinorUnits", "totalOrders"] as const)("reads %s off the stats", (key) => {
+  it.each(["avgValueMinorUnits", "revenueMinorUnits", "toFulfil", "totalOrders"] as const)("reads %s off the stats", (key) => {
     expect(resolveOrderStatValue(stats, key)).toBe(stats[key])
   })
 })

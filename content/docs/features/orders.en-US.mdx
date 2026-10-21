@@ -49,7 +49,7 @@ await Promise.all([
 
 The `createdAt` filter goes through `buildAdminDateTimeFilterSql`, the builder the audit log uses, so a picked day is the day in the admin's time zone: `on` runs from its midnight there to the next, `before` ends at that midnight, `after` starts at the next one, and `between` runs from the first day's midnight to the midnight after the last, whatever zone the Worker runs in.
 
-Tabs are `ORDER_TABS = ["all", "pending", "unfulfilled", "shipped", "delivered"]`. Stat filters are `ADMIN_ORDER_STAT_FILTER` — `total` and `pending`, so clicking a stat card narrows the table.
+Tabs are `ORDER_TABS = ["all", "pending", "unfulfilled", "shipped", "delivered"]`. Stat filters are `ADMIN_ORDER_STAT_FILTER` — `total` and `to_fulfil`, so clicking a stat card narrows the table. `to_fulfil` keeps the paid orders still at Confirmed or In progress, the same orders as the `unfulfilled` tab (`orderAwaitingFulfillment`): an order exists only once Stripe has taken the payment, so these are the orders waiting for the shop to pack and send them.
 
 ## Two derived UI keys
 
@@ -90,13 +90,13 @@ The badge styling maps for all of this are in `order.constants.ts`: `ORDER_STATU
 
 `getAdminOrderStats` runs one `db.batch` of three aggregates:
 
-| Value                | Query                                                           |
-| -------------------- | --------------------------------------------------------------- |
-| `totalOrders`        | `count()` where status is in `ADMIN_ORDER_COUNTABLE_STATUSES`   |
-| `pending`            | `count()` where status is `pending`                             |
-| `revenueMinorUnits`  | `netSalesSum` over the sales                                    |
-| `avgValueMinorUnits` | `netSalesAverage` over the same sales                           |
-| `currencyCode`       | `max(currency_code)` over the sales, else `STORE_CURRENCY_CODE` |
+| Value                | Query                                                                   |
+| -------------------- | ----------------------------------------------------------------------- |
+| `totalOrders`        | `count()` where status is in `ADMIN_ORDER_COUNTABLE_STATUSES`           |
+| `toFulfil`           | `count()` of `orderAwaitingFulfillment`, the `unfulfilled` tab's orders |
+| `revenueMinorUnits`  | `netSalesSum` over the sales                                            |
+| `avgValueMinorUnits` | `netSalesAverage` over the same sales                                   |
+| `currencyCode`       | `max(currency_code)` over the sales, else `STORE_CURRENCY_CODE`         |
 
 The last three come from one query over the orders `orderCountsAsSale` accepts, left-joined to their payment, with the same rule as the dashboard (see [Admin dashboard](/docs/features/admin-dashboard#the-snapshot)): processing and completed orders, each counted at its total less what was refunded on its payment.
 

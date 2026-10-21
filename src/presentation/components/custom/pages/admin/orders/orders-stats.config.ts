@@ -1,8 +1,8 @@
-import { CircleDollarSign, Clock, type LucideIcon, Package, ShoppingBag } from "lucide-react"
+import { CircleDollarSign, type LucideIcon, Package, PackageOpen, ShoppingBag } from "lucide-react"
 
 import { ADMIN_ORDER_STAT_FILTER } from "~/src/modules/order/order.constants"
 
-export type OrderStatKey = "avgValueMinorUnits" | "pending" | "revenueMinorUnits" | "totalOrders"
+export type OrderStatKey = "avgValueMinorUnits" | "revenueMinorUnits" | "toFulfil" | "totalOrders"
 
 export interface OrderStatCardConfig {
   readonly filter?: (typeof ADMIN_ORDER_STAT_FILTER)[keyof typeof ADMIN_ORDER_STAT_FILTER]
@@ -19,10 +19,10 @@ export const ORDER_STAT_CARDS: readonly OrderStatCardConfig[] = [
     key: "totalOrders",
   },
   {
-    filter: ADMIN_ORDER_STAT_FILTER.PENDING,
+    filter: ADMIN_ORDER_STAT_FILTER.TO_FULFIL,
     gradient: "from-amber-500/20 via-orange-500/6 to-transparent",
-    icon: Clock,
-    key: "pending",
+    icon: PackageOpen,
+    key: "toFulfil",
   },
   {
     gradient: "from-emerald-500/20 via-emerald-500/6 to-transparent",

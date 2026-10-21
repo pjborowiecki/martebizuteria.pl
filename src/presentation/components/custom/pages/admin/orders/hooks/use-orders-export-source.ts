@@ -26,7 +26,7 @@ import { useAdminDateFilterDay } from "~/src/presentation/components/custom/page
 export const ORDERS_EXPORT_LIST = "orders"
 
 const ORDER_STAT_FILTER_LABEL_KEYS: Readonly<Record<AdminOrderStatFilter, string>> = {
-  pending: "stats.pending.label",
+  to_fulfil: "stats.toFulfil.label",
   total: "stats.totalOrders.label",
 }
 
