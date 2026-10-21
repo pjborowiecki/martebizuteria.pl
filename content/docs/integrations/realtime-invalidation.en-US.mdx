@@ -56,17 +56,22 @@ export interface RealtimeInvalidationPayload {
 `realtime-invalidation.publish.server.ts` addresses a hub by name and calls the Durable Object method directly through the RPC binding:
 
 ```ts
-const publishToHub = async (hubName: RealtimeInvalidationHubName, queryKeys: readonly QueryKey[]): Promise<void> => {
-  if (queryKeys.length === 0) {
-    return
-  }
+const notifyHub = async (hubName: RealtimeInvalidationHubName, topicPrefixes: readonly string[], attempt: number): Promise<void> => {
+  try {
+    const hub = env.REALTIME_INVALIDATION_HUB.getByName(hubName)
+    await hub.notifyInvalidation(topicPrefixes)
+  } catch (error) {
+    if (attempt >= NOTIFY_ATTEMPTS) {
+      throw error
+    }
 
-  const hub = env.REALTIME_INVALIDATION_HUB.getByName(hubName)
-  await hub.notifyInvalidation(toSerializedTopicPrefixes(queryKeys))
+    await pause(NOTIFY_BACKOFF_MS * attempt)
+    await notifyHub(hubName, topicPrefixes, attempt + 1)
+  }
 }
 ```
 
-`getByName` means there are exactly two object instances in existence, one per hub name, which is what makes the fan-out possible at all.
+`getByName` means there are exactly two object instances in existence, one per hub name, which is what makes the fan-out possible at all. A failed call is tried again on a fresh stub, three attempts in all (`NOTIFY_ATTEMPTS`), 50 and then 100 ms apart, before the error reaches the caller.
 
 `publishRealtimeInvalidation({ admin?, storefront? })` publishes to both in parallel, and `scheduleRealtimeInvalidation(input)` wraps it in `scheduleBackgroundWork` so the request does not wait:
 
@@ -84,7 +89,7 @@ Server code almost never calls either of these directly. `realtime-invalidation.
 | `scheduleCategoryCatalogInvalidation()`            | category `ALL`, `STATS`                    | category `ALL`, `BY_HANDLE`, product `STOREFRONT_PAGE`                                                            |
 | `scheduleCollectionCatalogInvalidation()`          | collection `ALL`, `STATS`                  | collection `ALL`, `BY_HANDLE`, product `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE`                                  |
 | `scheduleContentPageInvalidation()`                | content-page `ALL`, `BY_HANDLE`            | content-page `BY_HANDLE`                                                                                          |
-| `scheduleProductAttributeCatalogInvalidation()`    | product-attribute `ALL`, `STATS`           | —                                                                                                                 |
+| `scheduleProductAttributeCatalogInvalidation()`    | product-attribute `ALL`, `STATS`           | product `BY_HANDLE`                                                                                               |
 | `scheduleAdminCustomersInvalidation()`             | user `CUSTOMERS`, `CUSTOMERS_PAGE`, `TEAM` | —                                                                                                                 |
 | `scheduleAdminNewsletterSubscribersInvalidation()` | newsletter `ADMIN.PAGE`, `ADMIN.STATS`     | —                                                                                                                 |
 | `scheduleAdminAuditLogInvalidation()`              | audit-log `ADMIN.PAGE`, `ADMIN.STATS`      | —                                                                                                                 |
@@ -98,8 +103,8 @@ Note that `scheduleCollectionCatalogInvalidation` also invalidates the storefron
 
 ### Who calls them
 
-- **Every catalogue mutation.** All the `create-`, `update-`, `delete-` and `reorder-` use cases under `src/modules/product/`, `product-category/`, `product-collection/` and `product-attribute/`.
-- **Checkout.** `stripe.actions.server.ts` calls `scheduleProductCatalogInvalidation()` when a session is created or updated, because reserving stock changes availability.
+- **Every catalogue mutation.** All the `create-`, `update-`, `delete-` and `reorder-` use cases under `src/modules/product/`, `product-category/`, `product-collection/` and `product-attribute/`, and `set-all-product-attributes.ts` under `attribute-on-product/`.
+- **Checkout.** `stripe.actions.server.ts` calls `scheduleProductCatalogInvalidation()` when a session is created or updated, because reserving stock changes availability, and again when a failed checkout gives back the stock it reserved; `reserveInventoryForItems` calls it after rolling back a partial reservation.
 - **Fulfilment.** `announcePlacedOrder` in `stripe.fulfillment.server.ts` calls `scheduleAdminOrdersInvalidation()` and `scheduleProductCatalogInvalidation()` once a paid session has become an order, whether the Stripe webhook or the checkout's return page placed it.
 - **Webhooks.** `stripe.webhooks.ts` calls `scheduleAdminOrdersInvalidation()` on a refund, a failed or cancelled refund and a dispute, and `scheduleProductCatalogInvalidation()` on release; `webhooks.inpost.ts` calls `scheduleAdminOrdersInvalidation()` after it reads a shipment's new status back from ShipX. A refund does not refresh the catalogue, because it never returns stock; `cancelOrder` and `returnOrderToStock` do when the admin puts an order's items back.
 - **Stepping an order back.** `stepBackOrder` calls `scheduleAdminOrdersInvalidation()` right after it moves the order, so every open admin tab shows the earlier step without waiting for the audit entry.
@@ -138,7 +143,7 @@ export class RealtimeInvalidationHub extends DurableObject<Env> {
 }
 ```
 
-`acceptWebSocket(server, [hubName])` tags each socket with its hub name, and `notifyInvalidation` retrieves only the sockets with that tag via `ctx.getWebSockets(hubName)`, falling back to all sockets if the name is somehow unrecognized. Sends are wrapped in a bare `try`/`catch` so one dead socket cannot stop the loop. `webSocketError` closes with 1011.
+`acceptWebSocket(server, [hubName])` tags each socket with its hub name, and `notifyInvalidation` retrieves only the sockets with that tag via `ctx.getWebSockets(hubName)`, falling back to all sockets if the name is somehow unrecognized. Sends are wrapped in a bare `try`/`catch` so one dead socket cannot stop the loop. `webSocketError` closes with 1011. On the storefront hub, `notifyInvalidation` first writes a new catalogue version for the [storefront read cache](/docs/architecture/caching-and-ssr#the-storefront-read-cache) to `ctx.storage.kv`, and `storefrontCacheVersion()` returns the current one, so every frame the storefront receives comes after the version it invalidates.
 
 The class is registered in two places. `src/server.ts` re-exports it:
 
@@ -231,7 +236,7 @@ A prefix that is published but not subscribed is silently ignored by every clien
 
 ## Tests
 
-`src/integrations/realtime-invalidation/__test__/` holds four files covering the protocol's serialization and topic resolution, the publisher's hub addressing, the subscription lists, and the WebSocket gatekeeper's upgrade and authorization checks. `src/durable-objects/__test__/` covers the hub itself.
+`src/integrations/realtime-invalidation/__test__/` holds four files covering the protocol's serialization and topic resolution, the publisher's hub addressing, the subscription lists, and the WebSocket gatekeeper's upgrade and authorization checks. `src/durable-objects/__test__/` covers the hub itself, and `src/lib/__test__/storefront-cache.mutations.integration.test.ts` checks that every catalogue, stock, content, settings and delivery change moves the storefront catalogue version.
 
 ## Related pages
 

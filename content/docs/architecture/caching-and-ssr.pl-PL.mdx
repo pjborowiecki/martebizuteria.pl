@@ -1,6 +1,6 @@
 ---
 title: "Cache i SSR"
-description: "Gdzie cache'owane są dane: cache zapytań na żądanie, prepared statements, magazyn przeglądarki — i co świadomie nie jest cache'owane."
+description: "Gdzie cache'owane są dane: cache zapytań na żądanie, cache odczytów sklepu, prepared statements, magazyn przeglądarki — i co świadomie nie jest cache'owane."
 ---
 
 ## Cache zapytań
@@ -75,6 +75,45 @@ Za każdym razem, gdy dane zapytania o sesję przełączą się na inny identyfi
 
 Po zalogowaniu `usePostAuthRedirect` usuwa wyłącznie wpis sesji, więc guard `/auth` pobiera świeżą sesję, a `clearCacheOnUserChange` zapomina to, co trafiło do cache'u przed zalogowaniem. Wylogowanie wykonuje pełne przeładowanie strony, które porzuca cache.
 
+## Cache odczytów sklepu
+
+Strona sklepu potrzebuje kolekcji menu, stanu sprzedaży i danych sprzedawcy z layoutu, a potem własnych odczytów strony: od trzech do dziewięciu instrukcji D1 w maksymalnie czterech rundach jedna po drugiej, każda po około 40-70 ms z centrum danych w Warszawie. Na własnych domenach sklepu, `preview.martebizuteria.pl` i `martebizuteria.pl`, gdy obsłuży ją produkcja, publiczne odczyty katalogu przechodzą przez cache w Workers Cache API, więc strona, której dane nie zmieniły się od poprzedniej wizyty, wykonuje jedno wywołanie huba realtime i czyta swoje wiersze z cache'u centrum danych. Adres `*.workers.dev`, na którym Cache API niczego nie przechowuje, pomija hub i cache i czyta D1.
+
+**Co jest cache'owane.** Funkcje serwerowe, które czytają publiczny katalog, wykonują swoje odczyty D1 wewnątrz `readThroughStorefrontCache` z `src/lib/storefront-read.ts`: `getCollections`, `getCategories`, `getStorefrontCategory`, `getStorefrontCollection`, `getNewArrivals`, `getProduct`, `getRelatedProducts`, `getStorefrontProductsPage`, `getContentPage`, `getSalesStatus`, `getSellerDetails`, `getFreeDelivery` i `listDeliveryMethods`. `cacheStorefrontReads` z `src/lib/storefront-cache.server.ts` opakowuje binding D1 w `drizzle.database.ts` i odpowiada na instrukcję z cache'u tylko wtedy, gdy spełnione są wszystkie trzy warunki:
+
+- instrukcja wykonuje się wewnątrz `readThroughStorefrontCache`;
+- jest zapytaniem `select` lub `with` wykonanym przez `all`, `first` albo `raw`, a poza literałami tekstowymi nie ma w nim `insert`, `update`, `delete`, `replace`, `upsert`, `create`, `drop` ani `alter`, przecinka między tabelami w `from` ani identyfikatora w odwróconych apostrofach lub nawiasach kwadratowych;
+- każda tabela, którą wymienia, jest w `PUBLIC_CATALOG_TABLES`: produkty, warianty, stany magazynowe, zdjęcia, opcje, specyfikacje, kategorie i kolekcje razem z tabelami, które je łączą, historia cen, strony treści, ustawienia sklepu, metody dostawy i przewoźnicy. Wyrażenie tabelowe zdefiniowane w samej instrukcji i `json_each` nie liczą się jako tabele.
+
+Jednostką cache'u jest odpowiedź jednej instrukcji dokładnie taka, jaką zwróciło D1, zapisana pod `https://<host>/__storefront-cache/<BUILD_ID>/<version>/<digest>`, gdzie digest to SHA-256 metody, SQL-a, wartości parametrów i argumentów wywołania. Ponieważ kluczem jest sama instrukcja, dwa odczyty nigdy nie dzielą odpowiedzi, której nie powinny, a Drizzle mapuje odpowiedź z cache'u tak samo jak świeżą, łącznie z datami.
+
+**Co nigdy nie jest cache'owane.** Każda inna instrukcja czyta D1: panel administracyjny, który czyta ustawienia własnymi funkcjami `getAdminSalesStatus`, `getAdminSellerDetails` i `getAdminFreeDelivery`, więc po zapisie zawsze widać zapisaną wartość; konto; sprawdzenie dostępności koszyka; tworzenie i aktualizacja sesji Checkout, które ponownie czytają ceny i stany; webhooki i kolejki; oraz każdy zapis. Instrukcja, która dotyka tabeli spoza listy — sesji, użytkowników, koszyków, list życzeń, zamówień, płatności, limitów zapytań albo indeksu wyszukiwania — czyta D1 nawet wewnątrz odczytu sklepu, więc nic o jednej osobie odwiedzającej nie trafi do cache'u. HTML także nie jest cache'owany: każda strona ma własny nonce Content-Security-Policy.
+
+**Jak pozostaje aktualny.** Hub sklepu `RealtimeInvalidationHub` trzyma w swoim magazynie jedną wartość, wersję katalogu — losowy UUID. `notifyInvalidation` w hubie sklepu zapisuje nową, zanim wyśle ramkę, więc każda zmiana, która każe otwartym kartom sklepu pobrać dane ponownie, zaczyna też nową wersję, a karta, która pobiera dane z powodu tej ramki, czyta już nową. Żądanie pyta hub o wersję raz (`storefrontCacheVersion()` przez RPC, zapamiętane na `Request` jak sesja), czeka na nią najwyżej 100 ms, a gdy nie przyjdzie, czyta D1, i szuka kluczy tylko pod nią, więc pierwsze żądanie po zmianie nie trafia w cache i czyta D1. `publishRealtimeInvalidation` próbuje każdy hub do trzech razy, w odstępach 50 i 100 ms, więc jedno nieudane wywołanie huba nie zostawia starej wersji. Nic nie jest czyszczone: o odpowiedzi pod starą wersją nikt już nie pyta i z czasem wygasają.
+
+| Zmiana                                                                                                                                                                                                          | Publikator, który zmienia wersję                                                                           |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Produkt utworzony, zmieniony (nazwy, ceny, stany, zdjęcia, specyfikacje, kategorie, kolekcje), usunięty albo przestawiony                                                                                       | `scheduleProductCatalogInvalidation`                                                                       |
+| Stan magazynowy zmieniony przez utworzony lub zaktualizowany checkout, oddanie rezerwacji po błędzie, wygaśnięcie lub zwolnienie sesji, opłacone zamówienie, anulowane zamówienie albo zwrot zamówienia na stan | `scheduleProductCatalogInvalidation`                                                                       |
+| Kategoria lub kolekcja utworzona, zmieniona, usunięta albo przestawiona                                                                                                                                         | `scheduleCategoryCatalogInvalidation`, `scheduleCollectionCatalogInvalidation`                             |
+| Specyfikacje produktu zastąpione w edytorze produktu (`setAllProductAttributes`)                                                                                                                                | `scheduleProductCatalogInvalidation`                                                                       |
+| Specyfikacja utworzona, zmieniona, usunięta albo przestawiona                                                                                                                                                   | `scheduleProductAttributeCatalogInvalidation`                                                              |
+| Zapisana strona treści albo strona prawna opatrzona datą po zmianie danych sprzedawcy                                                                                                                           | `scheduleContentPageInvalidation`                                                                          |
+| Dane sprzedawcy, wstrzymanie lub wznowienie sprzedaży, próg darmowej dostawy                                                                                                                                    | `scheduleSellerDetailsInvalidation`, `scheduleSalesStatusInvalidation`, `scheduleFreeDeliveryInvalidation` |
+| Metoda dostawy utworzona, zmieniona, zarchiwizowana albo przestawiona                                                                                                                                           | `scheduleDeliveryMethodsInvalidation`                                                                      |
+
+Zmiany widoczne tylko w panelu — zamówienia, klienci, zespół, subskrybenci newslettera, dziennik zdarzeń — trafiają tylko do huba panelu i nie zmieniają wersji. `src/lib/__test__/storefront-cache.mutations.integration.test.ts` uruchamia każdy z powyższych przypadków użycia na prawdziwej bazie z prawdziwą klasą huba i sprawdza, że wersja się zmieniła.
+
+Publikacja wykonuje się w `waitUntil` tuż po zapisie zmiany, więc opóźnienie między zapisem a sklepem, który go pokazuje, to to jedno wywołanie huba, kilka milisekund; żądanie, które już trwa, może jeszcze zakończyć się wcześniejszymi odpowiedziami.
+
+**Ograniczenia.**
+
+- Odpowiedzi są zapisywane z `Cache-Control: public, max-age=600`. Zmiana wprowadzona poza aplikacją, na przykład instrukcją SQL uruchomioną w panelu Cloudflare, pojawi się w ciągu dziesięciu minut albo od razu po dowolnym zapisie w panelu administracyjnym, który widać w sklepie.
+- Każdy build ma własne `import.meta.env.BUILD_ID`, ustawiane w `vite.config.ts`, więc wdrożenie i migracje, które wykonuje, zaczynają od pustego cache'u.
+- Cache API jest lokalne dla każdego centrum danych Cloudflare i usuwa to, o co nikt nie pyta; brak w cache'u oznacza odczyt z D1.
+- `bun run dev` zapisuje bazę preview, ale ma własny hub, więc zmiana zapisana tam dotrze do cache'u wdrożenia preview przy jego następnej zmianie albo w ciągu dziesięciu minut.
+- Gdy hub jest nieosiągalny albo nie odpowiada w ciągu 100 ms, cache nie daje się otworzyć albo odpowiedzi nie da się odczytać, instrukcja czyta D1, a błąd jest logowany z prefiksem `[Storefront Cache]`; nieudany zapis jest logowany jako `[Background Work Failed]`, a odpowiedź i tak wraca (zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts)).
+
 ## Prepared statements
 
 Odczyty punktowe są przygotowywane raz przy ładowaniu modułu, poza jakimkolwiek żądaniem, i wykonywane z podstawionymi parametrami:
@@ -94,7 +133,7 @@ export const getProductImagesQuery = db.query.productImage
 
 Nic w `vite.config.ts` nie włącza prerenderingu TanStack Start i żadna trasa nie ma opcji `prerender`. Każda odpowiedź HTML jest renderowana na serwerze per żądanie. Konsekwencje warte zapamiętania:
 
-- Strony sklepu odzwierciedlają katalog w momencie żądania, bez kroku czyszczenia cache'u.
+- Strony sklepu odzwierciedlają katalog w momencie żądania, bez kroku czyszczenia cache'u: ich publiczne odczyty przechodzą przez [cache odczytów sklepu](#cache-odczytów-sklepu), który zmiana zastępuje, przesuwając wersję katalogu.
 - Przed aplikacją nie ma fallbacku ze statycznych zasobów; `ASSETS` serwuje wyłącznie build klienta. `wrangler.jsonc` wskazuje `./public`, a build zapisuje `dist/server/wrangler.json` z `dist/client`, czyli bundlami z hashem w `assets/` i plikami skopiowanymi z `public/`, co sprawdza `scripts/verify-build.ts`.
 - Cache-control dla HTML-a pozostawiono domyślnym ustawieniom platformy, więc przy zmianie produktu nie ma czego unieważniać.
 

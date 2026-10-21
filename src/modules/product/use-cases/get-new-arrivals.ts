@@ -11,13 +11,17 @@ import {
   PRODUCT_QUERY_STALE_MS,
 } from "~/src/modules/product/product.constants"
 
+import { readThroughStorefrontCache } from "~/src/lib/storefront-read"
+
 export const getNewArrivals = createServerFn({ method: "GET" })
   .middleware([withRequest])
   .handler(() =>
-    getPublishedProductsByCollectionHandle(LANDING_NEW_ARRIVALS_COLLECTION_HANDLE, {
-      limit: LANDING_NEW_ARRIVALS_PRODUCT_LIMIT,
-      offset: 0,
-    }),
+    readThroughStorefrontCache(() =>
+      getPublishedProductsByCollectionHandle(LANDING_NEW_ARRIVALS_COLLECTION_HANDLE, {
+        limit: LANDING_NEW_ARRIVALS_PRODUCT_LIMIT,
+        offset: 0,
+      }),
+    ),
   )
 
 export const getNewArrivalsQuery = () =>

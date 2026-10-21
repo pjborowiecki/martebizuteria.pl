@@ -507,7 +507,17 @@ describe("checkout session creation failures", () => {
       expect.arrayContaining([expect.objectContaining({ inventoryId: "inventory-1" })]),
     )
     expect(mocked.createPendingPayment).not.toHaveBeenCalled()
-    expect(mocked.scheduleProductCatalogInvalidation).not.toHaveBeenCalled()
+  })
+
+  it("refreshes the storefront's stock once the reservation of a failed checkout is given back", async () => {
+    mocked.createCheckout.mockRejectedValue(new Error("d1 write failed"))
+
+    await expect(handleCreateCheckoutSession(createInput())).rejects.toThrow("d1 write failed")
+
+    expect(mocked.scheduleProductCatalogInvalidation).toHaveBeenCalledOnce()
+    expect(mocked.releaseInventoryForItems.mock.invocationCallOrder[0]).toBeLessThan(
+      mocked.scheduleProductCatalogInvalidation.mock.invocationCallOrder[0] ?? 0,
+    )
   })
 
   it("rejects a Stripe session that came back without a client secret", async () => {

@@ -1,6 +1,6 @@
 ---
 title: "Monitorowanie i alerty"
-description: "Workers Logs i Issues, sprawdzenie /api/health dla monitora dostępności, e-maile, które sklep wysyła sam sobie, gdy zawiedzie płatność, zdarzenie Stripe, zwrot pieniędzy, kolejka audytu, newsletter albo e-mail dotyczący zamówienia, oraz powiadomienia Cloudflare do dodania."
+description: "Workers Logs i Issues, sprawdzenie /api/health dla monitora dostępności, nagłówek Server-Timing wczytania strony, e-maile, które sklep wysyła sam sobie, gdy zawiedzie płatność, zdarzenie Stripe, zwrot pieniędzy, kolejka audytu, newsletter albo e-mail dotyczący zamówienia, oraz powiadomienia Cloudflare do dodania."
 ---
 
 Sklep pilnuje się na trzy sposoby i żaden z nich nie wymaga konta w usłudze raportowania błędów. Cloudflare przechowuje logi Workera i grupuje jego błędy, `/api/health` mówi monitorowi dostępności, czy Worker sięga do swoich magazynów danych, a Worker wysyła e-mail na `RESEND_EMAIL_FROM`, gdy błąd wymaga uwagi właściciela.
@@ -25,6 +25,9 @@ Linie logu związane z tą stroną:
 | Prefiks                                                                | Źródło                                                                                                                                                |
 | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `[Health] D1 did not answer:` (albo `KV`, `R2`)                        | `/api/health` przechwyciło błąd tego bindingu                                                                                                         |
+| `[Storefront Cache] The catalogue version could not be read, …`        | Hub sklepu nie odpowiedział; to żądanie przeczytało swoje odczyty sklepu z D1                                                                         |
+| `[Storefront Cache] The cache could not be opened, …`                  | Cache API odmówiło; to żądanie przeczytało swoje odczyty sklepu z D1                                                                                  |
+| `[Storefront Cache] A cached answer could not be read, …`              | Zapisanej odpowiedzi nie dało się odczytać; ta instrukcja przeczytała D1                                                                              |
 | `[Alert] The <kind> alert to <address> was not sent: …`                | Resend odrzucił alert o incydencie albo nie odpowiedział na czas                                                                                      |
 | `[Alert] The <kind> alert could not be sent:`                          | Odczyt KV albo renderowanie alertu rzuciło wyjątek; błąd jest dalej w linii                                                                           |
 | `[Stripe] Signature verification failed`                               | Zdarzenie nie przeszło weryfikacji z `STRIPE_WEBHOOK_SECRET`; trasa odpowiedziała 400 i nie wysłała alertu                                            |
@@ -90,6 +93,20 @@ To monitor zauważa awarię, której Worker sam nie zgłosi: nieudane wdrożenie
 **Cloudflare Health Checks.** Jeśli strefa `martebizuteria.pl` jest na planie Pro lub wyższym, monitorem może być Cloudflare; plan Free nie ma samodzielnych Health Checks. Opisane niżej sprawdzenie odpytuje `martebizuteria.pl`, więc pilnuje produkcji dopiero wtedy, gdy produkcja obsługuje tę domenę. W panelu otwórz strefę, przejdź do **Health Checks**, wybierz **Create** i skieruj sprawdzenie na `martebizuteria.pl` przez HTTPS ze ścieżką `/api/health`, oczekiwanym kodem `200` i `"status":"ok"` jako **Response body**, czyli fragmentem, który musi się pojawić w pierwszych 10 KB odpowiedzi. Zostaw **Interval** na minucie lub dłużej, a **Check regions** nieliczne, bo każdy region wysyła własne żądania. Potem na tej samej stronie wybierz **Configure an alert**, dodaj adres e-mail i to sprawdzenie i wybierz wyzwalacz. Cloudflare wysyła powiadomienie dopiero, gdy status zmieni się w większości wybranych regionów.
 
 **Na planie Free** użyj hostowanego monitora dostępności z ustawieniami powyżej. To jedyna część tej strony, która wymaga konta poza Cloudflare, a nic w kodzie nie zależy od tego, który monitor zostanie wybrany.
+
+## Czasy żądań
+
+Każde wczytanie strony — żądanie `GET`, na które Worker odpowiada HTML-em — ma nagłówek `Server-Timing` z trzema wpisami. Trasy API pod `/api/`, wywołania funkcji serwerowych, przekierowania, `robots.txt` i mapa witryny nie mają go wcale, więc nagłówek nie mówi nic o logowaniu, resecie hasła ani zapisie do newslettera. `src/lib/server-timing.ts` zbiera czasy w magazynie `AsyncLocalStorage`, który `src/server.ts` otwiera dla każdego żądania:
+
+| Wpis     | Co mierzy                                                                                                                                                                                                                    |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `d1`     | Zsumowany czas wszystkich instrukcji i partii D1 wykonanych przy wczytaniu strony, a w `desc` ich liczbę (`statements: 6`). `timeD1Statements` opakowuje binding D1 w `drizzle.database.ts`, więc liczy się też odczyt sesji |
+| `render` | `defaultStreamHandler`, od końca loaderów tras do pierwszego bajtu HTML. Dla robota trwa do końca strony, bo TanStack Start, zanim odpowie botowi, czeka na każdą odroczoną obietnicę                                        |
+| `total`  | Całe żądanie wewnątrz Workera, od `fetch` do odpowiedzi                                                                                                                                                                      |
+
+Nagłówek nie wymienia żadnej instrukcji ani tabeli. Odczytasz go przez `curl -s -o /dev/null -D - https://preview.martebizuteria.pl/products | grep -i server-timing` albo w narzędziach deweloperskich przeglądarki: **Network**, żądanie dokumentu, **Timing**.
+
+Przy liczbach z wdrożenia trzeba pamiętać o dwóch rzeczach. Zegar wdrożonego Workera przesuwa się tylko wtedy, gdy Worker czeka na wejście-wyjście — to obrona Cloudflare przed atakami czasowymi — więc praca, która zajmuje tylko procesor, jak `render`, pokazuje tam prawie `0`, a `total` liczy samo czekanie; ten sam build uruchomiony na własnym komputerze mierzy też pracę procesora (zobacz [Uruchomienie buildu produkcyjnego lokalnie](/docs/guides/local-debugging#uruchomienie-buildu-produkcyjnego-lokalnie)). Czas sprzed uruchomienia Workera — uzgadnianie TLS, droga do centrum danych i wczytanie Workera przez zimny izolat — jest poza nagłówkiem: porównaj `total` z czasem do pierwszego bajtu zmierzonym przez przeglądarkę.
 
 ## Alerty e-mail ze sklepu
 

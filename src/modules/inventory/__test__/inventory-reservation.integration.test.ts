@@ -22,6 +22,9 @@ const { sqlite, trips } = await vi.hoisted(async () => {
   }
 })
 
+vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
+  scheduleProductCatalogInvalidation: vi.fn(),
+}))
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const { drizzle } = await import("drizzle-orm/d1")
   const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")

@@ -9,6 +9,8 @@ import { getPublishedRelatedProducts } from "~/src/modules/product/product.acces
 import { PRODUCT_QUERY_KEYS } from "~/src/modules/product/product.constants"
 import { productZodSchemas } from "~/src/modules/product/product.zod"
 
+import { readThroughStorefrontCache } from "~/src/lib/storefront-read"
+
 export const getRelatedProducts = createServerFn({ method: "GET" })
   .middleware([withRequest])
   .validator((input: zod.input<typeof productZodSchemas.relatedProductsInput>) => productZodSchemas.relatedProductsInput.parse(input))
@@ -17,7 +19,7 @@ export const getRelatedProducts = createServerFn({ method: "GET" })
       return []
     }
 
-    return getPublishedRelatedProducts(categoryId, excludeProductId)
+    return readThroughStorefrontCache(() => getPublishedRelatedProducts(categoryId, excludeProductId))
   })
 
 export const getRelatedProductsQuery = (

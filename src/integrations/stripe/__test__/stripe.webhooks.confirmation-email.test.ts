@@ -48,7 +48,7 @@ const {
   sendNewOrderEmail: vi.fn<(orderId: string, returnUrl: string | undefined) => Promise<boolean>>(),
 }))
 
-vi.mock("cloudflare:workers", () => ({ env: {} }))
+vi.mock("cloudflare:workers", () => ({ env: { DB: {} } }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { paymentIntents: { retrieve: paymentIntentsRetrieve } } }))
 vi.mock("~/src/integrations/stripe/stripe.coupons.server", () => ({ deleteCheckoutCoupons: vi.fn(() => Promise.resolve(undefined)) }))
 vi.mock("~/src/modules/order/use-cases/send-new-order-email.server", () => ({ sendNewOrderEmail }))

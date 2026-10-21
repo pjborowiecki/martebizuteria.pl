@@ -35,7 +35,7 @@ const {
   sessionsList: vi.fn<(params: object) => Promise<{ data: Stripe.Checkout.Session[] }>>(),
 }))
 
-vi.mock("cloudflare:workers", () => ({ env: {} }))
+vi.mock("cloudflare:workers", () => ({ env: { DB: {} } }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({
   stripe: { checkout: { sessions: { list: sessionsList } }, refunds: { list: refundsList } },
 }))

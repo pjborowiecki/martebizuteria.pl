@@ -21,7 +21,7 @@ const mocked = vi.hoisted(() => ({
   updateCheckoutDelivery: vi.fn(),
 }))
 
-vi.mock("cloudflare:workers", () => ({ env: { APP_ENV: "preview" } }))
+vi.mock("cloudflare:workers", () => ({ env: { APP_ENV: "preview", DB: {} } }))
 vi.mock("@tanstack/react-start/server", () => ({ getRequest: mocked.getRequest }))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: mocked.getRequestSession }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
@@ -508,7 +508,10 @@ describe("handleUpdateCheckoutSession when the hand-over to the replacement fail
     expect(mocked.checkoutSessionsExpire.mock.calls).toStrictEqual([["cs_old"], ["cs_new"]])
     expect(mocked.releaseInventoryForItems).toHaveBeenCalledExactlyOnceWith(ADDED_STOCK)
     expect(mocked.updateCheckoutDelivery).not.toHaveBeenCalled()
-    expect(mocked.scheduleProductCatalogInvalidation).not.toHaveBeenCalled()
+    expect(mocked.scheduleProductCatalogInvalidation).toHaveBeenCalledOnce()
+    expect(mocked.releaseInventoryForItems.mock.invocationCallOrder[0]).toBeLessThan(
+      mocked.scheduleProductCatalogInvalidation.mock.invocationCallOrder[0] ?? 0,
+    )
   })
 
   it("discards the replacement and gives back only what the edited cart added when Stripe will not expire the old session", async () => {

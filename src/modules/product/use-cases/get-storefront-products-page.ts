@@ -35,6 +35,7 @@ import {
 } from "~/src/modules/storefront-search/storefront-search.zod"
 
 import { catalogDebugLog } from "~/src/lib/catalog-debug-log"
+import { readThroughStorefrontCache } from "~/src/lib/storefront-read"
 
 const CENTS_PER_PLN = 100
 
@@ -105,7 +106,7 @@ export const getStorefrontProductsPage = createServerFn({
     const filtered = hasActiveStorefrontProductFilters(search, storefrontCatalogFilterOptions(input.scope))
     const pageSize = filtered ? PRODUCT_STOREFRONT_FILTERED_MAX : PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE
     const listParams = listPaginationParamsFromPage(page, pageSize)
-    const filters = await resolveStorefrontCatalogFilters(search)
+    const filters = await readThroughStorefrontCache(() => resolveStorefrontCatalogFilters(search))
     catalogDebugLog("storefrontProductsPage.start", {
       filters,
       page,
@@ -120,15 +121,17 @@ export const getStorefrontProductsPage = createServerFn({
       return buildListPaginationResult([], 0, listParams)
     }
 
-    const { items, total } = await getStorefrontPublishedProductsPage({
-      ...listParams,
-      categoryIds: filters.categoryIds,
-      collectionId: filters.collectionId,
-      maxPriceCents: filters.maxPriceCents,
-      minPriceCents: filters.minPriceCents,
-      searchTerm: filters.searchTerm,
-      sort: filters.sort,
-    })
+    const { items, total } = await readThroughStorefrontCache(() =>
+      getStorefrontPublishedProductsPage({
+        ...listParams,
+        categoryIds: filters.categoryIds,
+        collectionId: filters.collectionId,
+        maxPriceCents: filters.maxPriceCents,
+        minPriceCents: filters.minPriceCents,
+        searchTerm: filters.searchTerm,
+        sort: filters.sort,
+      }),
+    )
     catalogDebugLog("storefrontProductsPage.done", {
       collectionId: filters.collectionId,
       itemCount: items.length,

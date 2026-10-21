@@ -56,17 +56,22 @@ export interface RealtimeInvalidationPayload {
 Plik `realtime-invalidation.publish.server.ts` adresuje hub po nazwie i wywołuje metodę Durable Object bezpośrednio przez powiązanie RPC:
 
 ```ts
-const publishToHub = async (hubName: RealtimeInvalidationHubName, queryKeys: readonly QueryKey[]): Promise<void> => {
-  if (queryKeys.length === 0) {
-    return
-  }
+const notifyHub = async (hubName: RealtimeInvalidationHubName, topicPrefixes: readonly string[], attempt: number): Promise<void> => {
+  try {
+    const hub = env.REALTIME_INVALIDATION_HUB.getByName(hubName)
+    await hub.notifyInvalidation(topicPrefixes)
+  } catch (error) {
+    if (attempt >= NOTIFY_ATTEMPTS) {
+      throw error
+    }
 
-  const hub = env.REALTIME_INVALIDATION_HUB.getByName(hubName)
-  await hub.notifyInvalidation(toSerializedTopicPrefixes(queryKeys))
+    await pause(NOTIFY_BACKOFF_MS * attempt)
+    await notifyHub(hubName, topicPrefixes, attempt + 1)
+  }
 }
 ```
 
-`getByName` oznacza, że istnieją dokładnie dwie instancje obiektu, po jednej na nazwę huba — i to właśnie umożliwia rozsyłanie.
+`getByName` oznacza, że istnieją dokładnie dwie instancje obiektu, po jednej na nazwę huba — i to właśnie umożliwia rozsyłanie. Nieudane wywołanie jest ponawiane przez nowy stub, łącznie trzy próby (`NOTIFY_ATTEMPTS`), po 50, a potem po 100 ms, zanim błąd dotrze do wywołującego.
 
 `publishRealtimeInvalidation({ admin?, storefront? })` publikuje do obu równolegle, a `scheduleRealtimeInvalidation(input)` owija to w `scheduleBackgroundWork`, aby żądanie nie czekało:
 
@@ -84,7 +89,7 @@ Kod serwerowy prawie nigdy nie wywołuje żadnej z tych funkcji bezpośrednio. P
 | `scheduleCategoryCatalogInvalidation()`            | kategorie `ALL`, `STATS`                          | kategorie `ALL`, `BY_HANDLE`, produkty `STOREFRONT_PAGE`                                                             |
 | `scheduleCollectionCatalogInvalidation()`          | kolekcje `ALL`, `STATS`                           | kolekcje `ALL`, `BY_HANDLE`, produkty `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE`                                      |
 | `scheduleContentPageInvalidation()`                | strony treści `ALL`, `BY_HANDLE`                  | strony treści `BY_HANDLE`                                                                                            |
-| `scheduleProductAttributeCatalogInvalidation()`    | atrybuty produktów `ALL`, `STATS`                 | —                                                                                                                    |
+| `scheduleProductAttributeCatalogInvalidation()`    | atrybuty produktów `ALL`, `STATS`                 | produkt `BY_HANDLE`                                                                                                  |
 | `scheduleAdminCustomersInvalidation()`             | użytkownicy `CUSTOMERS`, `CUSTOMERS_PAGE`, `TEAM` | —                                                                                                                    |
 | `scheduleAdminNewsletterSubscribersInvalidation()` | newsletter `ADMIN.PAGE`, `ADMIN.STATS`            | —                                                                                                                    |
 | `scheduleAdminAuditLogInvalidation()`              | dziennik zdarzeń `ADMIN.PAGE`, `ADMIN.STATS`      | —                                                                                                                    |
@@ -98,8 +103,8 @@ Zwróć uwagę, że `scheduleCollectionCatalogInvalidation` unieważnia także s
 
 ### Kto je wywołuje
 
-- **Każda mutacja katalogu.** Wszystkie przypadki użycia `create-`, `update-`, `delete-` i `reorder-` w `src/modules/product/`, `product-category/`, `product-collection/` i `product-attribute/`.
-- **Zamówienie.** `stripe.actions.server.ts` wywołuje `scheduleProductCatalogInvalidation()` przy tworzeniu i aktualizacji sesji, ponieważ rezerwacja towaru zmienia dostępność.
+- **Każda mutacja katalogu.** Wszystkie przypadki użycia `create-`, `update-`, `delete-` i `reorder-` w `src/modules/product/`, `product-category/`, `product-collection/` i `product-attribute/` oraz `set-all-product-attributes.ts` w `attribute-on-product/`.
+- **Zamówienie.** `stripe.actions.server.ts` wywołuje `scheduleProductCatalogInvalidation()` przy tworzeniu i aktualizacji sesji, ponieważ rezerwacja towaru zmienia dostępność, i ponownie, gdy nieudany checkout oddaje zarezerwowany towar; `reserveInventoryForItems` wywołuje go po wycofaniu częściowej rezerwacji.
 - **Realizacja.** `announcePlacedOrder` w `stripe.fulfillment.server.ts` wywołuje `scheduleAdminOrdersInvalidation()` i `scheduleProductCatalogInvalidation()`, gdy opłacona sesja stała się zamówieniem, niezależnie od tego, czy złożył je webhook Stripe, czy strona powrotu z checkoutu.
 - **Webhooki.** `stripe.webhooks.ts` wywołuje `scheduleAdminOrdersInvalidation()` przy zwrocie, nieudanym albo anulowanym zwrocie i sporze, a `scheduleProductCatalogInvalidation()` przy zwolnieniu; `webhooks.inpost.ts` wywołuje `scheduleAdminOrdersInvalidation()` po odczytaniu nowego statusu przesyłki z ShipX. Zwrot pieniędzy nie odświeża katalogu, bo nigdy nie przywraca stanu; robią to `cancelOrder` i `returnOrderToStock`, gdy administrator przywraca produkty zamówienia na stan.
 - **Cofnięcie etapu zamówienia.** `stepBackOrder` wywołuje `scheduleAdminOrdersInvalidation()` zaraz po przeniesieniu zamówienia, więc każda otwarta karta panelu pokazuje wcześniejszy etap bez czekania na wpis audytu.
@@ -138,7 +143,7 @@ export class RealtimeInvalidationHub extends DurableObject<Env> {
 }
 ```
 
-`acceptWebSocket(server, [hubName])` oznacza każde gniazdo nazwą jego huba, a `notifyInvalidation` pobiera tylko gniazda z tą etykietą przez `ctx.getWebSockets(hubName)`, wracając do wszystkich gniazd, gdyby nazwa okazała się nierozpoznana. Wysyłki owinięte są w puste `try`/`catch`, więc jedno martwe gniazdo nie zatrzyma pętli. `webSocketError` zamyka połączenie kodem 1011.
+`acceptWebSocket(server, [hubName])` oznacza każde gniazdo nazwą jego huba, a `notifyInvalidation` pobiera tylko gniazda z tą etykietą przez `ctx.getWebSockets(hubName)`, wracając do wszystkich gniazd, gdyby nazwa okazała się nierozpoznana. Wysyłki owinięte są w puste `try`/`catch`, więc jedno martwe gniazdo nie zatrzyma pętli. `webSocketError` zamyka połączenie kodem 1011. W hubie sklepu `notifyInvalidation` najpierw zapisuje w `ctx.storage.kv` nową wersję katalogu dla [cache'u odczytów sklepu](/docs/architecture/caching-and-ssr#cache-odczytów-sklepu), a `storefrontCacheVersion()` zwraca bieżącą, więc każda ramka, którą dostaje sklep, przychodzi po wersji, którą unieważnia.
 
 Klasa rejestrowana jest w dwóch miejscach. `src/server.ts` eksportuje ją ponownie:
 
@@ -231,7 +236,7 @@ Prefiks publikowany, ale niesubskrybowany jest po cichu ignorowany przez każdeg
 
 ## Testy
 
-Katalog `src/integrations/realtime-invalidation/__test__/` zawiera cztery pliki obejmujące serializację i rozwiązywanie tematów w protokole, adresowanie huba w publikatorze, listy subskrypcji oraz sprawdzenia podniesienia połączenia i autoryzacji w odźwiernym WebSocket. Katalog `src/durable-objects/__test__/` pokrywa sam hub.
+Katalog `src/integrations/realtime-invalidation/__test__/` zawiera cztery pliki obejmujące serializację i rozwiązywanie tematów w protokole, adresowanie huba w publikatorze, listy subskrypcji oraz sprawdzenia podniesienia połączenia i autoryzacji w odźwiernym WebSocket. Katalog `src/durable-objects/__test__/` pokrywa sam hub, a `src/lib/__test__/storefront-cache.mutations.integration.test.ts` sprawdza, że każda zmiana katalogu, stanów, treści, ustawień i dostaw przesuwa wersję katalogu sklepu.
 
 ## Powiązane strony
 

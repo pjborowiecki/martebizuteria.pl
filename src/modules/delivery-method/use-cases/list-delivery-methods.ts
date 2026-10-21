@@ -12,15 +12,19 @@ import { DELIVERY_METHOD_QUERY_KEYS } from "~/src/modules/delivery-method/delive
 import { deliveryMethod } from "~/src/modules/delivery-method/delivery-method.schema"
 import { resolveLocalizedString } from "~/src/modules/product-attribute/product-attribute.utils"
 
+import { readThroughStorefrontCache } from "~/src/lib/storefront-read"
+
 export const listDeliveryMethods = createServerFn({ method: "GET" })
   .middleware([withRequest])
   .handler(async () => {
-    const rows = await db
-      .select({ courier, deliveryMethod })
-      .from(deliveryMethod)
-      .innerJoin(courier, eq(deliveryMethod.courierId, courier.id))
-      .where(offeredDeliveryMethod)
-      .orderBy(...deliveryMethodOrder)
+    const rows = await readThroughStorefrontCache(() =>
+      db
+        .select({ courier, deliveryMethod })
+        .from(deliveryMethod)
+        .innerJoin(courier, eq(deliveryMethod.courierId, courier.id))
+        .where(offeredDeliveryMethod)
+        .orderBy(...deliveryMethodOrder),
+    )
 
     const locale = getCurrentLocale()
 

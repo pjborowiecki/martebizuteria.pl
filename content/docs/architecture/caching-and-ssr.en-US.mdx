@@ -1,6 +1,6 @@
 ---
 title: "Caching and SSR"
-description: "Where data is cached: the per-request query cache, prepared statements, browser storage — and what is deliberately not cached."
+description: "Where data is cached: the per-request query cache, the storefront read cache, prepared statements, browser storage — and what is deliberately not cached."
 ---
 
 ## The query cache
@@ -75,6 +75,45 @@ Whenever the session query's data switches to a different user id, including fro
 
 After a sign-in, `usePostAuthRedirect` removes only the session entry, so the `/auth` guard fetches the fresh session and `clearCacheOnUserChange` forgets what was cached while signed out. Signing out does a full page load, which discards the cache.
 
+## The storefront read cache
+
+A storefront page needs the layout's menu collections, sales status and seller details, then the page's own reads: three to nine D1 statements in up to four round trips one after another, each about 40-70 ms from the Warsaw data centre. On the shop's custom domains, `preview.martebizuteria.pl` and `martebizuteria.pl` once production serves it, the public catalogue reads go through a cache in the Workers Cache API, so a page whose data has not changed since the last visit makes one call to the realtime hub and reads its rows from the data centre's cache. A `*.workers.dev` address, where the Cache API stores nothing, skips the hub and the cache and reads D1.
+
+**What is cached.** The server functions that read the public catalogue run their D1 reads inside `readThroughStorefrontCache` from `src/lib/storefront-read.ts`: `getCollections`, `getCategories`, `getStorefrontCategory`, `getStorefrontCollection`, `getNewArrivals`, `getProduct`, `getRelatedProducts`, `getStorefrontProductsPage`, `getContentPage`, `getSalesStatus`, `getSellerDetails`, `getFreeDelivery` and `listDeliveryMethods`. `cacheStorefrontReads` from `src/lib/storefront-cache.server.ts` wraps the D1 binding in `drizzle.database.ts` and answers a statement from the cache only when all three hold:
+
+- it runs inside `readThroughStorefrontCache`;
+- it is a `select` or a `with` query run with `all`, `first` or `raw`, and outside its string literals it has no `insert`, `update`, `delete`, `replace`, `upsert`, `create`, `drop` or `alter`, no comma between the tables of a `from` and no identifier quoted with backticks or brackets;
+- every table it names is in `PUBLIC_CATALOG_TABLES`: the products, variants, stock, images, options, specifications, categories and collections with the tables that link them, price history, content pages, store settings, delivery methods and couriers. A common table expression the statement defines itself and `json_each` do not count as tables.
+
+The cached unit is one statement's answer exactly as D1 returned it, stored under `https://<host>/__storefront-cache/<BUILD_ID>/<version>/<digest>`, where the digest is a SHA-256 of the method, the SQL, the bound values and the call's arguments. Because the key is the statement itself, two reads never share an answer they should not, and Drizzle maps a cached answer the same way as a fresh one, dates included.
+
+**What is never cached.** Every other statement reads D1: the admin console, which reads the settings through its own `getAdminSalesStatus`, `getAdminSellerDetails` and `getAdminFreeDelivery` so a save always shows the stored value; the account; the cart availability check; creating or updating a Checkout Session, which re-reads prices and stock; the webhooks and the queues; and every write. A statement that touches a table outside the list — sessions, users, carts, wishlists, orders, payments, rate limits or the search index — reads D1 even inside a storefront read, so nothing about one visitor can reach the cache. HTML is not cached either: every page carries its own Content-Security-Policy nonce.
+
+**How it stays fresh.** The storefront `RealtimeInvalidationHub` keeps one value in its storage, the catalogue version, a random UUID. `notifyInvalidation` on the storefront hub writes a new one before it sends the frame, so every change that tells open storefront tabs to refetch also starts a new version, and a tab that refetches because of that frame already reads the new one. A request asks the hub for the version once (`storefrontCacheVersion()` over RPC, kept per `Request` like the session), waits at most 100 ms for it and reads D1 when it does not come, and only looks up keys under it, so the first request after a change misses and reads D1. `publishRealtimeInvalidation` tries each hub up to three times, 50 and 100 ms apart, so one failed call to the hub does not leave the old version in place. Nothing is purged: answers under an old version are never asked for again and age out.
+
+| Change                                                                                                                                                                                 | Publisher that moves the version                                                                           |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| A product created, edited (titles, prices, stock, images, specifications, categories, collections), deleted or reordered                                                               | `scheduleProductCatalogInvalidation`                                                                       |
+| Stock moved by a checkout created or updated, its reservation given back after a failure, a session expired or released, a paid order, a cancelled order or an order returned to stock | `scheduleProductCatalogInvalidation`                                                                       |
+| A category or collection created, edited, deleted or reordered                                                                                                                         | `scheduleCategoryCatalogInvalidation`, `scheduleCollectionCatalogInvalidation`                             |
+| A product's specifications replaced from the product editor (`setAllProductAttributes`)                                                                                                | `scheduleProductCatalogInvalidation`                                                                       |
+| A specification created, edited, deleted or reordered                                                                                                                                  | `scheduleProductAttributeCatalogInvalidation`                                                              |
+| A content page saved, or a legal page dated by a change of the seller's details                                                                                                        | `scheduleContentPageInvalidation`                                                                          |
+| The seller's details, sales paused or resumed, the free delivery threshold                                                                                                             | `scheduleSellerDetailsInvalidation`, `scheduleSalesStatusInvalidation`, `scheduleFreeDeliveryInvalidation` |
+| A delivery method created, edited, archived or reordered                                                                                                                               | `scheduleDeliveryMethodsInvalidation`                                                                      |
+
+Changes only admins see — orders, customers, the team, newsletter subscribers, the audit log — publish to the admin hub alone and keep the version. `src/lib/__test__/storefront-cache.mutations.integration.test.ts` runs every use case above against a real database and the real hub class and checks that the version moved.
+
+The publish runs in `waitUntil` right after the change is written, so the delay between a save and the storefront showing it is that one call to the hub, a few milliseconds; a request already under way may still finish with the earlier answers.
+
+**Limits.**
+
+- Answers are stored with `Cache-Control: public, max-age=600`. A change made outside the application, such as a SQL statement run in the Cloudflare dashboard, shows within ten minutes, or at once after any storefront-visible save in the admin console.
+- Each build has its own `import.meta.env.BUILD_ID`, set in `vite.config.ts`, so a deploy and the migrations it applies start from an empty cache.
+- The Cache API is local to each Cloudflare data centre and drops what nobody asks for; a miss reads D1.
+- `bun run dev` writes the preview database but has a hub of its own, so a change saved there reaches the preview deployment's cache with the deployment's next change or within ten minutes.
+- When the hub cannot be reached or does not answer within 100 ms, the cache cannot be opened or an answer cannot be read, the statement reads D1 and the error is logged with `[Storefront Cache]`; a failed write is logged as `[Background Work Failed]` and the answer is still returned (see [Monitoring and alerts](/docs/guides/monitoring-and-alerts)).
+
 ## Prepared statements
 
 Point reads are prepared once at module load, outside any request, and executed with bound parameters:
@@ -94,7 +133,7 @@ export const getProductImagesQuery = db.query.productImage
 
 Nothing in `vite.config.ts` enables TanStack Start's prerendering, and there is no `prerender` option on any route. Every HTML response is server-rendered per request. Consequences worth knowing:
 
-- Storefront pages reflect the catalog at request time with no purge step.
+- Storefront pages reflect the catalog at request time with no purge step: their public reads go through the [storefront read cache](#the-storefront-read-cache), which a change replaces by moving the catalogue version.
 - There is no static-asset fallback in front of the application; `ASSETS` serves only the client build. `wrangler.jsonc` names `./public`, and the build writes `dist/server/wrangler.json` with `dist/client`, the hashed bundles under `assets/` plus the files copied from `public/`, which `scripts/verify-build.ts` checks.
 - Cache-control on HTML is left to the platform default, so there is nothing to invalidate when a product changes.
 

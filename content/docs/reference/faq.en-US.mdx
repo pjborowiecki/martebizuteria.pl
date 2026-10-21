@@ -81,7 +81,7 @@ The person creates an account in the shop and confirms their e-mail address. The
 
 ## How does a change in one browser tab reach another admin's screen?
 
-Through the `RealtimeInvalidationHub` Durable Object. A mutation calls a `schedule*Invalidation` helper, the Worker invokes `hub.notifyInvalidation(prefixes)` as a native RPC method, and the hub broadcasts to every socket in that audience. Tabs subscribe to a fixed prefix list — 23 for admin, 15 for storefront, 3 for the checkout — and discard messages that do not overlap.
+Through the `RealtimeInvalidationHub` Durable Object. A mutation calls a `schedule*Invalidation` helper, the Worker invokes `hub.notifyInvalidation(prefixes)` as a native RPC method, and the hub broadcasts to every socket in that audience; the storefront hub first starts a new version of the [storefront read cache](/docs/architecture/caching-and-ssr#the-storefront-read-cache). Tabs subscribe to a fixed prefix list — 23 for admin, 15 for storefront, 3 for the checkout — and discard messages that do not overlap.
 
 ## How do I preview a transactional email?
 

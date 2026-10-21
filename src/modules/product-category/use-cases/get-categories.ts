@@ -8,14 +8,18 @@ import { CATEGORY_QUERY_KEYS, CATEGORY_QUERY_STALE_MS } from "~/src/modules/prod
 import { withActiveSortedChildren } from "~/src/modules/product-category/product-category.utils"
 import { getPublishedProductCountsByRootCategory } from "~/src/modules/product/product.accessors"
 
+import { readThroughStorefrontCache } from "~/src/lib/storefront-read"
+
 export const getCategories = createServerFn({ method: "GET" })
   .middleware([withRequest])
-  .handler(async () => {
-    const [roots, counts] = await Promise.all([getStorefrontRootCategoriesQuery.execute(), getPublishedProductCountsByRootCategory()])
-    const countsById = new Map(counts.map((row) => [row.categoryId, row.count]))
+  .handler(() =>
+    readThroughStorefrontCache(async () => {
+      const [roots, counts] = await Promise.all([getStorefrontRootCategoriesQuery.execute(), getPublishedProductCountsByRootCategory()])
+      const countsById = new Map(counts.map((row) => [row.categoryId, row.count]))
 
-    return roots.map((root) => Object.assign(withActiveSortedChildren(root), { productCount: countsById.get(root.id) ?? 0 }))
-  })
+      return roots.map((root) => Object.assign(withActiveSortedChildren(root), { productCount: countsById.get(root.id) ?? 0 }))
+    }),
+  )
 
 export const getCategoriesQuery = () =>
   queryOptions({

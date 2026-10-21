@@ -11,7 +11,10 @@ const accessors = vi.hoisted(() => ({
   reserveInventoryRows: vi.fn<(items: readonly { inventoryId: string }[]) => Promise<ReadonlySet<string>>>(),
 }))
 
+const publishers = vi.hoisted(() => ({ scheduleProductCatalogInvalidation: vi.fn<() => void>() }))
+
 vi.mock("~/src/modules/inventory/inventory.accessors", () => accessors)
+vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => publishers)
 
 const item = (inventoryId: string, title: string, qty = 1): ReserveInventoryItem => ({ inventoryId, qty, title })
 
@@ -36,6 +39,18 @@ describe("reserveInventoryForItems", () => {
 
     expect(accessors.reserveInventoryRows).toHaveBeenCalledExactlyOnceWith([item("inv-a", "Ring"), item("inv-b", "Bracelet")])
     expect(accessors.releaseInventoryForItems).not.toHaveBeenCalled()
+    expect(publishers.scheduleProductCatalogInvalidation).not.toHaveBeenCalled()
+  })
+
+  it("refreshes the storefront's stock after rolling back a partial reservation", async () => {
+    reserveAllBut("inv-b")
+
+    await expect(reserveInventoryForItems([item("inv-a", "Ring"), item("inv-b", "Bracelet")])).rejects.toMatchObject(OUT_OF_STOCK)
+
+    expect(publishers.scheduleProductCatalogInvalidation).toHaveBeenCalledOnce()
+    expect(accessors.releaseInventoryForItems.mock.invocationCallOrder[0]).toBeLessThan(
+      publishers.scheduleProductCatalogInvalidation.mock.invocationCallOrder[0] ?? 0,
+    )
   })
 
   it("asks for the quantity of every line on the same stock row at once", async () => {

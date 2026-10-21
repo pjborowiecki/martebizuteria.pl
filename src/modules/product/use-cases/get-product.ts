@@ -13,21 +13,25 @@ import { PRODUCT_QUERY_KEYS } from "~/src/modules/product/product.constants"
 import { mapPublishedProductForStorefront } from "~/src/modules/product/product.utils"
 import { productZodSchemas } from "~/src/modules/product/product.zod"
 
+import { readThroughStorefrontCache } from "~/src/lib/storefront-read"
+
 export const getProduct = createServerFn({ method: "GET" })
   .middleware([withRequest])
   .validator((input: zod.input<typeof productZodSchemas.productByHandleInput>) => productZodSchemas.productByHandleInput.parse(input))
-  .handler(async ({ data }) => {
-    const { handle } = data
-    const locale = data.locale ?? I18N.DEFAULT_LOCALE
+  .handler(({ data }) =>
+    readThroughStorefrontCache(async () => {
+      const { handle } = data
+      const locale = data.locale ?? I18N.DEFAULT_LOCALE
 
-    const prod = await getPublishedProductByHandleQuery.execute({ handle })
+      const prod = await getPublishedProductByHandleQuery.execute({ handle })
 
-    if (prod === undefined || !isProductInStock(prod.variants)) {
-      return false
-    }
+      if (prod === undefined || !isProductInStock(prod.variants)) {
+        return false
+      }
 
-    return attachPriceReductions(mapPublishedProductForStorefront(prod, locale), await getPriceReductions(prod.variants))
-  })
+      return attachPriceReductions(mapPublishedProductForStorefront(prod, locale), await getPriceReductions(prod.variants))
+    }),
+  )
 
 export const getProductQuery = (handle: string, locale: string = I18N.DEFAULT_LOCALE) =>
   queryOptions({

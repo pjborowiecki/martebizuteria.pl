@@ -16,10 +16,29 @@ import { drizzle } from "drizzle-orm/d1"
 
 import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas"
 
-export const db = drizzle(env.DB, { schema })
+import { timeD1Statements } from "~/src/lib/server-timing"
+import { cacheStorefrontReads } from "~/src/lib/storefront-cache.server"
+
+const instrumentedBinding = (): D1Database => cacheStorefrontReads(timeD1Statements(env.DB))
+
+class DeferredD1Database implements D1Database {
+  batch = <TResult = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<TResult>[]> =>
+    instrumentedBinding().batch<TResult>(statements)
+
+  dump = (): Promise<ArrayBuffer> => Promise.reject(new Error("D1 dump only applies to alpha databases"))
+
+  exec = (query: string): Promise<D1ExecResult> => instrumentedBinding().exec(query)
+
+  prepare = (query: string): D1PreparedStatement => instrumentedBinding().prepare(query)
+
+  withSession = (constraintOrBookmark?: Parameters<D1Database["withSession"]>[0]): D1DatabaseSession =>
+    instrumentedBinding().withSession(constraintOrBookmark)
+}
+
+export const db = drizzle(new DeferredD1Database(), { schema })
 ```
 
-That is the whole of `drizzle.database.ts`. The `server-only` import makes any client-side import a build error. `env.DB` is the D1 binding declared per environment in `wrangler.jsonc`. Because the schema is passed in, `db.query.<table>` relational queries work everywhere.
+That is the whole of `drizzle.database.ts`. The `server-only` import makes any client-side import a build error. `env.DB` is the D1 binding declared per environment in `wrangler.jsonc`. `timeD1Statements` from `src/lib/server-timing.ts` wraps it and adds the time of every statement and batch to the `d1` entry of a page load's `Server-Timing` header (see [Request timings](/docs/guides/monitoring-and-alerts#request-timings)); it changes nothing about the statement itself. `cacheStorefrontReads` from `src/lib/storefront-cache.server.ts` wraps that, and answers a public catalogue read made inside `readThroughStorefrontCache` from the storefront read cache instead of D1 (see [Caching and SSR](/docs/architecture/caching-and-ssr#the-storefront-read-cache)); every other statement passes straight through. drizzle receives a `DeferredD1Database`, whose methods wrap `env.DB` on every call: while Cloudflare validates an upload the binding is not yet an object, so wrapping it when the module loads would fail the deploy. Because the schema is passed in, `db.query.<table>` relational queries work everywhere.
 
 ## Where schemas actually live
 

@@ -8,7 +8,7 @@ const { assetsFetch } = vi.hoisted(() => ({
   assetsFetch: vi.fn<(input: URL) => Promise<Response>>(),
 }))
 
-vi.mock("cloudflare:workers", () => ({ env: { ASSETS: { fetch: assetsFetch } } }))
+vi.mock("cloudflare:workers", () => ({ env: { ASSETS: { fetch: assetsFetch }, DB: {} } }))
 
 const { loadWithdrawalFormAttachment } = await import("~/src/modules/order-withdrawal/use-cases/load-withdrawal-form-attachment.server")
 

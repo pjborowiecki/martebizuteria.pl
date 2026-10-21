@@ -1,4 +1,4 @@
-import handler from "@tanstack/react-start/server-entry"
+import { createStartHandler, defaultStreamHandler } from "@tanstack/react-start/server"
 
 import { REALTIME_INVALIDATION_HUB } from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
 import { handleRealtimeInvalidationWebSocket } from "~/src/integrations/realtime-invalidation/realtime-invalidation.ws.server"
@@ -13,6 +13,7 @@ import { executionContextStorage } from "~/src/lib/background"
 import { serializeCookie } from "~/src/lib/cookie"
 import { createContentSecurityPolicyNonce, withSecurityHeaders } from "~/src/lib/security-headers"
 import { generateRobotsTxt, generateSitemapXml } from "~/src/lib/seo"
+import { collectServerTimings, formatServerTimingHeader, timeServerWork } from "~/src/lib/server-timing"
 
 import { ROUTES } from "~/src/routes"
 
@@ -58,6 +59,23 @@ declare module "@tanstack/react-start" {
   }
 }
 
+const renderPage = createStartHandler((page) => timeServerWork("render", () => Promise.resolve(defaultStreamHandler(page))))
+
+const isHtml = (response: Response): boolean => response.headers.get("Content-Type")?.startsWith("text/html") === true
+
+const isPageLoad = (request: Request, response: Response): boolean => {
+  if (request.method !== "GET") {
+    return false
+  }
+
+  const { pathname } = new URL(request.url)
+  if (pathname.startsWith("/api/")) {
+    return false
+  }
+
+  return isHtml(response)
+}
+
 const keepOnlyEntryModulePreload = (page: Response): Response => {
   let entryKept = false
 
@@ -96,14 +114,14 @@ const respond = async (request: Request, context: RequestContext): Promise<Respo
       waitUntil: context.waitUntil,
     },
     () =>
-      handler.fetch(request, {
+      renderPage(request, {
         context,
         responseLinkHeader: {
           filter: ({ hint }) => hint.as === "style" || hint.as === "font",
         },
       }),
   )
-  const response = rendered.headers.get("Content-Type")?.startsWith("text/html") === true ? keepOnlyEntryModulePreload(rendered) : rendered
+  const response = isHtml(rendered) ? keepOnlyEntryModulePreload(rendered) : rendered
 
   if (!setCookie) {
     return response
@@ -141,7 +159,17 @@ const server: ExportedHandler<Env, WorkerQueueMessage> = {
       waitUntil: ctx.waitUntil.bind(ctx),
     }
 
-    return withSecurityHeaders(await respond(request, context), { appEnv: env.APP_ENV, nonce, protocol })
+    const startedAt = performance.now()
+    const { result, timings } = await collectServerTimings(() => respond(request, context))
+    const response = withSecurityHeaders(result, { appEnv: env.APP_ENV, nonce, protocol })
+    if (!isPageLoad(request, response)) {
+      return response
+    }
+
+    const requestDuration = performance.now() - startedAt
+    response.headers.set("Server-Timing", formatServerTimingHeader(timings, requestDuration))
+
+    return response
   },
   async queue(batch: MessageBatch<WorkerQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
     if (isNewsletterQueueBatch(batch)) {
