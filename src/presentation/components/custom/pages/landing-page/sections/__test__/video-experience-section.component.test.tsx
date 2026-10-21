@@ -118,12 +118,12 @@ describe("VideoExperienceSection", () => {
     expect(screen.getByText(/Some stories deserve their own shape/u)).toBeInTheDocument()
   })
 
-  it("downloads nothing of the ambience video while the page loads", () => {
+  it("downloads the ambience video with the page but plays nothing until it is on screen", () => {
     renderWithProviders(<VideoExperienceSection />)
 
     const video = ambienceVideo()
 
-    expect(video).toHaveAttribute("preload", "none")
+    expect(video).toHaveAttribute("preload", "auto")
     expect(video).not.toHaveAttribute("autoplay")
     expect(video).not.toHaveAttribute("poster")
     expect(media.play).not.toHaveBeenCalled()

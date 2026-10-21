@@ -78,7 +78,7 @@ export const VideoExperienceSection = (): JSX.Element => {
             setIsPlaying(true)
           }}
           playsInline
-          preload="none"
+          preload="auto"
           src={LANDING_VIDEO_SRC}
           width={VIDEO_WIDTH}
         />

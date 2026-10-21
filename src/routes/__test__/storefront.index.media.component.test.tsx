@@ -114,10 +114,10 @@ describe("landing page media in the server-rendered html", () => {
     }
   })
 
-  it("ships the ambience video without autoplay and without downloading it", () => {
+  it("ships the ambience video without autoplay, downloading it with the page", () => {
     const [video] = tagsNamed(renderLandingPage(), /<video [^>]*>/gu)
 
-    expect(video).toContain('preload="none"')
+    expect(video).toContain('preload="auto"')
     expect(video).not.toContain("autoPlay")
     expect(video).not.toContain("poster")
   })
