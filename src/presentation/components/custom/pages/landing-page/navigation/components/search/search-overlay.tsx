@@ -42,7 +42,7 @@ export const SearchOverlay = (): JSX.Element => {
       ref={overlayRef}
       aria-label={t("search")}
       aria-modal="true"
-      className="fixed inset-0 z-300 m-0 h-dvh max-h-none w-screen max-w-none flex-col border-none bg-background/98 p-0 text-foreground backdrop-blur-xl open:flex"
+      className="fixed inset-0 z-300 m-0 h-dvh max-h-none w-screen max-w-none flex-col overflow-hidden border-none bg-background/98 p-0 text-foreground backdrop-blur-xl open:flex"
       onCancel={handleCancel}
       style={OVERLAY_STYLE}
     >

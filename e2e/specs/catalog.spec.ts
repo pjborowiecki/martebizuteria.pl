@@ -98,6 +98,30 @@ test.describe("catalog", () => {
     expect(await pageWasBlankedOrReloaded(page)).toBe(false)
   })
 
+  test("opens the search without a scrollbar on the overlay while it settles", async ({ page, productPage }) => {
+    await productPage.open("/en-US")
+    await page.evaluate(() => {
+      const scrollbars: boolean[] = []
+      Object.assign(window, { searchOverlayScrollbars: scrollbars })
+      const sample = () => {
+        const dialog = document.querySelector("dialog[open]")
+        if (dialog !== null) {
+          const scrollable = ["auto", "scroll"].includes(getComputedStyle(dialog).overflowY)
+          scrollbars.push(scrollable && dialog.scrollHeight > dialog.clientHeight)
+        }
+        requestAnimationFrame(sample)
+      }
+      requestAnimationFrame(sample)
+    })
+
+    await page.getByRole("banner").getByRole("button", { name: "Search" }).click()
+    await expect.poll(() => page.locator(".search-content").evaluate((content) => getComputedStyle(content).opacity)).toBe("1")
+
+    const scrollbars = await page.evaluate(() => (window as Window & { searchOverlayScrollbars?: boolean[] }).searchOverlayScrollbars ?? [])
+    expect(scrollbars.length).toBeGreaterThan(0)
+    expect(scrollbars).not.toContain(true)
+  })
+
   test("search finds a necklace by name and opens it", async ({ page, productPage }) => {
     await productPage.open("/en-US")
     await page.getByRole("banner").getByRole("button", { name: "Search" }).click()
