@@ -90,10 +90,24 @@ describe("the account a fulfilled order belongs to", () => {
     expect(readOrderUserId(await fulfillCheckout(paidSession))).toBeNull()
   })
 
-  it("keeps the signed-in shopper's own account on the order", async () => {
+  it("files the order under the verified account that owns its email even when another account was signed in at checkout", async () => {
     openCheckout("anna@example.com")
     sqlite.exec(`update checkout set user_id = 'user-jan' where id = 'checkout-paid'`)
 
+    expect(readOrderUserId(await fulfillCheckout(paidSession))).toBe("user-anna")
+  })
+
+  it("keeps the signed-in shopper's account on an order whose email no verified account owns", async () => {
+    openCheckout("ewa@example.com")
+    sqlite.exec(`update checkout set user_id = 'user-jan' where id = 'checkout-paid'`)
+
     expect(readOrderUserId(await fulfillCheckout(paidSession))).toBe("user-jan")
+  })
+
+  it("keeps the signed-in shopper's account on an order placed with their own email", async () => {
+    openCheckout("Anna@example.com")
+    sqlite.exec(`update checkout set user_id = 'user-anna' where id = 'checkout-paid'`)
+
+    expect(readOrderUserId(await fulfillCheckout(paidSession))).toBe("user-anna")
   })
 })
