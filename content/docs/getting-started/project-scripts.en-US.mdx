@@ -142,7 +142,7 @@ That is `vp staged`, and `vite.config.ts` defines what staged means:
 staged: { "*": ["vp check --fix"] },
 ```
 
-So every commit formats, lints and type checks the staged files, fixing what it can. `bun run check:staged` and `bun run lint:staged` are the same thing with `--no-fmt`, for when you want the checks without reformatting.
+So every commit formats, lints and type checks the staged files, fixing what it can.
 
 `.vite-hooks/prepare-commit-msg` runs `scripts/commit-msg.ts`, which enforces a conventional subject and prefixes it with an emoji. The accepted types are `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style` and `test`; anything else exits non-zero with the list. Merge, revert, fixup and squash subjects are passed through untouched.
 

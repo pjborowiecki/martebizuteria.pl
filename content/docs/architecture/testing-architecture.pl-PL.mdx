@@ -134,7 +134,6 @@ Zadanie `e2e` tego samego przepływu uruchamia zestaw Playwrighta w Chromium prz
 ```sh
 bun run check        # vp check: formatowanie, lint, sprawdzenie typów
 bun run check:fix    # to samo, z automatycznymi poprawkami
-bun run check:staged # vp staged --no-fmt
 ```
 
 Przy każdym commicie działają dwa hooki Gita z `.vite-hooks/`; `bun install` instaluje je przez skrypt `prepare`, `vp config --no-agent`. `pre-commit` uruchamia `bun run check:pre-commit`, czyli `vp staged`: blok `staged` w `vite.config.ts` uruchamia `vp check --fix` na plikach w poczekalni. `prepare-commit-msg` uruchamia `bun scripts/commit-msg.ts`, który odrzuca temat niezgodny z `type(scope): description` z jednym z jego jedenastu typów i poprzedza temat emoji typu; zobacz [Konwencjonalne commity](/docs/tooling/conventional-commits).

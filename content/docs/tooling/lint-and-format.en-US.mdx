@@ -166,8 +166,6 @@ vp fmt src/modules/order/use-cases/cancel-order.ts
 vp lint --fix src/modules/order/use-cases/cancel-order.ts
 ```
 
-> `bun run check:staged` and `bun run lint:staged` are both `vp staged --no-fmt`, but `--no-fmt` is not an option of `vp staged` (it belongs to `vp check`). Running either script fails immediately with `error: unexpected argument '--no-fmt' found`. Use `bun run check:pre-commit`, which is plain `vp staged`.
-
 ## Related pages
 
 - [Vite+](/docs/tooling/vite-plus)

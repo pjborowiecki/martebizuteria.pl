@@ -1,6 +1,6 @@
 ---
 title: "Dostarczanie zdjęć"
-description: "Którego bucketu R2 używa każde środowisko, jak sklep zmniejsza zdjęcia katalogu przez Cloudflare Image Transformations na własnej domenie bucketu, oraz jednorazowa konfiguracja: bucket preview, skopiowanie zdjęć, własna domena, ustawienie strefy i VITE_R2_URL."
+description: "Którego bucketu R2 używa każde środowisko, dlaczego zdjęcia katalogu są serwowane w oryginale z adresu r2.dev bucketu, oraz jednorazowa konfiguracja: bucket preview, skopiowanie zdjęć i VITE_R2_URL, a jako alternatywa zmniejszanie przez Cloudflare Image Transformations na własnej domenie."
 ---
 
 Zdjęcia produktów, kolekcji, kategorii i materiały marketingowe leżą w R2 i trafiają do przeglądarki przez publiczny adres bazowy z `VITE_R2_URL`. Gdy ten adres to własna domena w strefie Cloudflare sklepu, sklep prosi Cloudflare Image Transformations o każde zdjęcie w rozmiarze, w jakim jest wyświetlane. Gdy to wciąż adres `r2.dev`, zdjęcia serwowane są tak, jak je wysłano, w pełnym rozmiarze, bo `r2.dev` nie potrafi przekształcać obrazów. W obu przypadkach działają.

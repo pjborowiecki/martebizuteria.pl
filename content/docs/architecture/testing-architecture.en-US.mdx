@@ -134,7 +134,6 @@ The same workflow's `e2e` job runs the Playwright suite on Chromium through `e2e
 ```sh
 bun run check        # vp check: format, lint, type check
 bun run check:fix    # the same, applying fixes
-bun run check:staged # vp staged --no-fmt
 ```
 
 Two Git hooks in `.vite-hooks/` run on every commit; `bun install` sets them up through the `prepare` script, `vp config --no-agent`. `pre-commit` runs `bun run check:pre-commit`, which is `vp staged`: the `staged` block in `vite.config.ts` runs `vp check --fix` on the staged files. `prepare-commit-msg` runs `bun scripts/commit-msg.ts`, which rejects a subject that does not follow `type(scope): description` with one of its eleven types and prefixes the subject with the type's emoji; see [Conventional commits](/docs/tooling/conventional-commits).
