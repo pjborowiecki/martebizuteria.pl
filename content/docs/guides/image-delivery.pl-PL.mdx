@@ -9,12 +9,12 @@ Zdjęcia produktów, kolekcji, kategorii i materiały marketingowe leżą w R2 i
 
 ## Buckety i adresy bazowe w środowiskach
 
-| Środowisko    | Bucket `IMAGES` w `wrangler.jsonc` | `VITE_R2_URL`                                                        |
-| ------------- | ---------------------------------- | -------------------------------------------------------------------- |
-| `development` | `martebizuteria-preview`, zdalny   | Publiczny adres bucketu preview, w `.env.development`                |
-| `preview`     | `martebizuteria-preview`, zdalny   | Publiczny adres bucketu preview, w `.env.preview` i w GitHubie       |
-| `test`        | `martebizuteria-test`, lokalny     | `https://images.example.test`, w `.env.test`                         |
-| `production`  | `martebizuteria`, zdalny           | `https://images.martebizuteria.pl`, w `.env.production` i w GitHubie |
+| Środowisko    | Bucket `IMAGES` w `wrangler.jsonc` | `VITE_R2_URL`                                                             |
+| ------------- | ---------------------------------- | ------------------------------------------------------------------------- |
+| `development` | `martebizuteria-preview`, zdalny   | `https://images-preview.martebizuteria.pl`, w `.env.development`          |
+| `preview`     | `martebizuteria-preview`, zdalny   | `https://images-preview.martebizuteria.pl`, w `.env.preview` i w GitHubie |
+| `test`        | `martebizuteria-test`, lokalny     | `https://images.example.test`, w `.env.test`                              |
+| `production`  | `martebizuteria`, zdalny           | `https://images.martebizuteria.pl`, w `.env.production` i w GitHubie      |
 
 `development` i `preview` dzielą bucket z tego samego powodu, z którego dzielą bazę D1: wiersze zapisane przez serwer deweloperski to te same wiersze, które serwuje preview, a zdjęcie, na które wskazuje wiersz, musi leżeć w buckecie czytanym przez oba. Produkcja zatrzymuje `martebizuteria` dla siebie, a `scripts/verify-bindings.ts production` odrzuca konfigurację, w której produkcyjny bucket `IMAGES` jest bucketem preview:
 
@@ -61,15 +61,15 @@ Stripe nie dostaje zdjęć: pozycje sesji Checkout niosą tylko nazwę i kwotę.
 
 Wykonaj kroki w tej kolejności. Kroki 1–3 rozdzielają development i preview od produkcji i są potrzebne przed następnym `bun run dev` albo wdrożeniem preview; kroki 4–7 przenoszą produkcję na własną domenę i mogą przyjść później, bo produkcja działa na `r2.dev` aż do kroku 7.
 
-### 1. Utwórz bucket preview i nadaj mu publiczny adres
+### 1. Utwórz bucket preview i nadaj mu domenę
 
 ```sh
 bunx wrangler login
 bunx wrangler r2 bucket create martebizuteria-preview
-bunx wrangler r2 bucket dev-url enable martebizuteria-preview
+bunx wrangler r2 bucket domain add martebizuteria-preview --domain images-preview.martebizuteria.pl --zone-id <ZONE_ID> --min-tls 1.2
 ```
 
-Ostatnia komenda wypisuje publiczny adres bucketu, `https://pub-<id>.r2.dev`; `bunx wrangler r2 bucket dev-url get martebizuteria-preview` wypisuje go ponownie. W panelu ten sam przełącznik to **R2 object storage**, `martebizuteria-preview`, **Settings**, **Public Development URL**, **Enable**. Adres `r2.dev` ma limit żądań i służy do prac deweloperskich, co wystarcza na ruch preview.
+W panelu domenę dodaje się w **R2 object storage**, `martebizuteria-preview`, **Settings**, **Custom Domains**, **Add**, z **Minimum TLS version** 1.2. `images-preview.martebizuteria.pl` należy do strefy `martebizuteria.pl`, więc obrazy preview przechodzą przez te same Image Transformations co produkcja (krok 5), a strony preview dostają zmniejszone obrazy tak jak sklep.
 
 ### 2. Skopiuj do niego zdjęcia
 
@@ -102,7 +102,7 @@ Kopiowanie tylko czyta z `martebizuteria`, więc produkcja pozostaje nietknięta
 
 ### 3. Skieruj na niego development i preview
 
-Ustaw `VITE_R2_URL` na adres z kroku 1 w `.env.development` i `.env.preview` oraz jako zmienną środowiska GitHub `preview` (**Settings**, **Environments**, `preview`, **Environment variables**). Zmienna środowiska ma pierwszeństwo przed zmienną repozytorium o tej samej nazwie, a workflow preview działa w tym środowisku. Potem uruchom ponownie `bun run dev` i wdroż preview; wdrożenie wysyła wartość jako sekret Workera i wpisuje ją do paczki.
+Ustaw `VITE_R2_URL` na `https://images-preview.martebizuteria.pl` w `.env.development` i `.env.preview` oraz jako zmienną środowiska GitHub `preview` (**Settings**, **Environments**, `preview`, **Environment variables**). Zmienna środowiska ma pierwszeństwo przed zmienną repozytorium o tej samej nazwie, a workflow preview działa w tym środowisku. Potem uruchom ponownie `bun run dev` i wdroż preview; wdrożenie wysyła wartość jako sekret Workera i wpisuje ją do paczki.
 
 ### 4. Podłącz własną domenę do produkcyjnego bucketu
 
