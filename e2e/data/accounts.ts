@@ -8,4 +8,4 @@ export const TEST_ACCOUNTS = {
   customer: { email: "customer@marte.example.test", id: "e2e-customer", name: "Celina Klientka", role: "customer" },
 } as const
 
-export const ORDER_NOTIFICATION_INBOX = "noreply@example.test"
+export const ORDER_NOTIFICATION_INBOX = "kontakt@martebizuteria.pl"

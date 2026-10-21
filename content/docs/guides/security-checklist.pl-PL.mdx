@@ -81,7 +81,7 @@ Ustawiane w `src/integrations/better-auth/auth.server.ts`. Zachowaj je, jeśli z
 - [ ] Zdarzenie testowe, którego obiekt wskazuje w `metadata.deployment` inne wdrożenie niż ten Worker, jest logowane i potwierdzane tak samo. `createStripeSession` stempluje `stripeDeploymentOf(env.APP_ENV)` (`src/integrations/stripe/stripe.deployment.ts`: `martebizuteria-preview` dla developmentu i preview, `martebizuteria-test` dla buildu testowego, `martebizuteria` dla produkcji) na każdej sesji Checkout i jej payment intencie, więc checkout otwarty przez inne wdrożenie na tym samym testowym koncie Stripe nigdy nie jest tu obsługiwany. Obiekt bez tego pola trafia dalej do handlerów. Zobacz [Płatności: Punkt końcowy webhooka](/docs/features/payments#punkt-końcowy-webhooka).
 - [ ] Nieobsługiwany `event.type` jest potwierdzany przez `{ received: true }`, a nie błędem — żeby Stripe nie ponawiał w nieskończoność.
 - [ ] Handler, który rzuci wyjątek, zwraca 500, więc Stripe **ponawia**. Oznacza to, że każdy handler w `src/integrations/stripe/stripe.webhooks.ts` musi być idempotentny — `20260924120000_checkout_idempotency_constraints.sql` istnieje dokładnie z tego powodu.
-- [ ] Alert o błędzie na `RESEND_EMAIL_FROM` idzie przez `sendIncidentAlert`, które nigdy nie rzuca wyjątku, i trafia do `scheduleBackgroundWork`, więc nie może zmienić ani opóźnić odpowiedzi 500.
+- [ ] Alert o błędzie do sklepu idzie przez `sendIncidentAlert`, które nigdy nie rzuca wyjątku, i trafia do `scheduleBackgroundWork`, więc nie może zmienić ani opóźnić odpowiedzi 500.
 
 `src/routes/api/webhooks.inpost.ts`:
 

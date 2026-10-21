@@ -20,7 +20,7 @@ vi.mock("resend", () => ({
 
 import { TEST_SELLER_DETAILS, TEST_STORED_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
 
-import { SEND_EMAIL_TIMEOUT_MS, sendEmail } from "~/src/integrations/resend/resend.send"
+import { SEND_EMAIL_TIMEOUT_MS, sendEmail, shopNotificationAddress } from "~/src/integrations/resend/resend.send"
 
 import { APP_NAME } from "~/src/presentation/branding/app"
 
@@ -151,6 +151,24 @@ describe("sendEmail", () => {
     emailsSend.mockRejectedValueOnce("socket closed")
 
     await expect(sendEmail({ react: body, subject: "Order shipped", to: "anna@example.com" })).resolves.toBe("socket closed")
+  })
+})
+
+describe("shopNotificationAddress", () => {
+  it("is the contact e-mail the owner saved in Settings", async () => {
+    readSellerDetails.mockResolvedValueOnce({ ...TEST_STORED_SELLER_DETAILS, email: "kontakt@marte.test" })
+
+    await expect(shopNotificationAddress()).resolves.toBe("kontakt@marte.test")
+  })
+
+  it("falls back to the sending address, with a note in the log, when the seller's details cannot be read", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+    readSellerDetails.mockRejectedValueOnce(new Error("D1 is unavailable"))
+
+    await expect(shopNotificationAddress()).resolves.toBe("atelier@marte.test")
+
+    expect(consoleError).toHaveBeenCalledOnce()
+    consoleError.mockRestore()
   })
 })
 

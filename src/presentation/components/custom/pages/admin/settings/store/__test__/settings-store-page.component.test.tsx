@@ -105,12 +105,12 @@ describe("SettingsStorePage", () => {
     expect(screen.getByLabelText("Contact phone")).toHaveValue(SELLER.phone)
   })
 
-  it("explains that customers see the contact email and reply to it, and names the address the shop's emails are actually sent from", () => {
+  it("explains that the shop's notices arrive at the contact email, customers see it and reply to it, and names the address the shop's emails are actually sent from", () => {
     renderCard()
 
     expect(
       screen.getByRole("button", {
-        name: /^Customers see this address on the site and in the shop's emails, and their replies come here\. The emails themselves are sent from the shop's sending address, hello@pjborowiecki\.com, which this field does not change\./u,
+        name: /^The shop's notices arrive at this address: new orders, withdrawals and alerts\. Customers see it on the site and in the shop's emails, and their replies come here too\. A change applies at once\. The emails themselves are sent from hello@pjborowiecki\.com\./u,
       }),
     ).toBeInTheDocument()
   })

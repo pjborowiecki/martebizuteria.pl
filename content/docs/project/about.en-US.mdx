@@ -108,7 +108,7 @@ Catalog (products, variants, options, attributes, categories, collections, searc
 
 ### Absent
 
-Pull requests never load Stripe.js: payments by card, BLIK and Przelewy24 in Stripe's real Payment Element are exercised only by the `stripe-test-mode` project, which the **E2E (full)** workflow runs against a Stripe sandbox on every push to `main`, weekly and by hand. No reconciliation job: the only Cron Trigger runs the [retention clean-up](/docs/guides/data-retention), which releases no stock. An audit entry that still cannot be written after the dead-letter queue retries it on its own is dropped, although the failures email `RESEND_EMAIL_FROM`. No third-party error reporting service: failures go to Workers Logs and Issues, and the ones the owner must act on to `RESEND_EMAIL_FROM`; see [Monitoring and alerts](/docs/guides/monitoring-and-alerts).
+Pull requests never load Stripe.js: payments by card, BLIK and Przelewy24 in Stripe's real Payment Element are exercised only by the `stripe-test-mode` project, which the **E2E (full)** workflow runs against a Stripe sandbox on every push to `main`, weekly and by hand. No reconciliation job: the only Cron Trigger runs the [retention clean-up](/docs/guides/data-retention), which releases no stock. An audit entry that still cannot be written after the dead-letter queue retries it on its own is dropped, although the failures email the shop an alert. No third-party error reporting service: failures go to Workers Logs and Issues, and the ones the owner must act on to the shop's contact e-mail; see [Monitoring and alerts](/docs/guides/monitoring-and-alerts).
 
 [Roadmap](/docs/project/roadmap) lists these in the order they are worth fixing.
 

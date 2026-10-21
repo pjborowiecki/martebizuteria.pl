@@ -127,7 +127,7 @@
       "nip": "NIP",
       "regon": "REGON",
       "email": "E-mail kontaktowy",
-      "emailHint": "Klienci widzą ten adres na stronie i w e-mailach sklepu, a ich odpowiedzi trafiają właśnie tutaj. Same e-maile wychodzą z adresu nadawczego sklepu, {sender}, którego to pole nie zmienia.",
+      "emailHint": "Na ten adres przychodzą powiadomienia sklepu: o nowych zamówieniach, odstąpieniach od umowy i alerty. Klienci widzą go na stronie i w e-mailach sklepu, a ich odpowiedzi również trafiają tutaj. Zmiana działa od razu. Same e-maile wychodzą z adresu {sender}.",
       "phone": "Telefon kontaktowy",
       "phoneHint": "Z numerem kierunkowym kraju, np. +48 600 000 000.",
       "saved": "Zapisano dane sprzedawcy.",

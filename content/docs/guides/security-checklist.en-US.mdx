@@ -81,7 +81,7 @@ Set in `src/integrations/better-auth/auth.server.ts`. Keep these if you change t
 - [ ] A test-mode event whose object carries a `metadata.deployment` other than this Worker's is logged and acknowledged the same way. `createStripeSession` stamps `stripeDeploymentOf(env.APP_ENV)` (`src/integrations/stripe/stripe.deployment.ts`: `martebizuteria-preview` for development and preview, `martebizuteria-test` for the test build, `martebizuteria` for production) on every Checkout Session and its payment intent, so a checkout another deployment opened on the same Stripe test account is never acted on here. An object without the field goes on to the handlers. See [Payments: The webhook endpoint](/docs/features/payments#the-webhook-endpoint).
 - [ ] An unhandled `event.type` is acknowledged with `{ received: true }` rather than erroring, so Stripe does not retry forever.
 - [ ] A handler that throws returns 500, so Stripe **does** retry. That means every handler in `src/integrations/stripe/stripe.webhooks.ts` must be idempotent — `20260924120000_checkout_idempotency_constraints.sql` exists for exactly this.
-- [ ] The failure alert to `RESEND_EMAIL_FROM` goes through `sendIncidentAlert`, which never throws, and is handed to `scheduleBackgroundWork`, so it cannot change or delay the 500.
+- [ ] The failure alert to the shop goes through `sendIncidentAlert`, which never throws, and is handed to `scheduleBackgroundWork`, so it cannot change or delay the 500.
 
 `src/routes/api/webhooks.inpost.ts`:
 
