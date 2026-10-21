@@ -49,19 +49,22 @@ interface NavigateOptions {
 
 interface LoaderArgs {
   readonly context: {
+    readonly catalogSearch: StorefrontProductsSearch
     readonly imagePrefetchService: ImagePrefetchService
     readonly locale: SupportedLocale
     readonly queryClient: QueryClient
   }
-  readonly deps: StorefrontProductsSearch
   readonly params: { readonly handle: string }
 }
 
 interface CollectionRouteDefinition {
+  readonly beforeLoad?: (args: { readonly search: StorefrontScopedCollectionCatalogSearch }) => {
+    readonly catalogSearch: StorefrontProductsSearch
+  }
   readonly component?: () => JSX.Element
   readonly head?: (args: { readonly loaderData?: LoaderData | undefined }) => { readonly meta: readonly MetaEntry[] }
   readonly loader?: (args: LoaderArgs) => Promise<LoaderData>
-  readonly loaderDeps?: (args: { readonly search: StorefrontScopedCollectionCatalogSearch }) => StorefrontProductsSearch
+  readonly loaderDeps?: unknown
   readonly staticData?: { readonly namespaces: readonly string[] }
   readonly validateSearch?: unknown
 }
@@ -187,19 +190,18 @@ const renderPage = () => {
   return renderWithProviders(<Page />)
 }
 
-const loaderArgs = (deps: StorefrontProductsSearch = {}, queryClient = new QueryClient()): LoaderArgs => ({
-  context: { imagePrefetchService: new ImagePrefetchService(), locale: "en-US", queryClient },
-  deps,
+const loaderArgs = (catalogSearch: StorefrontProductsSearch = {}, queryClient = new QueryClient()): LoaderArgs => ({
+  context: { catalogSearch, imagePrefetchService: new ImagePrefetchService(), locale: "en-US", queryClient },
   params: { handle: state.handle },
 })
 
-const runLoader = (deps: StorefrontProductsSearch = {}, queryClient = new QueryClient()): Promise<LoaderData> => {
+const runLoader = (catalogSearch: StorefrontProductsSearch = {}, queryClient = new QueryClient()): Promise<LoaderData> => {
   const { loader } = route
   if (loader === undefined) {
     throw new Error("the collection handle route has no loader")
   }
 
-  return loader(loaderArgs(deps, queryClient))
+  return loader(loaderArgs(catalogSearch, queryClient))
 }
 
 const headMeta = (loaderData?: LoaderData): readonly MetaEntry[] => {
@@ -417,11 +419,14 @@ describe("the storefront collection loader", () => {
 })
 
 describe("the storefront collection route wiring", () => {
-  it("keeps only the filters that carry a value in the loader dependencies", () => {
-    expect(route.loaderDeps?.({ search: { maxPrice: undefined, q: "silver", sort: "newest" } })).toStrictEqual({
-      q: "silver",
-      sort: "newest",
+  it("hands the loader only the filters that carry a value, through its context", () => {
+    expect(route.beforeLoad?.({ search: { maxPrice: undefined, q: "silver", sort: "newest" } })).toStrictEqual({
+      catalogSearch: { q: "silver", sort: "newest" },
     })
+  })
+
+  it("keeps the filters out of the loader dependencies, so changing one never reloads the collection page", () => {
+    expect(route.loaderDeps).toBeUndefined()
   })
 
   it("loads the collection and products namespaces", () => {

@@ -118,10 +118,13 @@ export const ROUTES = {
 Plik trasy komponuje stronę i nic więcej. Deklaruje swój komponent, `staticData.namespaces`, loader uruchamiający ładowanie komunikatów i wstępne pobieranie danych w jednym `Promise.all` oraz `head`. Plik `src/routes/_storefront.products.index.tsx` jest reprezentatywny:
 
 ```ts
+beforeLoad: ({ search }) => ({
+  catalogSearch: normalizeStorefrontProductsSearch(search),
+}),
 loader: async ({ context, deps }) => {
   const [messages] = await Promise.all([
     context.queryClient.query(messagesQueryOptions<typeof productsMessages>({ locale: context.locale, namespace: "pages.products" })),
-    prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, { search: deps }),
+    prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, { search: context.catalogSearch }),
   ])
 
   const t = createTranslator({ locale: context.locale, messages })
@@ -132,7 +135,7 @@ loader: async ({ context, deps }) => {
     title: deps.q === undefined ? messages.title : t("search.pageTitle", { query: deps.q }),
   }
 },
-loaderDeps: ({ search }: { search: StorefrontProductsSearch }) => normalizeStorefrontProductsSearch(search),
+loaderDeps: ({ search }: { search: StorefrontProductsSearch }) => ({ q: search.q }),
 staticData: { namespaces: ["pages.products"] },
 validateSearch: storefrontProductsSearchSchema,
 ```

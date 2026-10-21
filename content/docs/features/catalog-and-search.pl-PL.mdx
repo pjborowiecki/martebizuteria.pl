@@ -53,6 +53,8 @@ Obok schematu moduł eksportuje pomocniki używane przez strony:
 
 Każda trasa przekazuje funkcję `handleSearchChange`, która nawiguje z `replace: true`, więc filtrowanie nie zapycha historii przeglądarki.
 
+Zmiana filtra albo sortowania nigdy nie przeładowuje strony. Trasy trzymają filtry poza `loaderDeps`, więc router ani nie uruchamia ponownie loadera, ani nie pokazuje ekranu oczekiwania; siatka zostawia na ekranie obecne produkty, przygaszone i oznaczone `aria-busy`, dopóki nie przyjdą nowe, a pola ceny zapisują wartość w adresie URL dopiero, gdy klient przerwie pisanie, naciśnie Enter albo opuści pole. [Stan w adresie URL](/docs/guides/url-state#nakładanie-filtra-na-miejscu) pokazuje, jak to działa.
+
 ## Zapytanie listingu
 
 `getStorefrontProductsPage` (`src/modules/product/use-cases/get-storefront-products-page.ts`) to publiczna funkcja serwerowa `GET` z middleware `withRequest`. Udostępniana jest jako zapytanie **nieskończone** przez `getStorefrontProductsPageQuery(search, scope)`.

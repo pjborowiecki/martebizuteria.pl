@@ -72,6 +72,7 @@ const renderGrid = (
     readonly filtersActive?: boolean
     readonly products?: readonly ReturnType<typeof catalogProduct>[]
     readonly total?: number
+    readonly updating?: boolean
   } = {},
 ) => {
   const onClearFilters = vi.fn<() => void>()
@@ -88,6 +89,7 @@ const renderGrid = (
       onClearFilters={onClearFilters}
       products={list}
       total={overrides.total ?? list.length}
+      updating={overrides.updating ?? false}
     />,
   )
 
@@ -229,9 +231,39 @@ describe("ProductsCatalogGrid toolbar", () => {
         onClearFilters={vi.fn<() => void>()}
         products={products(1)}
         total={4}
+        updating={false}
       />,
     )
 
     expect(container.querySelectorAll("[aria-hidden='true']")).toHaveLength(4)
+  })
+})
+
+describe("ProductsCatalogGrid while the next filter's products load", () => {
+  afterEach(() => {
+    cleanup()
+  })
+
+  it("keeps the current products on screen, dimmed and marked busy", () => {
+    renderGrid({ updating: true })
+    const results = screen.getByRole("heading", { level: 2 }).closest("[aria-busy]")
+
+    expect(results).toHaveAttribute("aria-busy", "true")
+    expect(results).toHaveClass("opacity-50")
+    expect(screen.getByText("Ring 0")).toBeInTheDocument()
+  })
+
+  it("dims and marks busy an empty result too", () => {
+    renderGrid({ products: [], updating: true })
+
+    expect(screen.getByText("No products found.").closest("[aria-busy]")).toHaveAttribute("aria-busy", "true")
+  })
+
+  it("shows the products at full strength once they match the filters", () => {
+    renderGrid()
+    const results = screen.getByRole("heading", { level: 2 }).closest("[aria-busy]")
+
+    expect(results).toHaveAttribute("aria-busy", "false")
+    expect(results).not.toHaveClass("opacity-50")
   })
 })

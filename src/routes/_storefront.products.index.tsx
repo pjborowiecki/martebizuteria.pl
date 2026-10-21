@@ -78,11 +78,14 @@ export const Route = createFileRoute("/_storefront/products/")({
       ...(loaderData === undefined ? [] : [{ "script:ld+json": loaderData.structuredData }]),
     ],
   }),
+  beforeLoad: ({ search }) => ({
+    catalogSearch: normalizeStorefrontProductsSearch(search),
+  }),
   loader: async ({ context, deps }) => {
     const [messages] = await Promise.all([
       context.queryClient.query(messagesQueryOptions<typeof productsMessages>({ locale: context.locale, namespace: "pages.products" })),
       prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, {
-        search: deps,
+        search: context.catalogSearch,
       }),
     ])
 
@@ -94,7 +97,7 @@ export const Route = createFileRoute("/_storefront/products/")({
       title: deps.q === undefined ? messages.title : t("search.pageTitle", { query: deps.q }),
     }
   },
-  loaderDeps: ({ search }: { search: StorefrontProductsSearch }) => normalizeStorefrontProductsSearch(search),
+  loaderDeps: ({ search }: { search: StorefrontProductsSearch }) => ({ q: search.q }),
   staticData: {
     namespaces: ["pages.products"],
   },

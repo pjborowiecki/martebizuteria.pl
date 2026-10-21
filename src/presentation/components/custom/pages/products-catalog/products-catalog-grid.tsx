@@ -120,6 +120,7 @@ export const ProductsCatalogGrid = ({
   onClearFilters,
   products,
   total,
+  updating,
 }: ProductsCatalogGridProps): JSX.Element => {
   const t = useTranslations(i18nNamespace)
   const tFilters = useTranslations("pages.products.filters")
@@ -132,14 +133,20 @@ export const ProductsCatalogGrid = ({
 
   if (products.length === 0) {
     return (
-      <div className="flex min-h-60 items-center justify-center px-6 py-16 text-center">
+      <div
+        aria-busy={updating}
+        className={cn(
+          "flex min-h-60 items-center justify-center px-6 py-16 text-center transition-opacity duration-300",
+          updating && "opacity-50",
+        )}
+      >
         <p className="max-w-sm text-sm text-muted-foreground">{t("noProductsFound")}</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-10">
+    <div aria-busy={updating} className={cn("space-y-10 transition-opacity duration-300", updating && "opacity-50")}>
       <CatalogResultsToolbar filtersActive={filtersActive} onClearFilters={onClearFilters} t={t} tFilters={tFilters} total={total} />
 
       <div className="grid gap-x-5 gap-y-10 sm:grid-cols-2 xl:grid-cols-3">
@@ -189,4 +196,5 @@ interface ProductsCatalogGridProps {
   readonly onClearFilters: () => void
   readonly products: readonly CatalogProduct[]
   readonly total: number
+  readonly updating: boolean
 }

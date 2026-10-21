@@ -1,4 +1,4 @@
-import { type JSX, useCallback, useMemo, useState } from "react"
+import { type JSX, useCallback, useDeferredValue, useMemo, useState } from "react"
 
 import { useSuspenseInfiniteQuery, useSuspenseQueries } from "@tanstack/react-query"
 import { useLocale } from "use-intl/react"
@@ -54,12 +54,18 @@ export const ProductsCatalogPage = ({
   const [filtersOpen, setFiltersOpen] = useState(false)
   const { categories, collections, showCategoryFilter, showCollectionFilter } = useCatalogFilterSources(scope)
   const normalizedSearch = useMemo(() => normalizeStorefrontProductsSearch(search), [search])
+  const requestedResults = useMemo(() => ({ scope, search: normalizedSearch }), [normalizedSearch, scope])
+  const shownResults = useDeferredValue(requestedResults)
+  const resultsUpdating = shownResults !== requestedResults
   const effectiveSearch = useMemo(() => buildEffectiveStorefrontProductsSearch(normalizedSearch, scope), [normalizedSearch, scope])
   const catalogFilterOptions = useMemo(() => storefrontCatalogFilterOptions(scope), [scope])
-  const filtersActive = hasActiveStorefrontProductFilters(effectiveSearch, catalogFilterOptions)
   const activeFilterCount = countActiveStorefrontProductFilters(effectiveSearch, catalogFilterOptions)
+  const shownFiltersActive = hasActiveStorefrontProductFilters(
+    buildEffectiveStorefrontProductsSearch(shownResults.search, shownResults.scope),
+    storefrontCatalogFilterOptions(shownResults.scope),
+  )
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(
-    getStorefrontProductsPageQuery(normalizedSearch, scope),
+    getStorefrontProductsPageQuery(shownResults.search, shownResults.scope),
   )
 
   const products = useMemo(() => data.pages.flatMap((page) => page.items), [data.pages])
@@ -122,14 +128,15 @@ export const ProductsCatalogPage = ({
 
           <ProductsCatalogGrid
             fetchNextPage={fetchNextPage}
-            filtersActive={filtersActive}
+            filtersActive={shownFiltersActive}
             hasNextPage={hasNextPage}
             i18nNamespace={i18nNamespace}
-            infiniteScrollEnabled={!filtersActive}
+            infiniteScrollEnabled={!shownFiltersActive && !resultsUpdating}
             isFetchingNextPage={isFetchingNextPage}
             onClearFilters={handleClearFilters}
             products={products}
             total={total}
+            updating={resultsUpdating}
           />
         </div>
       </div>

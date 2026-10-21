@@ -94,11 +94,14 @@ From `src/routes/_storefront.products.index.tsx`, with the `head` function left 
 
 ```ts
 export const Route = createFileRoute("/_storefront/products/")({
+  beforeLoad: ({ search }) => ({
+    catalogSearch: normalizeStorefrontProductsSearch(search),
+  }),
   component: ProductsPage,
   loader: async ({ context, deps }) => {
     const [messages] = await Promise.all([
       context.queryClient.query(messagesQueryOptions<typeof productsMessages>({ locale: context.locale, namespace: "pages.products" })),
-      prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, { search: deps }),
+      prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, { search: context.catalogSearch }),
     ])
 
     const t = createTranslator({ locale: context.locale, messages })
@@ -109,13 +112,15 @@ export const Route = createFileRoute("/_storefront/products/")({
       title: deps.q === undefined ? messages.title : t("search.pageTitle", { query: deps.q }),
     }
   },
-  loaderDeps: ({ search }: { search: StorefrontProductsSearch }) => normalizeStorefrontProductsSearch(search),
+  loaderDeps: ({ search }: { search: StorefrontProductsSearch }) => ({ q: search.q }),
   staticData: { namespaces: ["pages.products"] },
   validateSearch: storefrontProductsSearchSchema,
 })
 ```
 
-`loaderDeps` is the important line. It decides when the loader re-runs, and it runs the search through `normalizeStorefrontProductsSearch` first, which rebuilds the object with its keys in a fixed order and omits every `undefined`:
+`loaderDeps` decides when the loader re-runs, so it lists only what the loader's own data depends on: the search term, which changes the page title. The filters and the sort are left out on purpose. A route whose dependencies change gets a new match, and while its loader waits on the server the router shows the pending screen, which on a filter change blanked the whole catalogue, filters included. Without them, a filter change keeps the match and never runs the loader: the grid applies it in place (see [Applying a filter in place](#applying-a-filter-in-place)). The category and collection routes have no `loaderDeps` at all, because their loader depends only on the `handle` path parameter.
+
+The loader still needs the filters once, for the first server render. `beforeLoad` receives the validated search and hands it on as `context.catalogSearch`, after `normalizeStorefrontProductsSearch`, which rebuilds the object with its keys in a fixed order and omits every `undefined`:
 
 ```ts
 export const normalizeStorefrontProductsSearch = (search: StorefrontProductsSearch): StorefrontProductsSearch => {
@@ -128,9 +133,9 @@ export const normalizeStorefrontProductsSearch = (search: StorefrontProductsSear
 }
 ```
 
-Without that normalisation, `{ q: "ring", sort: undefined }` and `{ sort: undefined, q: "ring" }` would be different dependency values and the loader would fire twice for the same visible state.
+The products page query is keyed by that normalised object, so `{ q: "ring", sort: undefined }` and `{ sort: undefined, q: "ring" }` share one cache entry.
 
-Because `deps` is the validated search, the loader can use it for more than data: here a search term turns the document title into the search-results title, and `head` (not shown) writes that title, the description and the breadcrumb structured data into the page.
+`deps.q` is the validated search term, so the loader can use it for more than data: here it turns the document title into the search-results title, and `head` (not shown) writes that title, the description and the breadcrumb structured data into the page.
 
 ## Reading it in the component
 
@@ -172,6 +177,20 @@ if ("category" in patch) {
 So `{ category: undefined }` clears the filter, while `{}` leaves it alone. `{ clearAll: true }` returns `{}` and drops every filter; any other patch result goes through `normalizeStorefrontProductsSearch` before it reaches the URL.
 
 `replace: true` is deliberate: adjusting a filter should not add a history entry, so the browser Back button leaves the catalog rather than stepping through every slider nudge.
+
+## Applying a filter in place
+
+A filter change updates the URL and nothing else in the route: the loader does not run, so the page, its header and the filter panel stay exactly where they are. `ProductsCatalogPage` reads the products through `useDeferredValue`:
+
+```tsx
+const requestedResults = useMemo(() => ({ scope, search: normalizedSearch }), [normalizedSearch, scope])
+const shownResults = useDeferredValue(requestedResults)
+const resultsUpdating = shownResults !== requestedResults
+```
+
+The filter panel highlights the new choice at once, from `normalizedSearch`. The grid keeps rendering `shownResults` while React renders the new filters in the background; that render suspends on `useSuspenseInfiniteQuery` until the products arrive, and React keeps the current products on screen instead of a fallback. Meanwhile `ProductsCatalogGrid` gets `updating`, sets `aria-busy` and dims the results to half strength, and infinite scroll waits. A filter changed again before the products arrive only moves the background render on to the newest choice.
+
+The price fields in `products-catalog-price-filter.tsx` keep the text the shopper types in their own state and write it to the URL once typing settles for `STOREFRONT_SEARCH_DEBOUNCE_MS`, on Enter, or when the field loses focus. A field the shopper is not editing shows the bound from the URL, so "Clear filters", the Back button or a shared link set it without any syncing code. A negative or non-numeric entry clears the bound instead of applying it.
 
 ## Counting active filters
 
