@@ -367,6 +367,14 @@ const verifiedAccountWithEmail = (email: string) =>
     string | null
   >`(select ${user.id} from ${user} where lower(${user.email}) = ${email.trim().toLowerCase()} and ${user.emailVerified} = 1 limit 1)`
 
+const accountOwningOrder = ({ email, userId }: Readonly<Pick<PendingCheckout, "email" | "userId">>) => {
+  if (userId === null) {
+    return verifiedAccountWithEmail(email)
+  }
+
+  return sql<string>`coalesce(${verifiedAccountWithEmail(email)}, ${userId})`
+}
+
 export const prepareFulfillCheckoutBatch = (
   context: PendingCheckout,
   { currency, lines, locale, totals, transactionId }: FulfillCheckoutInput,
@@ -435,7 +443,7 @@ export const prepareFulfillCheckoutBatch = (
         taxBasisPoints: totals.vatBasisPoints,
         taxTotal: totals.taxTotal,
         total: totals.total,
-        userId: context.userId ?? verifiedAccountWithEmail(context.email),
+        userId: accountOwningOrder(context),
       }),
       ...(addressSnapshots.length > 0 ? [db.insert(orderAddress).values(addressSnapshots)] : []),
       ...tail,
