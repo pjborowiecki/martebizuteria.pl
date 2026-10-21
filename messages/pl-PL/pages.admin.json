@@ -676,8 +676,8 @@
       "totalOrders": {
         "label": "Zamówienia ogółem"
       },
-      "pending": {
-        "label": "Oczekujące"
+      "toFulfil": {
+        "label": "Do realizacji"
       },
       "revenueMinorUnits": {
         "label": "Przychód"

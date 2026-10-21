@@ -45,7 +45,7 @@ const accessors = vi.hoisted(() => {
     exportParams,
     getAdminOrderDestinationRows: vi.fn(() => Promise.resolve(accessors.destinationRows)),
     getAdminOrderItemCountRows: vi.fn(() => Promise.resolve(accessors.itemCountRows)),
-    getAdminOrderStats: vi.fn(() => Promise.resolve({ pending: 2, total: 9 })),
+    getAdminOrderStats: vi.fn(() => Promise.resolve({ toFulfil: 2, total: 9 })),
     getAdminOrdersExport: vi.fn((params: unknown) => {
       exportParams.push(params)
 
@@ -119,12 +119,12 @@ describe("getAdminOrdersPage parameters", () => {
 
   it("passes every column filter through untouched", async () => {
     await getAdminOrdersPage({
-      data: { fulfillment: "shipped", payment: "paid", statFilter: "pending", status: "processing", tab: "unfulfilled" },
+      data: { fulfillment: "shipped", payment: "paid", statFilter: "to_fulfil", status: "processing", tab: "unfulfilled" },
     })
 
     expect(accessors.pageParams[0]).toMatchObject({
       filters: { createdAt: undefined, fulfillment: "shipped", payment: "paid", status: "processing", total: undefined },
-      statFilter: "pending",
+      statFilter: "to_fulfil",
       tab: "unfulfilled",
     })
   })
@@ -289,7 +289,7 @@ describe("exportAdminOrders", () => {
 
 describe("getAdminOrderStats", () => {
   it("returns the counts the accessor reports", async () => {
-    await expect(getAdminOrderStats()).resolves.toStrictEqual({ pending: 2, total: 9 })
+    await expect(getAdminOrderStats()).resolves.toStrictEqual({ toFulfil: 2, total: 9 })
   })
 
   it("keys the stats query by the shared admin stats key", () => {
@@ -304,7 +304,7 @@ describe("getAdminOrderStats", () => {
   })
 
   it("fetches the stats through the server function", async () => {
-    await expect(new QueryClient().query(getAdminOrderStatsQuery())).resolves.toStrictEqual({ pending: 2, total: 9 })
+    await expect(new QueryClient().query(getAdminOrderStatsQuery())).resolves.toStrictEqual({ toFulfil: 2, total: 9 })
   })
 })
 

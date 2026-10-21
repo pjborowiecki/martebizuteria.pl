@@ -676,8 +676,8 @@
       "totalOrders": {
         "label": "Total Orders"
       },
-      "pending": {
-        "label": "Pending"
+      "toFulfil": {
+        "label": "To fulfil"
       },
       "revenueMinorUnits": {
         "label": "Revenue"

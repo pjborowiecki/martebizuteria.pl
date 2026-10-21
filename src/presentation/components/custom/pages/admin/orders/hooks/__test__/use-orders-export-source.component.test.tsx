@@ -37,8 +37,8 @@ describe("useOrdersExportSource", () => {
   })
 
   it("describes the stat card, the status, the payment and the fulfillment by their labels", () => {
-    expect(sourceFor({ fulfillment: "shipped", payment: "paid", statFilter: "pending", status: "processing" }).filters).toStrictEqual([
-      { label: "Quick filter", value: "Pending" },
+    expect(sourceFor({ fulfillment: "shipped", payment: "paid", statFilter: "to_fulfil", status: "processing" }).filters).toStrictEqual([
+      { label: "Quick filter", value: "To fulfil" },
       { label: "Status", value: "Open" },
       { label: "Payment", value: "Paid" },
       { label: "Fulfillment", value: "Shipped" },

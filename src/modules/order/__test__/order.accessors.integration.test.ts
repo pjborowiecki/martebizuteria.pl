@@ -215,8 +215,8 @@ describe("getAdminOrdersPage filtering", () => {
     expect(await orderIds({ ...page, tab })).toStrictEqual([expected])
   })
 
-  it("narrows to pending orders for the pending stat card", async () => {
-    expect(await orderIds({ ...page, statFilter: ADMIN_ORDER_STAT_FILTER.PENDING })).toStrictEqual(["o-pending"])
+  it("narrows to the paid orders still awaiting fulfilment for the to-fulfil stat card, like the unfulfilled tab", async () => {
+    expect(await orderIds({ ...page, statFilter: ADMIN_ORDER_STAT_FILTER.TO_FULFIL })).toStrictEqual(["o-unfulfilled"])
   })
 
   it("keeps every order for the total stat card", async () => {
@@ -321,7 +321,7 @@ describe("getAdminOrderStats", () => {
     const stats = await getAdminOrderStats()
 
     expect(stats.totalOrders).toBe(5)
-    expect(stats.pending).toBe(1)
+    expect(stats.toFulfil).toBe(1)
   })
 
   it("books every processing and completed order, sent or not, and leaves out the unpaid pending and the cancelled one", async () => {
@@ -359,8 +359,8 @@ describe("getAdminOrderStats", () => {
     expect(await getAdminOrderStats()).toStrictEqual({
       avgValueMinorUnits: 0,
       currencyCode: "PLN",
-      pending: 0,
       revenueMinorUnits: 0,
+      toFulfil: 0,
       totalOrders: 0,
     })
   })
@@ -571,8 +571,8 @@ describe("aggregate reads when the database answers with no rows", () => {
     expect(await getAdminOrderStats()).toStrictEqual({
       avgValueMinorUnits: 0,
       currencyCode: STORE_CURRENCY_CODE,
-      pending: 0,
       revenueMinorUnits: 0,
+      toFulfil: 0,
       totalOrders: 0,
     })
   })

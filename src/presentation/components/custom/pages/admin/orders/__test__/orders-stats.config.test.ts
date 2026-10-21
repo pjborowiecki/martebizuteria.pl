@@ -6,16 +6,16 @@ import { ORDER_STAT_CARDS } from "~/src/presentation/components/custom/pages/adm
 
 describe("ORDER_STAT_CARDS", () => {
   it("shows the four order figures in a fixed order", () => {
-    expect(ORDER_STAT_CARDS.map((card) => card.key)).toStrictEqual(["totalOrders", "pending", "revenueMinorUnits", "avgValueMinorUnits"])
+    expect(ORDER_STAT_CARDS.map((card) => card.key)).toStrictEqual(["totalOrders", "toFulfil", "revenueMinorUnits", "avgValueMinorUnits"])
   })
 
   it("makes only the counts clickable, because the money figures cannot filter the table", () => {
-    expect(ORDER_STAT_CARDS.filter((card) => card.filter !== undefined).map((card) => card.key)).toStrictEqual(["totalOrders", "pending"])
+    expect(ORDER_STAT_CARDS.filter((card) => card.filter !== undefined).map((card) => card.key)).toStrictEqual(["totalOrders", "toFulfil"])
   })
 
   it("wires each clickable card to its own table filter", () => {
     expect(ORDER_STAT_CARDS.find((card) => card.key === "totalOrders")?.filter).toBe(ADMIN_ORDER_STAT_FILTER.TOTAL)
-    expect(ORDER_STAT_CARDS.find((card) => card.key === "pending")?.filter).toBe(ADMIN_ORDER_STAT_FILTER.PENDING)
+    expect(ORDER_STAT_CARDS.find((card) => card.key === "toFulfil")?.filter).toBe(ADMIN_ORDER_STAT_FILTER.TO_FULFIL)
   })
 
   it("gives every card its own icon and gradient", () => {

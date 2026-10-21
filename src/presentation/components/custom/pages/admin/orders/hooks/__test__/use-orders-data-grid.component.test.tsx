@@ -172,13 +172,13 @@ describe("useOrdersDataGrid filters", () => {
       expect(pageFn).toHaveBeenCalled()
     })
     act(() => {
-      result.current.applyOrderStatFilter("pending")
+      result.current.applyOrderStatFilter("to_fulfil")
     })
 
-    expect(result.current.activeStatFilter).toBe("pending")
-    await expect(sentExportInput(result.current.exportSource)).resolves.toMatchObject({ statFilter: "pending" })
+    expect(result.current.activeStatFilter).toBe("to_fulfil")
+    await expect(sentExportInput(result.current.exportSource)).resolves.toMatchObject({ statFilter: "to_fulfil" })
     await waitFor(() => {
-      expect(pageFn).toHaveBeenCalledWith(expect.objectContaining({ page: 1, statFilter: "pending" }))
+      expect(pageFn).toHaveBeenCalledWith(expect.objectContaining({ page: 1, statFilter: "to_fulfil" }))
     })
   })
 
@@ -186,7 +186,7 @@ describe("useOrdersDataGrid filters", () => {
     const { result } = renderGrid()
 
     act(() => {
-      result.current.applyOrderStatFilter("pending")
+      result.current.applyOrderStatFilter("to_fulfil")
     })
     act(() => {
       result.current.applyOrderStatFilter()
@@ -210,7 +210,7 @@ describe("useOrdersDataGrid filters", () => {
     expect(result.current.table.atoms.pagination.get().pageIndex).toBe(1)
 
     act(() => {
-      result.current.applyOrderStatFilter("pending")
+      result.current.applyOrderStatFilter("to_fulfil")
     })
 
     expect(result.current.table.atoms.pagination.get().pageIndex).toBe(0)
@@ -279,11 +279,11 @@ describe("useOrdersDataGrid export", () => {
     exportFn.mockResolvedValue([orderRow("order-1")])
     const { result } = renderGrid()
     act(() => {
-      result.current.applyOrderStatFilter("pending")
+      result.current.applyOrderStatFilter("to_fulfil")
     })
 
     await expect(result.current.exportSource?.loadRows?.()).resolves.toStrictEqual([orderRow("order-1")])
-    expect(exportFn).toHaveBeenCalledWith(expect.objectContaining({ statFilter: "pending" }))
+    expect(exportFn).toHaveBeenCalledWith(expect.objectContaining({ statFilter: "to_fulfil" }))
     expect(result.current.exportSource).toMatchObject({ list: "orders", title: "Orders" })
   })
 })

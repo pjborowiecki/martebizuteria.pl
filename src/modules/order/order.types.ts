@@ -217,8 +217,8 @@ interface OrderConfirmation {
 interface AdminOrderStats {
   readonly avgValueMinorUnits: number
   readonly currencyCode: string
-  readonly pending: number
   readonly revenueMinorUnits: number
+  readonly toFulfil: number
   readonly totalOrders: number
 }
 
