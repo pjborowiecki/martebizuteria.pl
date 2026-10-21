@@ -17,22 +17,39 @@ const ProductHeroImage = ({
 }: Readonly<{
   alt: string
   priority: boolean
-  src: string | undefined
+  src: string
 }>): JSX.Element => (
   <AspectRatio className="overflow-hidden bg-secondary" ratio={PRODUCT_IMAGE_ASPECT_RATIO}>
-    {src !== undefined && (
-      <Image
-        alt={alt}
-        className="absolute inset-0 size-full object-cover"
-        height={1400}
-        priority={priority}
-        sizes={PRODUCT_IMAGE_SIZES}
-        src={src}
-        width={1120}
-      />
-    )}
+    <Image
+      alt={alt}
+      className="absolute inset-0 size-full object-cover"
+      height={1400}
+      priority={priority}
+      sizes={PRODUCT_IMAGE_SIZES}
+      src={src}
+      width={1120}
+    />
   </AspectRatio>
 )
+
+const ProductHeroSlide = ({
+  alt,
+  carouselRunning,
+  index,
+  src,
+}: Readonly<{
+  alt: string
+  carouselRunning: boolean
+  index: number
+  src: string
+}>): JSX.Element => {
+  const waitingForCarousel = index > 0 && !carouselRunning
+  if (waitingForCarousel) {
+    return <AspectRatio className="overflow-hidden bg-secondary" ratio={PRODUCT_IMAGE_ASPECT_RATIO} />
+  }
+
+  return <ProductHeroImage alt={alt} priority={index === 0} src={src} />
+}
 
 const ProductHeroCarouselDot = ({
   api,
@@ -136,7 +153,7 @@ const ProductHeroMobileCarousel = ({ images, title }: Readonly<ProductHeroGaller
         <CarouselContent className="ml-0">
           {images.map((src, index) => (
             <CarouselItem key={src} className="pl-0">
-              <ProductHeroImage alt={title} priority={index === 0} src={index === 0 || api !== undefined ? src : undefined} />
+              <ProductHeroSlide alt={title} carouselRunning={api !== undefined} index={index} src={src} />
             </CarouselItem>
           ))}
         </CarouselContent>
