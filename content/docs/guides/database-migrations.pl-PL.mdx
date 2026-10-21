@@ -87,7 +87,7 @@ W czasie migracji, a także tak długo, jak wydanie pozostaje wycofane, sklep ob
 
 ## Migracje pisane ręcznie
 
-Wiele ze 108 migracji w katalogu napisano ręcznie, a nie wygenerowano, i ich nazwy mówią, co robią, zamiast nieść kryptonim nadany przez drizzle: `20260604120000_catalog_indexes_and_integrity.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql`, `20261016140000_claim_past_guest_orders.sql` i inne. Tak nazwana jest każda migracja dodana od końca września. Pisanie ręczne jest właściwym wyborem dla:
+Wiele ze 108 migracji w katalogu napisano ręcznie, a nie wygenerowano, i ich nazwy mówią, co robią, zamiast nieść kryptonim nadany przez drizzle: `20260604120000_catalog_indexes_and_integrity.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql`, `20261016140000_claim_past_guest_orders.sql` i inne. Tak nazwana jest każda migracja ze znacznikiem czasu późniejszym niż koniec września. Pisanie ręczne jest właściwym wyborem dla:
 
 - **Zmian nazw.** drizzle-kit widzi zmianę nazwy jako usunięcie plus dodanie, co niszczy dane. Koniec `20260604232955_curved_wallow.sql` zmienia nazwę tabeli, a potem dopasowuje do niej nazwy jej indeksów:
 
@@ -129,7 +129,7 @@ UPDATE `order` SET `shipped_email_at` = coalesce(`shipped_at`, `delivered_at`, `
 
 Nawyki z nowszych plików warte skopiowania:
 
-- **Bez komentarzy.** Nazwa pliku mówi, co migracja robi, a commit, który ją dodaje, mówi dlaczego. Dwanaście starszych plików, z których ostatni to `20261001090000_newsletter_subscribers.sql`, wciąż ma komentarze `--`; żadna z 44 migracji po nim ich nie ma. Linie `--> statement-breakpoint` to separator, a nie komentarz do treści: drizzle-kit wpisuje je między instrukcje, SQLite pomija je jako komentarze, a pomocnicze funkcje testów dzielą po nich plik.
+- **Bez komentarzy.** Nazwa pliku mówi, co migracja robi, a commit, który ją dodaje, mówi dlaczego. Dwanaście starszych plików, z których ostatni to `20261001090000_newsletter_subscribers.sql`, ma komentarze `--`; żadna z 44 migracji po nim ich nie ma. Linie `--> statement-breakpoint` to separator, a nie komentarz do treści: drizzle-kit wpisuje je między instrukcje, SQLite pomija je jako komentarze, a pomocnicze funkcje testów dzielą po nich plik.
 - **`IF EXISTS` i `IF NOT EXISTS` wszędzie, gdzie SQLite na to pozwala** — przy `CREATE TABLE`, `CREATE INDEX`, `CREATE TRIGGER` i instrukcjach `DROP` — żeby ponowne uruchomienie migracji na częściowo zmigrowanej bazie nie zawiodło. Dla `ALTER TABLE … ADD` SQLite takiego zabezpieczenia nie ma.
 - **Migracje danych, które przy ponownym uruchomieniu niczego nie zmieniają.** Zawęź `WHERE` do wierszy, które wciąż wymagają zmiany: `20261016140000_claim_past_guest_orders.sql` dotyka tylko zamówień, których `user_id` jest wciąż `NULL`, więc drugie uruchomienie nie ma nic do zrobienia.
 
@@ -137,7 +137,7 @@ Nawyki z nowszych plików warte skopiowania:
 
 ### Historia musi zbudować pustą bazę
 
-Wrangler nakłada pliki w kolejności nazw na bazę, która nie ma żadnego z nich: lokalną bazę testową przy każdym `bun run db:reset:test` albo bazę nowego środowiska. Wdrożone bazy nie pokażą, czy to działa, bo każdy plik nałożyły raz, w kolejności, w jakiej pliki powstawały. Te dwie kolejności kiedyś się rozjechały: trzy ręcznie napisane migracje katalogu zostały nałożone na preview i produkcję przed wygenerowanymi `20260604232955_curved_wallow.sql` i `20260606084825_fuzzy_miek.sql`, które już zakładały ich zmiany. W kolejności nazw `curved_wallow` idzie przed wszystkimi trzema, więc pusta baza zatrzymywała się na nim z błędem `no such table: product_attribute`. Commit 5801445b przeniósł ręcznie napisane instrukcje do plików, w których kolejność nazw po raz pierwszy ich potrzebuje, a trzy pierwotne pliki zostawił puste, żeby ich nazwy pozostały zapisane:
+Wrangler nakłada pliki w kolejności nazw na bazę, która nie ma żadnego z nich: lokalną bazę testową przy każdym `bun run db:reset:test` albo bazę nowego środowiska. Wdrożone bazy nie pokażą, czy to działa, bo każdy plik nałożyły raz, w kolejności, w jakiej pliki powstawały. Te dwie kolejności różnią się dla trzech ręcznie napisanych migracji katalogu: preview i produkcja nałożyły je przed wygenerowanymi `20260604232955_curved_wallow.sql` i `20260606084825_fuzzy_miek.sql`, które zakładają ich zmiany. W kolejności nazw `curved_wallow` idzie przed wszystkimi trzema, więc gdyby te trzy zawierały swoje instrukcje, pusta baza zatrzymałaby się na nim z błędem `no such table: product_attribute`. Dlatego ręcznie napisane instrukcje są w plikach, w których kolejność nazw po raz pierwszy ich potrzebuje (commit 5801445b), a trzy pliki zostają puste, żeby ich nazwy pozostały zapisane:
 
 - `20260605120000_attribute_titles_and_allowed_values.sql`
 - `20260606120000_rename_attribute_to_product_attribute.sql`
@@ -187,7 +187,7 @@ bun run db:push:development
 
 Migracja, która zmienia albo wstawia wiersze, dostaje test integracyjny, bo nic innego nie sprawdza, co robi z istniejącymi danymi. Pomocnicze funkcje są w `src/platform/testing/mocks/migrations.ts`:
 
-- `MIGRATION` nazywa każdy plik migracji, który test nakłada osobno. Dodaj wpis dla swojej, tak jak razem z tamtą migracją dodano `CLAIM_PAST_GUEST_ORDERS: "20261016140000_claim_past_guest_orders"`.
+- `MIGRATION` nazywa każdy plik migracji, który test nakłada osobno. Dodaj wpis dla swojej, tak jak tamtej migracji towarzyszy `CLAIM_PAST_GUEST_ORDERS: "20261016140000_claim_past_guest_orders"`.
 - `applyMigration(sqlite, MIGRATION.CLAIM_PAST_GUEST_ORDERS)` czyta plik przez `import.meta.glob`, dzieli go po `--> statement-breakpoint` i wykonuje każdą część na `DatabaseSync` z `node:sqlite`.
 - `applyMigrationHistory(sqlite)` wykonuje każdy plik migracji w kolejności nazw, tej samej, której używa Wrangler, co buduje pełny schemat.
 

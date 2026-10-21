@@ -121,7 +121,7 @@ The successful `key` values are collected and the failures counted into a single
 
 `VITE_R2_URL` appears in both `secrets.required` in `wrangler.jsonc` and the `VITE_`-prefixed browser variables, because both sides need it. The two values must name the same host: the Content-Security-Policy is built on the server and lets pages load images and video only from the origin of `DEFAULT_R2_PUBLIC_URL` and from the origin `getAssetCdnBase()` returns there, so a bundle built with a different host would have its images refused. See [Security model](/docs/architecture/security-model#response-headers).
 
-Rows written before uploads stored keys, and every seed file, hold full `r2.dev` URLs. Because `resolveAssetURL` moves them onto the configured base, they follow `VITE_R2_URL` like keys do: production serves them from its custom domain and preview from the preview bucket.
+Some rows, and every seed file, hold full `r2.dev` URLs instead of keys. Because `resolveAssetURL` moves them onto the configured base, they follow `VITE_R2_URL` like keys do: production serves them from its custom domain and preview from the preview bucket.
 
 ### Resizing
 

@@ -101,7 +101,7 @@ Each page comes from `getCustomerLoginHistoryPage` (`src/modules/audit-log/use-c
 
 ## Store details
 
-The Store details tab holds one card, **Seller details**, from `src/presentation/components/custom/pages/admin/settings/store/`. It edits the business that runs the shop, which shoppers see in the footer, on the About and product pages, at the checkout, in order e-mails and on the legal pages. The details are columns of the single `store_setting` row (`20261016160000_seller_details.sql`), so changing them needs no release. The migration filled the row with the details the code held until then, so nothing changed for shoppers when it ran.
+The Store details tab holds one card, **Seller details**, from `src/presentation/components/custom/pages/admin/settings/store/`. It edits the business that runs the shop, which shoppers see in the footer, on the About and product pages, at the checkout, in order e-mails and on the legal pages. The details are columns of the single `store_setting` row (`20261016160000_seller_details.sql`), so changing them needs no release. The migration fills the row with the seller's existing details, so applying it changes nothing for shoppers.
 
 ### Seller details
 
@@ -187,7 +187,7 @@ Every change on this tab is recorded in the [audit log](/docs/features/audit-log
 
 ## Team
 
-The Team tab is a data grid of the admins, from `src/presentation/components/custom/pages/admin/settings/team/`. It is where admin access is given to an existing customer account and taken away again. Better Auth's own admin endpoints no longer change roles, so this is the only way to do it short of editing D1 (see [Security model](/docs/architecture/security-model#admin-access)).
+The Team tab is a data grid of the admins, from `src/presentation/components/custom/pages/admin/settings/team/`. It is where admin access is given to an existing customer account and taken away again. Better Auth's own admin endpoints cannot change roles, so this is the only way to do it short of editing D1 (see [Security model](/docs/architecture/security-model#admin-access)).
 
 ### Admins
 

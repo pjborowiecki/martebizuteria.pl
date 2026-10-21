@@ -149,7 +149,7 @@ Ponieważ `THEME_STORAGE_KEY` wywodzi się z `APP_NAME`, zmiana nazwy aplikacji 
 
 ## Dane sprzedawcy
 
-Tożsamość prawna sklepu to dane, a nie stała. Pełna nazwa firmy, ulica, kod pocztowy, miejscowość, kraj, NIP, REGON, e-mail kontaktowy i telefon to kolumny wiersza `store_setting`, które właściciel zmienia w **Ustawienia → Dane sklepu**; `20261016160000_seller_details.sql` wypełniła je danymi, które do tej pory były w kodzie (zobacz [Ustawienia panelu](/docs/features/admin-settings#dane-sklepu)). Sklep czyta je przez `getSellerDetailsQuery()`, panel przez `getAdminSellerDetailsQuery()`, a kod serwerowy przez `readSellerDetails()`, a dwie funkcje pomocnicze w `src/modules/store-setting/store-setting.utils.ts` je formatują:
+Tożsamość prawna sklepu to dane, a nie stała. Pełna nazwa firmy, ulica, kod pocztowy, miejscowość, kraj, NIP, REGON, e-mail kontaktowy i telefon to kolumny wiersza `store_setting`, które właściciel zmienia w **Ustawienia → Dane sklepu**; `20261016160000_seller_details.sql` wypełnia je istniejącymi danymi sprzedawcy (zobacz [Ustawienia panelu](/docs/features/admin-settings#dane-sklepu)). Sklep czyta je przez `getSellerDetailsQuery()`, panel przez `getAdminSellerDetailsQuery()`, a kod serwerowy przez `readSellerDetails()`, a dwie funkcje pomocnicze w `src/modules/store-setting/store-setting.utils.ts` je formatują:
 
 ```ts
 export const formatSellerPostalAddress = (

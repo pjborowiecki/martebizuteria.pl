@@ -93,7 +93,7 @@ InPost shipments are booked, labelled and tracked from the admin order page, but
 
 ## What happens to orders placed as a guest?
 
-They stay guest orders until an account verifies an address they belong to. A guest checkout paid with the address of an already verified account is filed under that account at fulfilment, and an account that verifies its address later takes over, through `claimGuestOrdersForUser` in `src/modules/order/use-cases/claim-guest-orders.server.ts`, the guest orders placed with any of its addresses while it held them and those placed with the verified address while no account held it. An order placed with an address while another account held it stays for that account. Matching ignores case, and each claim is recorded as `customer.orders_claimed`. The `20261016140000_claim_past_guest_orders.sql` migration did the same once for orders placed before this existed.
+They stay guest orders until an account verifies an address they belong to. A guest checkout paid with the address of an already verified account is filed under that account at fulfilment, and an account that verifies its address later takes over, through `claimGuestOrdersForUser` in `src/modules/order/use-cases/claim-guest-orders.server.ts`, the guest orders placed with any of its addresses while it held them and those placed with the verified address while no account held it. An order placed with an address while another account held it stays for that account. Matching ignores case, and each claim is recorded as `customer.orders_claimed`. The `20261016140000_claim_past_guest_orders.sql` migration does the same once, for the orders in the database when it is applied.
 
 ## How do I run the end-to-end tests?
 

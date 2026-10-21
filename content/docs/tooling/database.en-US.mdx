@@ -141,7 +141,7 @@ export default defineConfig({
 
 Generated file names look like `20260612120000_product_variants_enhanced.sql`. Many migrations in the tree are hand-named instead (`20260604120000_catalog_indexes_and_integrity.sql`, `20260925000000_locale_maps_bcp47.sql`, `20260927120000_fix_silver_collection_handle.sql`) because they were written by hand for index work or data repair that a schema diff cannot express. Wrangler applies both kinds identically — it simply runs the files in the directory in name order.
 
-> The drizzle-kit bookkeeping has drifted from the directory. At the time of writing `migrations/` holds 108 `.sql` files, `meta/_journal.json` lists 52 entries, and `meta/` contains 37 snapshots. Fifty-five files are missing from the journal, including all 49 after `20260930151544_collection_short_descriptions`. That means `db:generate` diffs against the newest _snapshot_, not against what the directory actually contains, so it can emit SQL for a change that a later hand-written migration already made. Read every generated migration and delete statements that describe work already applied.
+> The drizzle-kit bookkeeping does not match the directory. At the time of writing `migrations/` holds 108 `.sql` files, `meta/_journal.json` lists 52 entries, and `meta/` contains 37 snapshots. Fifty-five files are missing from the journal, including all 49 after `20260930151544_collection_short_descriptions`. That means `db:generate` diffs against the newest _snapshot_, not against what the directory actually contains, so it can emit SQL for a change that a later hand-written migration already made. Read every generated migration and delete statements that describe work already applied.
 
 Always read the generated SQL before committing it for a second reason too: SQLite cannot drop or alter a column in place, so drizzle-kit rewrites the whole table. On a live database that is the step most likely to lose data.
 
@@ -217,7 +217,7 @@ Only `delivery-methods.sql`, which adds the two couriers and the delivery method
 
 `db:seed:preview` and `db:seed:production` chain `wrangler d1 execute DB --env <environment> --remote --file=<each file>` in that order — dependency order, since the join tables reference products, categories and collections that the earlier files create. `bun run db:seed` with no suffix is an alias for `db:seed:preview`.
 
-> **Do not run `bun run db:seed`, `bun run db:seed:preview` or `bun run db:seed:production`.** On a live database they would delete the rows they collide with, overwrite the seeded products, variants, categories, collections, attributes and images with the seed's values, which fights the real data now managed through the admin console, and set both seeded variants' stock back to 99 available and 0 reserved.
+> **Do not run `bun run db:seed`, `bun run db:seed:preview` or `bun run db:seed:production`.** On a live database they would delete the rows they collide with, overwrite the seeded products, variants, categories, collections, attributes and images with the seed's values, which fights the real data managed through the admin console, and set both seeded variants' stock back to 99 available and 0 reserved.
 
 `bun run db:seed:test` is the local seed. It runs `scripts/seed-test.ts`, which loads the same eleven files plus the end-to-end accounts into the local `test` database in `.wrangler/test`; see [Testing](/docs/tooling/testing#data).
 

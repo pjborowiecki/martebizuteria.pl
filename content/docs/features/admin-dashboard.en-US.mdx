@@ -139,7 +139,7 @@ A click anywhere else on a row opens the same order page through `useNavigate`. 
 .groupBy(orderItem.productId)
 ```
 
-Only lines whose variant was gone before their product was recorded have no `product_id`: lines written before the backfill below whose variant had since been deleted, and lines whose variant was deleted while the customer paid. Grouped together they would make one row that names no product.
+Only lines whose variant was gone before their product was recorded have no `product_id`: lines the backfill below found without a variant, and lines whose variant was deleted while the customer paid. Grouped together they would make one row that names no product.
 
 `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.accessors.ts`) records each line's product and variant by looking them up through the line's variant in the same insert, and the migration `20261003120000_order_item_product_backfill.sql` filled in the lines written before that whose variant still existed. The thumbnail is read with `max(...)` from the grouped lines.
 

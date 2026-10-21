@@ -121,7 +121,7 @@ Plik `src/lib/url.ts` zamienia zapisany klucz lub adres na coś, co przeglądark
 
 `VITE_R2_URL` występuje zarówno w `secrets.required` w `wrangler.jsonc`, jak i wśród zmiennych przeglądarkowych z prefiksem `VITE_`, ponieważ potrzebują go obie strony. Obie wartości muszą wskazywać ten sam host: Content-Security-Policy jest budowany na serwerze i pozwala stronom ładować obrazy i wideo tylko z originu `DEFAULT_R2_PUBLIC_URL` oraz originu, który zwraca tam `getAssetCdnBase()`, więc bundle zbudowany z innym hostem miałby odrzucone obrazy. Zobacz [Model bezpieczeństwa](/docs/architecture/security-model#nagłówki-odpowiedzi).
 
-Wiersze zapisane, zanim wysyłka zaczęła zapisywać klucze, i każdy plik seed zawierają pełne adresy `r2.dev`. Ponieważ `resolveAssetURL` przenosi je na skonfigurowaną bazę, podążają za `VITE_R2_URL` tak jak klucze: produkcja serwuje je ze swojej własnej domeny, a preview z bucketu preview.
+Część wierszy i każdy plik seed zawierają pełne adresy `r2.dev` zamiast kluczy. Ponieważ `resolveAssetURL` przenosi je na skonfigurowaną bazę, podążają za `VITE_R2_URL` tak jak klucze: produkcja serwuje je ze swojej własnej domeny, a preview z bucketu preview.
 
 ### Zmniejszanie
 

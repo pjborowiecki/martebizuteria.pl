@@ -115,7 +115,7 @@ If you do change one, keep it consistent with the current schema:
 - Keep the ids stable, or update every file that references them, and `e2e/data/catalog.ts`.
 - Keep both locale keys in every `json_object`.
 - No linter reads the SQL, and the unit and integration suites load only `delivery-methods.sql`, in the delivery-method descriptions migration test. What checks the seed files is `bun run db:reset:test` and the E2E specs that rely on the seeded catalog, so run both after a change.
-- A changed seed file reaches only new databases. A database that already has the rows needs a migration as well: commit b77f58dd rewrote the delivery-method descriptions in `delivery-methods.sql` and added `20261010220000_delivery_method_descriptions.sql`, with its test, to update the existing rows.
+- A changed seed file reaches only new databases. A database that already has the rows needs a migration as well: `20261010220000_delivery_method_descriptions.sql`, with its test, updates the existing rows to the delivery-method descriptions in `delivery-methods.sql` (commit b77f58dd).
 
 ## Adding test fixtures instead
 

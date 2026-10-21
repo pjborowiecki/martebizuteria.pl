@@ -36,7 +36,7 @@ Gdy wartość jest pusta albo wciąż zawiera zastępczy host `your-production-c
 Baza przechowuje dwa kształty odwołania do zdjęcia i oba rozwiązywane są względem bieżącego `VITE_R2_URL`:
 
 - **Klucz w buckecie**, na przykład `products/<sha256>.webp`. `uploadImageFn` odpowiada samym kluczem, a formularze panelu zapisują go w `product.thumbnail`, `product_image.url` i kolumnach `image` kategorii i kolekcji.
-- **Adres `r2.dev`**, na przykład `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/products/<sha256>.webp`. Tak wyglądają wiersze zapisane, zanim wysyłka zaczęła zapisywać klucze, i każdy plik seed.
+- **Adres `r2.dev`**, na przykład `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/products/<sha256>.webp`. Tak wyglądają każdy plik seed i część istniejących wierszy.
 
 `resolveAssetURL` w `src/lib/url.ts` zamienia klucz, a także każdą inną wartość bez `http://` ani `https://`, na `${VITE_R2_URL}/<klucz>`, a adres `r2.dev` przenosi na `VITE_R2_URL`, zachowując jego ścieżkę, czyli klucz obiektu. Skierowanie `VITE_R2_URL` na inny host nie wymaga więc przepisywania zapisanych danych, a adresy `r2.dev` z plików seed działają w każdym środowisku. Każdy inny adres bezwzględny zostaje bez zmian.
 
@@ -112,7 +112,7 @@ Strefa `martebizuteria.pl` musi być na tym samym koncie Cloudflare. W panelu ot
 bunx wrangler r2 bucket domain add martebizuteria --domain images.martebizuteria.pl --zone-id <ZONE_ID> --min-tls 1.2
 ```
 
-Zostaw włączony adres `r2.dev` tego bucketu. Potwierdzenia zamówień wysłane, gdy produkcja go używała, linkują do niego swoje zdjęcia — wszystkie w e-mailach sprzed osadzania zdjęć w potwierdzeniu, a od tamtej pory każde, którego nie osadziło — i te zdjęcia ładują się tylko, dopóki adres pozostaje włączony.
+Zostaw włączony adres `r2.dev` tego bucketu. Potwierdzenia zamówień wysłane, gdy produkcja go używała, linkują do niego każde zdjęcie, którego nie osadziły, i te zdjęcia ładują się tylko, dopóki adres pozostaje włączony.
 
 ### 5. Włącz Image Transformations dla strefy
 

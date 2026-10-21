@@ -17,7 +17,7 @@ M'Arte has no server-side cart. The basket lives in `localStorage` under the key
 }
 ```
 
-`CART_PERSIST_VERSION` is `3`. The `migrate` function does not transform old shapes — it re-validates every row with the `isPersistedCartItem` type guard and drops anything that does not match, so a stored basket from an older build degrades to an empty or partial basket rather than crashing the page. It also brings every kept line's `qty` within one and `CART_LINE_QUANTITY_MAX`; version `3` makes it run once over baskets stored before that limit existed, so none of them sends a quantity checkout would refuse.
+`CART_PERSIST_VERSION` is `3`. The `migrate` function does not transform old shapes — it re-validates every row with the `isPersistedCartItem` type guard and drops anything that does not match, so a stored basket from an older build degrades to an empty or partial basket rather than crashing the page. It also brings every kept line's `qty` within one and `CART_LINE_QUANTITY_MAX`; version `3` makes it run once over baskets stored under a lower version, so none of them sends a quantity checkout would refuse.
 
 A line is:
 
@@ -59,7 +59,7 @@ export const getCartLineTotalCents = (item: { readonly price: string; readonly q
   getCartLineUnitPriceCents(item) * item.qty
 ```
 
-`rawPrice` wins; the string parse is a fallback for baskets persisted before `rawPrice` existed. `MIN_PRICE_CENTS` and `parseMoneyInputToMinorUnits` come from `src/modules/_core/utils/currency.ts`.
+`rawPrice` wins; the string parse is a fallback for persisted baskets without `rawPrice`. `MIN_PRICE_CENTS` and `parseMoneyInputToMinorUnits` come from `src/modules/_core/utils/currency.ts`.
 
 **Prices in the basket follow the catalogue.** `rawPrice` starts as the price on the page the piece was added from. Every availability check also returns the price each variant sells for now, and every checkout session the server opens returns the prices it was quoted at. Both go through `applyCurrentPrices(prices)`, which sets `rawPrice` on each line whose displayed price differs and marks it `priceChanged`. A marked line says `pages.cart.priceChanged` in the basket and `checkoutSummary.priceChanged` in the checkout summary until it is removed or the order is placed; the old price is not shown. A line the server reports no price for keeps its own, and checkout refuses it with `INVALID_PRICE`, `VARIANT_NOT_FOUND` or `PRODUCT_NOT_FOUND`. The basket's prices are only ever displayed: the server never receives them, because `cartItemSchema` has no `price` or `rawPrice`, and it prices the Stripe session from `variant.price` in `validateAndCalculateItems` — see [Checkout](/docs/features/checkout). The same holds for a line's `title`, `variantTitle` and `image`: `cartItemSchema` keeps only `slug`, `variantId` and `qty`, and the name and picture on the payment, the order and its e-mails come from the catalogue.
 

@@ -149,7 +149,7 @@ Because `THEME_STORAGE_KEY` is derived from `APP_NAME`, renaming the app changes
 
 ## Seller details
 
-The legal identity of the shop is data rather than a constant. The legal name, street, postal code, city, country, NIP, REGON, contact e-mail and phone are columns of the `store_setting` row, which the owner edits under **Settings → Store details**; `20261016160000_seller_details.sql` filled them with the details the code held until then (see [Admin settings](/docs/features/admin-settings#store-details)). The storefront reads them through `getSellerDetailsQuery()`, the admin through `getAdminSellerDetailsQuery()` and server code through `readSellerDetails()`, and two helpers in `src/modules/store-setting/store-setting.utils.ts` format them:
+The legal identity of the shop is data rather than a constant. The legal name, street, postal code, city, country, NIP, REGON, contact e-mail and phone are columns of the `store_setting` row, which the owner edits under **Settings → Store details**; `20261016160000_seller_details.sql` fills them with the seller's existing details (see [Admin settings](/docs/features/admin-settings#store-details)). The storefront reads them through `getSellerDetailsQuery()`, the admin through `getAdminSellerDetailsQuery()` and server code through `readSellerDetails()`, and two helpers in `src/modules/store-setting/store-setting.utils.ts` format them:
 
 ```ts
 export const formatSellerPostalAddress = (

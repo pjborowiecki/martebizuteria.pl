@@ -17,7 +17,7 @@ M'Arte nie ma koszyka po stronie serwera. Koszyk żyje w `localStorage` pod kluc
 }
 ```
 
-`CART_PERSIST_VERSION` wynosi `3`. Funkcja `migrate` nie przekształca starych kształtów — waliduje ponownie każdy wiersz predykatem typu `isPersistedCartItem` i odrzuca wszystko, co nie pasuje, więc koszyk zapisany przez starszą wersję degraduje się do pustego lub częściowego, a nie wywala strony. Sprowadza też `qty` każdej zachowanej linii do przedziału od jednej sztuki do `CART_LINE_QUANTITY_MAX`; wersja `3` sprawia, że uruchamia się raz dla koszyków zapisanych przed wprowadzeniem tego limitu, więc żaden z nich nie wyśle ilości, którą kasa by odrzuciła.
+`CART_PERSIST_VERSION` wynosi `3`. Funkcja `migrate` nie przekształca starych kształtów — waliduje ponownie każdy wiersz predykatem typu `isPersistedCartItem` i odrzuca wszystko, co nie pasuje, więc koszyk zapisany przez starszą wersję degraduje się do pustego lub częściowego, a nie wywala strony. Sprowadza też `qty` każdej zachowanej linii do przedziału od jednej sztuki do `CART_LINE_QUANTITY_MAX`; wersja `3` sprawia, że uruchamia się raz dla koszyków zapisanych z niższą wersją, więc żaden z nich nie wyśle ilości, którą kasa by odrzuciła.
 
 Linia koszyka to:
 
@@ -59,7 +59,7 @@ export const getCartLineTotalCents = (item: { readonly price: string; readonly q
   getCartLineUnitPriceCents(item) * item.qty
 ```
 
-`rawPrice` ma priorytet; parsowanie napisu to fallback dla koszyków zapisanych, zanim `rawPrice` istniało. `MIN_PRICE_CENTS` i `parseMoneyInputToMinorUnits` pochodzą z `src/modules/_core/utils/currency.ts`.
+`rawPrice` ma priorytet; parsowanie napisu to fallback dla zapisanych koszyków bez `rawPrice`. `MIN_PRICE_CENTS` i `parseMoneyInputToMinorUnits` pochodzą z `src/modules/_core/utils/currency.ts`.
 
 **Ceny w koszyku podążają za katalogiem.** `rawPrice` zaczyna od ceny ze strony, z której dodano produkt. Każde sprawdzenie dostępności zwraca też cenę, za jaką wariant sprzedaje się teraz, a każda sesja checkoutu otwarta przez serwer zwraca ceny, po których ją wyceniono. Obie trafiają do `applyCurrentPrices(prices)`, które ustawia `rawPrice` w każdej linii, której wyświetlana cena się różni, i oznacza ją `priceChanged`. Oznaczona linia pokazuje `pages.cart.priceChanged` w koszyku i `checkoutSummary.priceChanged` w podsumowaniu kasy, dopóki nie zostanie usunięta albo zamówienie nie zostanie złożone; stara cena nie jest pokazywana. Linia, dla której serwer nie podał ceny, zachowuje swoją, a kasa odrzuca ją z `INVALID_PRICE`, `VARIANT_NOT_FOUND` albo `PRODUCT_NOT_FOUND`. Ceny z koszyka służą wyłącznie do wyświetlania: serwer nigdy ich nie dostaje, bo `cartItemSchema` nie ma `price` ani `rawPrice`, a sesję Stripe wycenia z `variant.price` w `validateAndCalculateItems` — zobacz [Kasa](/docs/features/checkout). Tak samo z `title`, `variantTitle` i `image` linii: `cartItemSchema` zachowuje tylko `slug`, `variantId` i `qty`, a nazwa i zdjęcie w płatności, zamówieniu i e-mailach o nim pochodzą z katalogu.
 
