@@ -1,6 +1,6 @@
 import { type JSX, type ReactNode, useEffect } from "react"
 
-import { type StripeCheckoutElementsSdkOptions } from "@stripe/stripe-js"
+import { type StripeCheckoutElementsSdkOptions, type StripeCheckoutPaymentElementOptions } from "@stripe/stripe-js"
 import { QueryClient } from "@tanstack/react-query"
 import type * as TanStackRouter from "@tanstack/react-router"
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react"
@@ -38,6 +38,7 @@ const {
   navigate,
   onEdit,
   paymentElementReady,
+  paymentElementOptions,
   providerOptions,
   readStatus,
   resetCheckoutSession,
@@ -52,6 +53,7 @@ const {
   getStripe: vi.fn<(locale: string) => Promise<null>>(),
   navigate: vi.fn<(options: NavigateOptions) => Promise<void>>(),
   onEdit: vi.fn<(stepId: string) => void>(),
+  paymentElementOptions: { current: undefined as StripeCheckoutPaymentElementOptions | undefined },
   paymentElementReady: { current: true },
   providerOptions: { current: undefined as StripeCheckoutElementsSdkOptions | undefined },
   readStatus: vi.fn<(sessionId: string) => Promise<CheckoutSessionStatus>>(),
@@ -139,7 +141,8 @@ vi.mock("@stripe/react-stripe-js/checkout", () => ({
 
     return <div data-testid="elements">{children}</div>
   },
-  PaymentElement: ({ onReady }: Readonly<{ onReady: () => void }>): JSX.Element => {
+  PaymentElement: ({ onReady, options }: Readonly<{ onReady: () => void; options: StripeCheckoutPaymentElementOptions }>): JSX.Element => {
+    paymentElementOptions.current = options
     useEffect(() => {
       if (paymentElementReady.current) {
         onReady()
@@ -589,6 +592,17 @@ describe("PaymentStep session failures", () => {
 })
 
 describe("PaymentStep payment form", () => {
+  it("opens every payment method collapsed, so a saved card shows only once the shopper picks it", async () => {
+    formState.session = session
+    renderWithProviders(<PaymentStep />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("payment-element")).toBeInTheDocument()
+    })
+
+    expect(paymentElementOptions.current?.layout).toMatchObject({ defaultCollapsed: true, type: "accordion" })
+  })
+
   it("labels the submit button with the place-order copy and the total Stripe will take", async () => {
     formState.session = session
     renderWithProviders(<PaymentStep />)
