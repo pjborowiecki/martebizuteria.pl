@@ -705,6 +705,7 @@ const PAYMENT_ELEMENT_OPTIONS: StripeCheckoutPaymentElementOptions = {
     },
   },
   layout: {
+    defaultCollapsed: true,
     radios: "always",
     spacedAccordionItems: true,
     type: "accordion",
