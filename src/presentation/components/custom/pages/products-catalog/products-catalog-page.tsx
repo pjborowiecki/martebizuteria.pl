@@ -60,10 +60,9 @@ export const ProductsCatalogPage = ({
   const effectiveSearch = useMemo(() => buildEffectiveStorefrontProductsSearch(normalizedSearch, scope), [normalizedSearch, scope])
   const catalogFilterOptions = useMemo(() => storefrontCatalogFilterOptions(scope), [scope])
   const activeFilterCount = countActiveStorefrontProductFilters(effectiveSearch, catalogFilterOptions)
-  const shownFiltersActive = hasActiveStorefrontProductFilters(
-    buildEffectiveStorefrontProductsSearch(shownResults.search, shownResults.scope),
-    storefrontCatalogFilterOptions(shownResults.scope),
-  )
+  const shownEffectiveSearch = buildEffectiveStorefrontProductsSearch(shownResults.search, shownResults.scope)
+  const shownFiltersActive = hasActiveStorefrontProductFilters(shownEffectiveSearch, storefrontCatalogFilterOptions(shownResults.scope))
+  const infiniteScrollEnabled = !shownFiltersActive && !resultsUpdating
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(
     getStorefrontProductsPageQuery(shownResults.search, shownResults.scope),
   )
@@ -131,7 +130,7 @@ export const ProductsCatalogPage = ({
             filtersActive={shownFiltersActive}
             hasNextPage={hasNextPage}
             i18nNamespace={i18nNamespace}
-            infiniteScrollEnabled={!shownFiltersActive && !resultsUpdating}
+            infiniteScrollEnabled={infiniteScrollEnabled}
             isFetchingNextPage={isFetchingNextPage}
             onClearFilters={handleClearFilters}
             products={products}

@@ -11,9 +11,16 @@ import { useDebounce } from "~/src/hooks/use-debounce"
 const formatPrice = (price: number | undefined): string => (price === undefined ? "" : String(price))
 
 const parsePrice = (text: string): number | undefined => {
-  const price = Number(text)
+  if (text.trim() === "") {
+    return undefined
+  }
 
-  return text.trim() === "" || !Number.isFinite(price) || price < 0 ? undefined : price
+  const price = Number(text)
+  if (!Number.isFinite(price) || price < 0) {
+    return undefined
+  }
+
+  return price
 }
 
 const PriceField = ({
@@ -28,8 +35,9 @@ const PriceField = ({
   value: number | undefined
 }>): JSX.Element => {
   const id = useId()
-  const [draft, setDraft] = useState<string | undefined>()
-  const settledDraft = useDebounce(draft, STOREFRONT_SEARCH_DEBOUNCE_MS)
+  const [editing, setEditing] = useState(false)
+  const [typedText, setTypedText] = useState("")
+  const settledText = useDebounce(typedText, STOREFRONT_SEARCH_DEBOUNCE_MS)
   const commit = useCallback(
     (text: string) => {
       const price = parsePrice(text)
@@ -41,17 +49,18 @@ const PriceField = ({
   )
 
   useEffect(() => {
-    if (settledDraft !== undefined && settledDraft === draft) {
-      commit(settledDraft)
+    if (editing && settledText === typedText) {
+      commit(settledText)
     }
-  }, [commit, draft, settledDraft])
+  }, [commit, editing, settledText, typedText])
 
   const handleFocus = useCallback(() => {
-    setDraft(formatPrice(value))
+    setTypedText(formatPrice(value))
+    setEditing(true)
   }, [value])
 
   const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setDraft(event.target.value)
+    setTypedText(event.target.value)
   }, [])
 
   const handleKeyDown = useCallback(
@@ -66,10 +75,12 @@ const PriceField = ({
   const handleBlur = useCallback(
     (event: FocusEvent<HTMLInputElement>) => {
       commit(event.currentTarget.value)
-      setDraft(undefined)
+      setEditing(false)
     },
     [commit],
   )
+
+  const shownText = editing ? typedText : formatPrice(value)
 
   return (
     <div className="space-y-2">
@@ -83,7 +94,7 @@ const PriceField = ({
         inputMode="numeric"
         placeholder={placeholder}
         aria-label={label}
-        value={draft ?? formatPrice(value)}
+        value={shownText}
         onBlur={handleBlur}
         onChange={handleChange}
         onFocus={handleFocus}
