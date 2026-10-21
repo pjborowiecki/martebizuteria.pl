@@ -118,7 +118,7 @@ export const Route = createFileRoute("/_storefront/products/")({
 })
 ```
 
-`loaderDeps` decides when the loader re-runs, so it lists only what the loader's own data depends on: the search term, which changes the page title. The filters and the sort are left out on purpose. A route whose dependencies change gets a new match, and while its loader waits on the server the router shows the pending screen, which on a filter change blanked the whole catalogue, filters included. Without them, a filter change keeps the match and never runs the loader: the grid applies it in place (see [Applying a filter in place](#applying-a-filter-in-place)). The category and collection routes have no `loaderDeps` at all, because their loader depends only on the `handle` path parameter.
+`loaderDeps` decides when the loader re-runs, so it lists only what the loader's own data depends on: the search term, which sets the page title. The filters and the sort stay out of it. A change to `loaderDeps` creates a new route match, and while that match's loader waits on the server the router replaces the whole page, filter panel included, with its pending screen. With the filters kept out, a filter change keeps the match, the loader does not run, and the grid applies the filter in place (see [Applying a filter in place](#applying-a-filter-in-place)). The category and collection routes have no `loaderDeps` at all: their loader depends only on the `handle` path parameter.
 
 The loader still needs the filters once, for the first server render. `beforeLoad` receives the validated search and hands it on as `context.catalogSearch`, after `normalizeStorefrontProductsSearch`, which rebuilds the object with its keys in a fixed order and omits every `undefined`:
 
