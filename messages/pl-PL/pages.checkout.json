@@ -140,6 +140,7 @@
     "sameAsShipping": "Taki sam jak adres dostawy",
     "saveShippingAddress": "Zapisz ten adres dostawy na przyszłość",
     "saveBillingAddress": "Zapisz ten adres rozliczeniowy na przyszłość",
+    "addressAlreadySaved": "Ten adres jest już zapisany",
     "companyInvoice": "Chcę otrzymać fakturę na firmę",
     "companyInvoiceHint": "Fakturę wystawimy na tę firmę na adres rozliczeniowy. Jeśli adres firmy jest inny niż adres dostawy, odznacz powyżej „Taki sam jak adres dostawy” i podaj go.",
     "companyName": "Nazwa firmy",
