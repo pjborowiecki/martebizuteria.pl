@@ -120,11 +120,18 @@ describe("AddressStep shipping fields", () => {
     expect(country).toHaveAttribute("readonly")
   })
 
-  it("offers the save and same-as-shipping choices", () => {
+  it("offers a guest the same-as-shipping choice but no saving, since a guest has no address book", () => {
     renderWithProviders(<AddressStepHarness />)
 
-    expect(screen.getByRole("checkbox", { name: "Save this shipping address for future use" })).toBeInTheDocument()
     expect(screen.getByRole("checkbox", { name: "Same as shipping address" })).toBeInTheDocument()
+    expect(screen.queryByRole("checkbox", { name: "Save this shipping address for future use" })).not.toBeInTheDocument()
+  })
+
+  it("offers a signed-in shopper to save the shipping address", async () => {
+    sessionState.signedIn = true
+    renderWithProviders(<AddressStepHarness />)
+
+    expect(await screen.findByRole("checkbox", { name: "Save this shipping address for future use" })).toBeInTheDocument()
   })
 
   it("uses the shipping autofill hints the browser understands", () => {
@@ -293,7 +300,7 @@ describe("AddressStep saving an address", () => {
 
   it("clears a ticked save when the shopper picks an address that is already saved", async () => {
     renderWithProviders(<AddressStepHarness />)
-    await userEvent.click(screen.getByRole("checkbox", { name: "Save this shipping address for future use" }))
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Save this shipping address for future use" }))
     await openSavedAddresses()
 
     await userEvent.click(screen.getByRole("button", { name: /Anna Kowalska/u }))
@@ -318,7 +325,14 @@ describe("AddressStep billing address", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: "Same as shipping address" }))
 
     expect(await screen.findByText("Billing Address")).toBeInTheDocument()
-    expect(screen.getByRole("checkbox", { name: "Save this billing address for future use" })).toBeInTheDocument()
+    expect(screen.queryByRole("checkbox", { name: "Save this billing address for future use" })).not.toBeInTheDocument()
+  })
+
+  it("offers a signed-in shopper to save the billing address too", async () => {
+    sessionState.signedIn = true
+    renderWithProviders(<AddressStepHarness sameAsShipping={false} />)
+
+    expect(await screen.findByRole("checkbox", { name: "Save this billing address for future use" })).toBeInTheDocument()
   })
 
   it("uses the billing autofill hints for the second set of fields", () => {
