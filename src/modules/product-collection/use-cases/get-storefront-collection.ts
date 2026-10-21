@@ -8,11 +8,13 @@ import { getStorefrontCollectionByHandleQuery } from "~/src/modules/product-coll
 import { COLLECTION_QUERY_KEYS, COLLECTION_QUERY_STALE_MS } from "~/src/modules/product-collection/product-collection.constants"
 import { productCollectionZodSchemas } from "~/src/modules/product-collection/product-collection.zod"
 
+import { readThroughStorefrontCache } from "~/src/lib/storefront-read"
+
 export const getStorefrontCollection = createServerFn({ method: "GET" })
   .middleware([withRequest])
   .validator((input: zod.input<typeof productCollectionZodSchemas.handleInput>) => productCollectionZodSchemas.handleInput.parse(input))
   .handler(async ({ data: handle }) => {
-    const collection = await getStorefrontCollectionByHandleQuery.execute({ handle })
+    const collection = await readThroughStorefrontCache(() => getStorefrontCollectionByHandleQuery.execute({ handle }))
 
     if (collection === undefined) {
       return false

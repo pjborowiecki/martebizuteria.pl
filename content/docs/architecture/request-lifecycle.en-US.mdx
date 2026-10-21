@@ -11,7 +11,7 @@ description: "The steps a page request, a server function call and a webhook go 
 4. **Routing.** `getRouter` creates a new router and a new `QueryClient`, and copies the request's nonce into `ssr.nonce` so Start stamps it on every script it renders. The router's `rewrite.input` de-localizes the URL before matching, so `/en-US/products` matches the `/_storefront/products` route, and `rewrite.output` re-applies the prefix when generating links.
 5. **Root `beforeLoad`.** `__root.tsx` resolves the locale with `getCurrentLocale()`, collects the namespaces of every matched route with `getRouteNamespaces(matches)` and preloads them into the request's `QueryClient`. In parallel it awaits `context.queryClient.query(displayPreferencesQuery)`, which returns the formatting locale and time zone detected from the request (`Accept-Language`, the `marte_time_zone` cookie, `edgeTimeZone`) and the ones saved on the signed-in user; see [Display preferences](/docs/architecture/i18n-architecture#display-preferences). It returns `{ internalPathname, locale }` as the root route context.
 6. **Guards.** Layout `beforeLoad` functions run next: `requireAdmin` on `/admin`, `requireCustomer` on `/account`, `redirectIfSignedIn` on `/auth`. They only read the session, through `loadRouteSession`, which calls `context.queryClient.query` with `getCurrentSessionQuery`, and throw a `redirect` when access is not allowed; otherwise `requireAdmin` and `requireCustomer` return `{ user }` as route context. The session stays in the request's `QueryClient`, so it is serialized with the rest of the cache and an `/account` or `/admin` page renders signed-in on the server.
-7. **Loaders** run in parallel. A typical loader resolves its page metadata namespace and its data queries together, marking the data query `staleTime: "static"` so it is not refetched during the same render:
+7. **Loaders** run in parallel. On a storefront page served from the shop's own domain their public catalogue reads go through the [storefront read cache](/docs/architecture/caching-and-ssr#the-storefront-read-cache): the request asks the storefront hub for the catalogue version once and reads each statement from the Cache API, going to D1 only for what is not there yet. A typical loader resolves its page metadata namespace and its data queries together, marking the data query `staleTime: "static"` so it is not refetched during the same render:
 
    ```ts
    const [data, messages] = await Promise.all([
@@ -34,6 +34,7 @@ GET /en-US/products/pierscionek-z-perla
   __root beforeLoad      getCurrentLocale, preloadNamespaces(root + route), displayPreferencesQuery
   _storefront            no guard; loads the menu collections, sales status and seller details
   route loader           getProductQuery (staleTime: "static") + pages.product messages
+                         catalogue version from the storefront hub, then cache hits or D1
                          defer(getRelatedProductsQuery)
   SSR                    HTML + serialized query cache + Link header (stylesheets, fonts)
   HTMLRewriter           keeps the client entry's modulepreload at low priority, drops the rest

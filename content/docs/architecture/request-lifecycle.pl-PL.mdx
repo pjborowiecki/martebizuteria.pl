@@ -11,7 +11,7 @@ description: "Kroki, przez które przechodzi żądanie strony, wywołanie funkcj
 4. **Routing.** `getRouter` tworzy nowy router i nowy `QueryClient` oraz kopiuje nonce żądania do `ssr.nonce`, żeby Start nadał go każdemu skryptowi, który renderuje. `rewrite.input` routera usuwa prefiks locale przed dopasowaniem, więc `/en-US/products` pasuje do trasy `/_storefront/products`, a `rewrite.output` przywraca prefiks przy generowaniu linków.
 5. **Root `beforeLoad`.** `__root.tsx` ustala locale przez `getCurrentLocale()`, zbiera przestrzenie nazw każdej dopasowanej trasy przez `getRouteNamespaces(matches)` i wstępnie ładuje je do `QueryClient` tego żądania. Równolegle czeka na `context.queryClient.query(displayPreferencesQuery)`, które zwraca locale formatowania i strefę czasową wykryte z żądania (`Accept-Language`, cookie `marte_time_zone`, `edgeTimeZone`) oraz te zapisane u zalogowanego użytkownika; zobacz [Preferencje wyświetlania](/docs/architecture/i18n-architecture#preferencje-wyświetlania). Zwraca `{ internalPathname, locale }` jako kontekst trasy root.
 6. **Guardy.** Następnie uruchamiają się funkcje `beforeLoad` layoutów: `requireAdmin` na `/admin`, `requireCustomer` na `/account`, `redirectIfSignedIn` na `/auth`. Jedynie czytają sesję, przez `loadRouteSession`, które woła `context.queryClient.query` z `getCurrentSessionQuery`, i rzucają `redirect`, gdy dostęp nie jest dozwolony; w przeciwnym razie `requireAdmin` i `requireCustomer` zwracają `{ user }` jako kontekst trasy. Sesja zostaje w `QueryClient` tego żądania, więc jest serializowana razem z resztą cache'u, a strona `/account` lub `/admin` renderuje się na serwerze jako zalogowana.
-7. **Loadery** działają równolegle. Typowy loader rozwiązuje razem przestrzeń nazw metadanych strony i zapytania o dane, oznaczając zapytanie danymi jako `staleTime: "static"`, żeby nie było odświeżane w tym samym renderze:
+7. **Loadery** działają równolegle. Na stronie sklepu obsłużonej z własnej domeny sklepu ich publiczne odczyty katalogu przechodzą przez [cache odczytów sklepu](/docs/architecture/caching-and-ssr#cache-odczytów-sklepu): żądanie raz pyta hub sklepu o wersję katalogu i czyta każdą instrukcję z Cache API, sięgając do D1 tylko po to, czego tam jeszcze nie ma. Typowy loader rozwiązuje razem przestrzeń nazw metadanych strony i zapytania o dane, oznaczając zapytanie danymi jako `staleTime: "static"`, żeby nie było odświeżane w tym samym renderze:
 
    ```ts
    const [data, messages] = await Promise.all([
@@ -34,6 +34,7 @@ GET /en-US/products/pierscionek-z-perla
   __root beforeLoad      getCurrentLocale, preloadNamespaces(root + trasa), displayPreferencesQuery
   _storefront            brak guarda; ładuje kolekcje menu, stan sprzedaży i dane sprzedawcy
   loader trasy           getProductQuery (staleTime: "static") + wiadomości pages.product
+                         wersja katalogu z huba sklepu, potem trafienia w cache albo D1
                          defer(getRelatedProductsQuery)
   SSR                    HTML + serializowany cache zapytań + nagłówek Link (arkusze stylów, fonty)
   HTMLRewriter           zostawia modulepreload wejścia klienta z niskim priorytetem, usuwa resztę

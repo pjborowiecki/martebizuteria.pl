@@ -7,8 +7,9 @@ import { drizzle } from "drizzle-orm/d1"
 import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas"
 
 import { timeD1Statements } from "~/src/lib/server-timing"
+import { cacheStorefrontReads } from "~/src/lib/storefront-cache.server"
 
-const instrumentedBinding = (): D1Database => timeD1Statements(env.DB)
+const instrumentedBinding = (): D1Database => cacheStorefrontReads(timeD1Statements(env.DB))
 
 class DeferredD1Database implements D1Database {
   batch = <TResult = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<TResult>[]> =>

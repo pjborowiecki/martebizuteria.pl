@@ -175,6 +175,53 @@ describe("RealtimeInvalidationHub.notifyInvalidation", () => {
   })
 })
 
+describe("RealtimeInvalidationHub storefront catalogue version", () => {
+  it("keeps answering the same version until the storefront is invalidated", () => {
+    const { hub } = createHub(REALTIME_INVALIDATION_HUB.STOREFRONT)
+
+    const first = hub.storefrontCacheVersion()
+
+    expect(first).toMatch(/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/u)
+    expect(hub.storefrontCacheVersion()).toBe(first)
+  })
+
+  it("starts a new version before it broadcasts a storefront invalidation", () => {
+    const { hub, state } = createHub(REALTIME_INVALIDATION_HUB.STOREFRONT)
+    const before = hub.storefrontCacheVersion()
+    const socket = new TestWebSocket()
+    state.taggedSockets = [socket]
+
+    hub.notifyInvalidation(['["products"]'])
+
+    expect(hub.storefrontCacheVersion()).not.toBe(before)
+    expect(socket.sent).toHaveLength(1)
+  })
+
+  it("keeps the version when there is nothing to invalidate", () => {
+    const { hub } = createHub(REALTIME_INVALIDATION_HUB.STOREFRONT)
+    const before = hub.storefrontCacheVersion()
+
+    hub.notifyInvalidation([])
+
+    expect(hub.storefrontCacheVersion()).toBe(before)
+  })
+
+  it("leaves the version alone when the admin hub broadcasts", () => {
+    const { hub, state } = createHub(REALTIME_INVALIDATION_HUB.ADMIN)
+
+    hub.notifyInvalidation(['["admin","orders"]'])
+
+    expect(state.storage.kv.get("storefront-cache-version")).toBeUndefined()
+  })
+
+  it("remembers the version in storage, so a restarted object answers the same one", () => {
+    const { hub, state } = createHub(REALTIME_INVALIDATION_HUB.STOREFRONT)
+    const version = hub.storefrontCacheVersion()
+
+    expect(new RealtimeInvalidationHub(state, new TestEnv()).storefrontCacheVersion()).toBe(version)
+  })
+})
+
 describe("RealtimeInvalidationHub socket lifecycle", () => {
   it("closes the socket with the code and reason the client sent", () => {
     const { hub } = createHub(REALTIME_INVALIDATION_HUB.ADMIN)

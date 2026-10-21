@@ -81,7 +81,7 @@ Ta osoba zakłada konto w sklepie i potwierdza adres e-mail. Potem w **Ustawieni
 
 ## Jak zmiana w jednej karcie przeglądarki dociera na ekran innego administratora?
 
-Przez Durable Object `RealtimeInvalidationHub`. Mutacja wywołuje helper `schedule*Invalidation` (na przykład `scheduleCategoryCatalogInvalidation`), Worker wywołuje `hub.notifyInvalidation(prefixes)` jako natywną metodę RPC po `getByName(hubName)`, a hub rozgłasza do każdego gniazda tej publiczności. Karty subskrybują ustaloną listę prefiksów — 23 dla panelu, 15 dla sklepu, 3 dla kasy — i odrzucają komunikaty, które się nie pokrywają.
+Przez Durable Object `RealtimeInvalidationHub`. Mutacja wywołuje helper `schedule*Invalidation` (na przykład `scheduleCategoryCatalogInvalidation`), Worker wywołuje `hub.notifyInvalidation(prefixes)` jako natywną metodę RPC po `getByName(hubName)`, a hub rozgłasza do każdego gniazda tej publiczności; hub sklepu najpierw zaczyna nową wersję [cache'u odczytów sklepu](/docs/architecture/caching-and-ssr#cache-odczytów-sklepu). Karty subskrybują ustaloną listę prefiksów — 23 dla panelu, 15 dla sklepu, 3 dla kasy — i odrzucają komunikaty, które się nie pokrywają.
 
 ## Jak podejrzeć e-mail transakcyjny?
 

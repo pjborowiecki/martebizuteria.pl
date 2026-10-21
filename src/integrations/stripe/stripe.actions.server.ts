@@ -495,6 +495,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
     await releaseInventoryForItems(lines).catch((releaseError: unknown) => {
       console.error("Failed to release inventory after checkout error:", releaseError)
     })
+    scheduleProductCatalogInvalidation()
     console.error("Stripe/DB error:", error)
 
     throw error
@@ -651,6 +652,7 @@ const handOverCheckoutSession = async ({ addedStock, session, ...retirement }: R
     await releaseInventoryForItems(addedStock).catch((releaseError: unknown) => {
       console.error("Failed to release the stock the edited cart added after checkout update error:", releaseError)
     })
+    scheduleProductCatalogInvalidation()
 
     throw error
   }

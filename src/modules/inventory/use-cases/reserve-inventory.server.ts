@@ -1,3 +1,4 @@
+import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
@@ -24,6 +25,7 @@ export const reserveInventoryForItems = async (items: readonly ReserveInventoryI
     await releaseInventoryForItems(reserved).catch((error: unknown) => {
       console.error("Failed to roll back partial inventory reservation:", error)
     })
+    scheduleProductCatalogInvalidation()
 
     console.warn(`Inventory reservation failed for ${firstFailure.title}. Not enough stock available.`)
     throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY)

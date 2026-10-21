@@ -11,13 +11,36 @@ import { scheduleBackgroundWork } from "~/src/lib/background"
 
 import { toSerializedTopicPrefixes } from "~/src/durable-objects/realtime-invalidation-hub"
 
+const NOTIFY_ATTEMPTS = 3
+
+const NOTIFY_BACKOFF_MS = 50
+
+const pause = (milliseconds: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, milliseconds)
+  })
+
+const notifyHub = async (hubName: RealtimeInvalidationHubName, topicPrefixes: readonly string[], attempt: number): Promise<void> => {
+  try {
+    const hub = env.REALTIME_INVALIDATION_HUB.getByName(hubName)
+    await hub.notifyInvalidation(topicPrefixes)
+  } catch (error) {
+    if (attempt >= NOTIFY_ATTEMPTS) {
+      throw error
+    }
+
+    await pause(NOTIFY_BACKOFF_MS * attempt)
+    await notifyHub(hubName, topicPrefixes, attempt + 1)
+  }
+}
+
 const publishToHub = async (hubName: RealtimeInvalidationHubName, queryKeys: readonly QueryKey[]): Promise<void> => {
   if (queryKeys.length === 0) {
     return
   }
 
-  const hub = env.REALTIME_INVALIDATION_HUB.getByName(hubName)
-  await hub.notifyInvalidation(toSerializedTopicPrefixes(queryKeys))
+  const topicPrefixes = toSerializedTopicPrefixes(queryKeys)
+  await notifyHub(hubName, topicPrefixes, 1)
 }
 
 export const publishRealtimeInvalidation = async (input: PublishRealtimeInvalidationInput): Promise<void> => {

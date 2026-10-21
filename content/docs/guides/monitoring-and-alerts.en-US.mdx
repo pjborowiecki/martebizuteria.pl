@@ -25,6 +25,9 @@ The log lines that belong to this page:
 | Prefix                                                                 | Source                                                                                                                    |
 | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `[Health] D1 did not answer:` (or `KV`, `R2`)                          | `/api/health` caught an error from that binding                                                                           |
+| `[Storefront Cache] The catalogue version could not be read, …`        | The storefront hub did not answer; this request read D1 for its storefront reads                                          |
+| `[Storefront Cache] The cache could not be opened, …`                  | The Cache API refused; this request read D1 for its storefront reads                                                      |
+| `[Storefront Cache] A cached answer could not be read, …`              | A stored answer could not be read back; that statement read D1                                                            |
 | `[Alert] The <kind> alert to <address> was not sent: …`                | Resend refused or timed out on an incident alert                                                                          |
 | `[Alert] The <kind> alert could not be sent:`                          | Reading KV or rendering the alert threw; the error follows                                                                |
 | `[Stripe] Signature verification failed`                               | An event did not verify against `STRIPE_WEBHOOK_SECRET`; the route answered 400 and sent no alert                         |

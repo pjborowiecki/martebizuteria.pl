@@ -31,6 +31,7 @@ const ignorePatterns = [
 
 export default defineConfig({
   build: { target: "esnext" },
+  define: { "import.meta.env.BUILD_ID": JSON.stringify(crypto.randomUUID()) },
   fmt: {
     arrowParens: "always",
     bracketSpacing: true,

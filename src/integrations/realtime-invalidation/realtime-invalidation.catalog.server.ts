@@ -56,6 +56,7 @@ export const scheduleContentPageInvalidation = (): void => {
 export const scheduleProductAttributeCatalogInvalidation = (): void => {
   scheduleRealtimeInvalidation({
     admin: [PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.ALL, PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.STATS],
+    storefront: [PRODUCT_QUERY_KEYS.BY_HANDLE],
   })
 }
 

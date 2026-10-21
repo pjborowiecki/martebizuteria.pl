@@ -1,9 +1,11 @@
+import { createTestDurableObjectState } from "~/src/platform/testing/mocks/realtime-hub"
+
 import { type TestWebSocket } from "~/src/durable-objects/__test__/doubles/test-web-socket"
 
 export class TestHubState implements DurableObjectState {
   declare readonly exports: DurableObjectState["exports"]
   declare readonly props: DurableObjectState["props"]
-  declare readonly storage: DurableObjectState["storage"]
+  readonly storage: DurableObjectState["storage"] = createTestDurableObjectState().storage
   declare facets: DurableObjectState["facets"]
   declare blockConcurrencyWhile: DurableObjectState["blockConcurrencyWhile"]
   declare setWebSocketAutoResponse: DurableObjectState["setWebSocketAutoResponse"]

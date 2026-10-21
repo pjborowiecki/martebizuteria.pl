@@ -162,8 +162,9 @@ import { drizzle } from "drizzle-orm/d1"
 import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas"
 
 import { timeD1Statements } from "~/src/lib/server-timing"
+import { cacheStorefrontReads } from "~/src/lib/storefront-cache.server"
 
-const instrumentedBinding = (): D1Database => timeD1Statements(env.DB)
+const instrumentedBinding = (): D1Database => cacheStorefrontReads(timeD1Statements(env.DB))
 
 class DeferredD1Database implements D1Database {
   prepare = (query: string): D1PreparedStatement => instrumentedBinding().prepare(query)
@@ -173,7 +174,7 @@ class DeferredD1Database implements D1Database {
 export const db = drizzle(new DeferredD1Database(), { schema })
 ```
 
-The `@tanstack/react-start/server-only` import marks the file as server-only, so the client build refuses it (see the next section). Seven files carry it: `drizzle.database.ts` and, in `src/lib/`, `background.ts`, `rate-limit.ts`, `request.ts`, `retention.ts`, `server-timing.ts` and `sitemap.ts`. `timeD1Statements` adds each statement's time to a page load's `Server-Timing` header.
+The `@tanstack/react-start/server-only` import marks the file as server-only, so the client build refuses it (see the next section). Nine files carry it: `drizzle.database.ts` and, in `src/lib/`, `background.ts`, `rate-limit.ts`, `request.ts`, `retention.ts`, `server-timing.ts`, `sitemap.ts`, `storefront-cache.server.ts` and `storefront-read.ts`. `timeD1Statements` adds each statement's time to a page load's `Server-Timing` header, and `cacheStorefrontReads` serves the storefront's public catalogue reads from a cache (see [Caching and SSR](/docs/architecture/caching-and-ssr#the-storefront-read-cache)).
 
 D1 has no interactive transactions. When several statements must land together, send them in one `db.batch`, which D1 runs as a single transaction. `runDrizzleBatch` from `src/integrations/drizzle-orm/drizzle.batch.ts` does that for a list built at run time and skips an empty one; `createCompleteProduct` in `src/modules/product/use-cases/create-complete-product.ts` uses it to insert a product, its images and its attributes together:
 

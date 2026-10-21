@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { loadAttributeOnProductRows, prepareAttributeOnProductBatch, runDrizzleBatch } = vi.hoisted(() => ({
-  loadAttributeOnProductRows: vi.fn<(productId: string, productRows: unknown, variantGroups: unknown) => Promise<unknown[]>>(),
-  prepareAttributeOnProductBatch: vi.fn<(productId: string, rows: unknown[]) => unknown[]>(),
-  runDrizzleBatch: vi.fn<(statements: unknown[]) => Promise<void>>(),
-}))
+const { loadAttributeOnProductRows, prepareAttributeOnProductBatch, runDrizzleBatch, scheduleProductCatalogInvalidation } = vi.hoisted(
+  () => ({
+    loadAttributeOnProductRows: vi.fn<(productId: string, productRows: unknown, variantGroups: unknown) => Promise<unknown[]>>(),
+    prepareAttributeOnProductBatch: vi.fn<(productId: string, rows: unknown[]) => unknown[]>(),
+    runDrizzleBatch: vi.fn<(statements: unknown[]) => Promise<void>>(),
+    scheduleProductCatalogInvalidation: vi.fn<() => void>(),
+  }),
+)
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({ runDrizzleBatch }))
+vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({ scheduleProductCatalogInvalidation }))
 vi.mock("~/src/modules/attribute-on-product/attribute-on-product.accessors", () => ({
   loadAttributeOnProductRows,
   prepareAttributeOnProductBatch,
@@ -48,6 +52,21 @@ beforeEach(() => {
 })
 
 describe("setAllProductAttributes", () => {
+  it("refreshes the storefront's product pages once the new attributes are written", async () => {
+    await setAllProductAttributes({ data: input })
+
+    expect(scheduleProductCatalogInvalidation).toHaveBeenCalledOnce()
+    expect(runDrizzleBatch.mock.invocationCallOrder[0]).toBeLessThan(scheduleProductCatalogInvalidation.mock.invocationCallOrder[0] ?? 0)
+  })
+
+  it("refreshes nothing when the attributes could not be written", async () => {
+    runDrizzleBatch.mockRejectedValue(new Error("D1 is unavailable"))
+
+    await expect(setAllProductAttributes({ data: input })).rejects.toThrow("D1 is unavailable")
+
+    expect(scheduleProductCatalogInvalidation).not.toHaveBeenCalled()
+  })
+
   it("replaces the product attributes and renames each variant group to the persistence shape", async () => {
     await setAllProductAttributes({ data: input })
 

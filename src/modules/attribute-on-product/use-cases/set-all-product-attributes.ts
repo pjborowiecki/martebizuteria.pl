@@ -3,6 +3,7 @@ import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
+import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import {
   loadAttributeOnProductRows,
@@ -22,6 +23,7 @@ export const setAllProductAttributes = createServerFn({ method: "POST" })
       data.variantValues.map((group) => ({ rows: group.values, variantId: group.variantId })),
     )
     await runDrizzleBatch(prepareAttributeOnProductBatch(data.productId, rows))
+    scheduleProductCatalogInvalidation()
 
     return { ok: true, productId: data.productId }
   })

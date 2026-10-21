@@ -41,8 +41,14 @@ import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 const { hub } = vi.hoisted(() => ({
   hub: {
+    failuresLeft: 0,
     getByName: vi.fn((name: string) => ({
       notifyInvalidation: (topics: readonly string[]) => {
+        if (hub.failuresLeft > 0) {
+          hub.failuresLeft -= 1
+
+          return Promise.reject(new Error("the hub did not answer"))
+        }
         hub.notified.push({ name, topics })
 
         return Promise.resolve()
@@ -68,8 +74,27 @@ const serialized = (queryKeys: readonly unknown[][]): string[] => queryKeys.map(
 describe("publishRealtimeInvalidation", () => {
   beforeEach(() => {
     hub.notified.length = 0
+    hub.failuresLeft = 0
     hub.getByName.mockClear()
     background.scheduled.length = 0
+  })
+
+  it("tries a notification that failed again, on a fresh stub, until the hub takes it", async () => {
+    hub.failuresLeft = 2
+
+    await publishRealtimeInvalidation({ storefront: [PRODUCT_QUERY_KEYS.BY_HANDLE] })
+
+    expect(hub.getByName.mock.calls).toStrictEqual([["storefront"], ["storefront"], ["storefront"]])
+    expect(topicsFor("storefront")).toStrictEqual(serialized([[...PRODUCT_QUERY_KEYS.BY_HANDLE]]))
+  })
+
+  it("gives up after three attempts and reports the failure", async () => {
+    hub.failuresLeft = 3
+
+    await expect(publishRealtimeInvalidation({ storefront: [PRODUCT_QUERY_KEYS.BY_HANDLE] })).rejects.toThrow("the hub did not answer")
+
+    expect(hub.getByName).toHaveBeenCalledTimes(3)
+    expect(hub.notified).toStrictEqual([])
   })
 
   it("routes each side's prefixes to its own hub as serialized topics", async () => {
@@ -181,6 +206,16 @@ describe("catalog invalidation scheduling", () => {
     )
   })
 
+  it("refreshes open product pages when a specification they show is renamed, reordered or removed", async () => {
+    scheduleProductAttributeCatalogInvalidation()
+    await Promise.all(background.scheduled)
+
+    expect(topicsFor("admin")).toStrictEqual(
+      serialized([[...PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.ALL], [...PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.STATS]]),
+    )
+    expect(topicsFor("storefront")).toStrictEqual(serialized([[...PRODUCT_QUERY_KEYS.BY_HANDLE]]))
+  })
+
   it("tells admins and every open storefront tab that sales were paused or resumed", async () => {
     scheduleSalesStatusInvalidation()
     await Promise.all(background.scheduled)
@@ -198,11 +233,6 @@ describe("invalidation topics by publisher", () => {
   })
 
   it.each([
-    [
-      "attributes",
-      scheduleProductAttributeCatalogInvalidation,
-      [PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.ALL, PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.STATS],
-    ],
     ["audit log", scheduleAdminAuditLogInvalidation, [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS]],
     [
       "customers",
@@ -286,7 +316,11 @@ describe("invalidation topics by publisher", () => {
       scheduleSellerDetailsInvalidation,
       { admin: [STORE_SETTING_QUERY_KEYS.ADMIN.SELLER_DETAILS], storefront: [STORE_SETTING_QUERY_KEYS.SELLER_DETAILS] },
     ],
-    ["attribute", scheduleProductAttributeCatalogInvalidation, { admin: [PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.ALL] }],
+    [
+      "attribute",
+      scheduleProductAttributeCatalogInvalidation,
+      { admin: [PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.ALL], storefront: [PRODUCT_QUERY_KEYS.BY_HANDLE] },
+    ],
     ["audit log", scheduleAdminAuditLogInvalidation, { admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS] }],
     ["customers", scheduleAdminCustomersInvalidation, { admin: [USER_QUERY_KEYS.ADMIN.CUSTOMERS, USER_QUERY_KEYS.ADMIN.TEAM] }],
     [

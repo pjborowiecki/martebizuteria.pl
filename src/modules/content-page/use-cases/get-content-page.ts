@@ -15,6 +15,8 @@ import { revisionDateFor } from "~/src/modules/content-page/content-page.utils"
 import { contentPageZodSchemas } from "~/src/modules/content-page/content-page.zod"
 import { resolveLocalizedString } from "~/src/modules/product-attribute/product-attribute.utils"
 
+import { readThroughStorefrontCache } from "~/src/lib/storefront-read"
+
 interface ContentPageViewInput {
   readonly handle: ContentPageHandle
   readonly locale: string
@@ -24,7 +26,7 @@ export const getContentPage = createServerFn({ method: "GET" })
   .middleware([withRequest])
   .validator((input: ContentPageViewInput) => contentPageZodSchemas.viewInput.parse(input))
   .handler(async ({ data: { handle, locale } }): Promise<ContentPage["view"]> => {
-    const page = await findContentPageByHandle(handle)
+    const page = await readThroughStorefrontCache(() => findContentPageByHandle(handle))
     if (page === undefined) {
       throw notFound()
     }

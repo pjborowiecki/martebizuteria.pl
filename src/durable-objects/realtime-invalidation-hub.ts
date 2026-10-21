@@ -44,6 +44,8 @@ const WEBSOCKET_PAIR_CLIENT_INDEX = 0
 
 const WEBSOCKET_PAIR_SERVER_INDEX = 1
 
+const STOREFRONT_CACHE_VERSION_KEY = "storefront-cache-version"
+
 export class RealtimeInvalidationHub extends DurableObject<Env> {
   fetch(request: Request): Response {
     if (request.headers.get("Upgrade") !== "websocket") {
@@ -67,10 +69,19 @@ export class RealtimeInvalidationHub extends DurableObject<Env> {
       webSocket: client,
     })
   }
+  storefrontCacheVersion(): string {
+    const stored = this.ctx.storage.kv.get(STOREFRONT_CACHE_VERSION_KEY)
+
+    return typeof stored === "string" ? stored : this.#renewStorefrontCacheVersion()
+  }
   notifyInvalidation(topicPrefixes: readonly string[]): void {
     const emptyTopicCount = 0
     if (topicPrefixes.length === emptyTopicCount) {
       return
+    }
+
+    if (this.ctx.id.name === REALTIME_INVALIDATION_HUB.STOREFRONT) {
+      this.#renewStorefrontCacheVersion()
     }
 
     const payload = JSON.stringify({
@@ -91,6 +102,12 @@ export class RealtimeInvalidationHub extends DurableObject<Env> {
   }
   webSocketError(ws: WebSocket): void {
     ws.close(WEBSOCKET_INTERNAL_ERROR_CODE, "WebSocket error")
+  }
+  #renewStorefrontCacheVersion(): string {
+    const version = crypto.randomUUID()
+    this.ctx.storage.kv.put(STOREFRONT_CACHE_VERSION_KEY, version)
+
+    return version
   }
 }
 
