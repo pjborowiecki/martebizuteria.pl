@@ -9,12 +9,12 @@ Catalogue, collection, category and marketing images live in R2 and reach the br
 
 ## Buckets and base URLs per environment
 
-| Environment   | `IMAGES` bucket in `wrangler.jsonc` | `VITE_R2_URL`                                                       |
-| ------------- | ----------------------------------- | ------------------------------------------------------------------- |
-| `development` | `martebizuteria-preview`, remote    | The preview bucket's public URL, in `.env.development`              |
-| `preview`     | `martebizuteria-preview`, remote    | The preview bucket's public URL, in `.env.preview` and GitHub       |
-| `test`        | `martebizuteria-test`, local        | `https://images.example.test`, in `.env.test`                       |
-| `production`  | `martebizuteria`, remote            | `https://images.martebizuteria.pl`, in `.env.production` and GitHub |
+| Environment   | `IMAGES` bucket in `wrangler.jsonc` | `VITE_R2_URL`                                                            |
+| ------------- | ----------------------------------- | ------------------------------------------------------------------------ |
+| `development` | `martebizuteria-preview`, remote    | `https://images-preview.martebizuteria.pl`, in `.env.development`        |
+| `preview`     | `martebizuteria-preview`, remote    | `https://images-preview.martebizuteria.pl`, in `.env.preview` and GitHub |
+| `test`        | `martebizuteria-test`, local        | `https://images.example.test`, in `.env.test`                            |
+| `production`  | `martebizuteria`, remote            | `https://images.martebizuteria.pl`, in `.env.production` and GitHub      |
 
 `development` and `preview` share the bucket for the same reason they share the D1 database: the rows the dev server writes are the rows preview serves, and an image a row points at has to be in the bucket both of them read. Production keeps `martebizuteria` to itself, and `scripts/verify-bindings.ts production` refuses a configuration whose production `IMAGES` bucket is the preview one:
 
@@ -61,15 +61,15 @@ Stripe receives no images: the Checkout Session's line items carry only a name a
 
 Do the steps in this order. Steps 1 to 3 isolate development and preview and are needed before the next `bun run dev` or preview deploy; steps 4 to 7 move production to the custom domain and can follow later, because production keeps working on `r2.dev` until step 7.
 
-### 1. Create the preview bucket and give it a public URL
+### 1. Create the preview bucket and give it its domain
 
 ```sh
 bunx wrangler login
 bunx wrangler r2 bucket create martebizuteria-preview
-bunx wrangler r2 bucket dev-url enable martebizuteria-preview
+bunx wrangler r2 bucket domain add martebizuteria-preview --domain images-preview.martebizuteria.pl --zone-id <ZONE_ID> --min-tls 1.2
 ```
 
-The last command prints the bucket's public address, `https://pub-<id>.r2.dev`; `bunx wrangler r2 bucket dev-url get martebizuteria-preview` prints it again. In the dashboard the same switch is **R2 object storage**, `martebizuteria-preview`, **Settings**, **Public Development URL**, **Enable**. An `r2.dev` address is rate-limited and meant for development, which is enough for preview traffic.
+In the dashboard the domain is **R2 object storage**, `martebizuteria-preview`, **Settings**, **Custom Domains**, **Add**, with **Minimum TLS version** 1.2. `images-preview.martebizuteria.pl` is on the `martebizuteria.pl` zone, so it serves the preview images through the same Image Transformations as production (step 5), and preview pages get resized images like the shop does.
 
 ### 2. Copy the images into it
 
@@ -102,7 +102,7 @@ The copy only reads from `martebizuteria`, so production is not touched. Nothing
 
 ### 3. Point development and preview at it
 
-Set `VITE_R2_URL` to the address from step 1 in `.env.development` and `.env.preview`, and as an environment variable of the GitHub `preview` environment (**Settings**, **Environments**, `preview`, **Environment variables**). An environment variable overrides a repository variable of the same name, and the preview workflow runs in that environment. Then restart `bun run dev` and deploy preview; the deploy uploads the value as the Worker secret and inlines it into the bundle.
+Set `VITE_R2_URL` to `https://images-preview.martebizuteria.pl` in `.env.development` and `.env.preview`, and as an environment variable of the GitHub `preview` environment (**Settings**, **Environments**, `preview`, **Environment variables**). An environment variable overrides a repository variable of the same name, and the preview workflow runs in that environment. Then restart `bun run dev` and deploy preview; the deploy uploads the value as the Worker secret and inlines it into the bundle.
 
 ### 4. Attach a custom domain to the production bucket
 
