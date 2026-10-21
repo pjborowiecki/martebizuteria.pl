@@ -63,6 +63,8 @@ const nextFrame = (page: Page): Promise<void> =>
       }),
   )
 
+const smoothScrollingStarted = (page: Page): Promise<void> => expect(page.locator("html.lenis")).toHaveCount(1)
+
 const scrollToCategories = async (page: Page): Promise<number> => {
   await page.locator("#kolekcje").evaluate((section) => {
     section.scrollIntoView({ behavior: "instant", block: "start" })
@@ -97,6 +99,7 @@ test.describe("the categories on a wide screen", () => {
   test("a long wheel scroll runs on through the categories while their pictures load", async ({ page, productPage }) => {
     await delayEveryImage(page)
     await productPage.open("/en-US")
+    await smoothScrollingStarted(page)
     const startY = await scrollToCategories(page)
     expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight - scrollY)).toBeGreaterThan(WHEEL_TOTAL_PX)
 
