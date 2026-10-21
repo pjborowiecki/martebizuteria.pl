@@ -90,9 +90,7 @@ export const AddressStep = (): JSX.Element => {
       </FieldGroup>
 
       <div className="flex flex-col gap-4 pt-1 sm:flex-row sm:items-center sm:gap-8">
-        <div className="w-fit">
-          <SaveAddressField addresses={deliverableAddresses} prefix="shipping" />
-        </div>
+        <SaveAddressField addresses={deliverableAddresses} className="w-fit" prefix="shipping" />
         <div className="w-fit">
           <CheckoutCheckboxField control={control} name="sameAsShipping" label={t("sameAsShipping")} />
         </div>
@@ -141,9 +139,7 @@ export const AddressStep = (): JSX.Element => {
               displayValue={countryName}
             />
           </FieldGroup>
-          <div className="pt-1">
-            <SaveAddressField addresses={addresses ?? NO_SAVED_ADDRESSES} prefix="billing" />
-          </div>
+          <SaveAddressField addresses={addresses ?? NO_SAVED_ADDRESSES} className="pt-1" prefix="billing" />
         </div>
       )}
 
@@ -258,13 +254,16 @@ const addressKey = (parts: readonly (string | null | undefined)[]): string =>
 
 const SaveAddressField = ({
   addresses,
+  className,
   prefix,
 }: Readonly<{
   addresses: readonly Address["select"][]
+  className: string
   prefix: AddressPrefix
-}>): JSX.Element => {
+}>): JSX.Element | undefined => {
   const t = useTranslations("pages.checkout.checkoutForm")
   const { control, setValue } = useCheckoutForm()
+  const { data: session } = useQuery(getCurrentSessionQuery)
   const fields = ADDRESS_FIELDS[prefix]
   const typedAddress = useWatch({
     control,
@@ -285,11 +284,24 @@ const SaveAddressField = ({
     }
   }, [alreadySaved, fields.save, setValue])
 
-  if (alreadySaved) {
-    return <CheckoutCheckboxField control={control} disabled name={fields.save} label={t("addressAlreadySaved")} />
+  const signedIn = session !== null && session !== undefined
+  if (!signedIn) {
+    return undefined
   }
 
-  return <CheckoutCheckboxField control={control} name={fields.save} label={t(fields.saveLabel)} />
+  if (alreadySaved) {
+    return (
+      <div className={className}>
+        <CheckoutCheckboxField control={control} disabled name={fields.save} label={t("addressAlreadySaved")} />
+      </div>
+    )
+  }
+
+  return (
+    <div className={className}>
+      <CheckoutCheckboxField control={control} name={fields.save} label={t(fields.saveLabel)} />
+    </div>
+  )
 }
 
 const ADDRESS_FIELDS = {
